@@ -1,6 +1,10 @@
 #include <Flux.hpp>
 #include <cmath>
 #include <ranges>
+#include <thread>
+#include <chrono>
+#include <sstream>
+#include <iomanip>
 
 using namespace flux;
 
@@ -81,6 +85,18 @@ struct BatteryIcon {
     }
 };
 
+void timeout(std::function<void()> func, int interval) {
+    std::thread([func, interval]()
+    {
+      while (true)
+      {
+        auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(interval);
+        func();
+        std::this_thread::sleep_until(x);
+      }
+    }).detach();
+}
+
 int main(int argc, char* argv[]) {
     Application app(argc, argv);
 
@@ -89,7 +105,10 @@ int main(int argc, char* argv[]) {
         .title = "Automotive Dashboard"
     });
 
-    State chargeLevel = 100;
+    State date = std::string("");
+    State time = std::string("");
+    State name = std::string("Abdurrahman Avcı");
+    State chargeLevel = 80;
 
     window.setRootView(
         VStack {
@@ -106,25 +125,27 @@ int main(int argc, char* argv[]) {
                         HStack {
                             .children = {
                                 Text {
-                                    .value = "9:45 am",
+                                    .value = time,
                                     .fontSize = 24,
-                                    .fontWeight = FontWeight::bold
+                                    .fontWeight = FontWeight::bold,
+                                    .horizontalAlignment = HorizontalAlignment::leading
                                 },
                                 Spacer {},
                                 Text {
-                                    .value = "Mayad Ahmed",
+                                    .value = name,
                                     .fontSize = 24,
-                                    .fontWeight = FontWeight::bold
+                                    .fontWeight = FontWeight::bold,
+                                    .horizontalAlignment = HorizontalAlignment::trailing
                                 }
                             }
                         },
                         HStack {
                             .children = {
                                 Text {
-                                    // .backgroundColor = Colors::green,
-                                    .value = "Sunday | February 19, 2023",
+                                    .value = date,
                                     .fontSize = 16,
-                                    .color = Color::hex(0x7f8c8d)
+                                    .color = Color::hex(0x7f8c8d),
+                                    .horizontalAlignment = HorizontalAlignment::leading
                                 },
                                 Spacer {
                                 },
@@ -133,15 +154,14 @@ int main(int argc, char* argv[]) {
                                     .expansionBias = 0,
                                     .spacing = 8,
                                     .alignItems = AlignItems::center,
+                                    .justifyContent = JustifyContent::end,
                                     .children = {
                                         Text {
-                                            // .backgroundColor = Colors::red,
-                                            .value = [&chargeLevel]() { return std::format("{}%", chargeLevel); },
+                                            .value = std::format("{}%", chargeLevel),
                                             .fontSize = 16,
                                             .color = Color::hex(0x7f8c8d)
                                         },
                                         BatteryIcon {
-                                            // .backgroundColor = Colors::blue,
                                             .margin = 8,
                                             .compressionBias = 0,
                                             .expansionBias = 1,
@@ -341,6 +361,19 @@ int main(int argc, char* argv[]) {
             }
         }
     );
+
+    timeout([&date, &time]() {
+        auto now = std::chrono::system_clock::now();
+        auto in_time_t = std::chrono::system_clock::to_time_t(now);
+
+        std::stringstream ds;
+        ds << std::put_time(std::localtime(&in_time_t), "%A | %B %d, %Y");
+        date = ds.str();
+
+        std::stringstream ts;
+        ts << std::put_time(std::localtime(&in_time_t), "%H:%M:%S");
+        time = ts.str();
+    }, 1000);
 
     return app.exec();
 }
