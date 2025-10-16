@@ -1,0 +1,5 @@
+# Git submodules for Flux UI Framework
+
+[submodule "third_party/nanovg"]
+	path = third_party/nanovg
+	url = https://github.com/memononen/nanovg.git

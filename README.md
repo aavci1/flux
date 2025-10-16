@@ -1,0 +1,182 @@
+# Flux UI Framework
+
+A minimal, declarative UI framework for Linux built with pure C++23.
+
+## Key Features
+
+- Pure C++23 with designated initializers
+- Automatic reactive state management
+- Flexible properties (values, State refs, or lambdas)
+- Immediate mode rendering
+- Type-safe with compile-time checking
+- **NEW**: SDL2 backend for cross-platform windowing and hardware-accelerated rendering
+
+## Quick Start
+
+```cpp
+#include <Flux.hpp>
+using namespace flux;
+
+int main(int argc, char* argv[]) {
+    Application app(argc, argv);
+
+    State counter = 0;
+
+    Window window({.size = {400, 300}, .title = "Counter"});
+
+    window.setRootView(
+        VStack {
+            .children = {
+                Text {
+                    .value = [&]() {
+                        return std::format("Count: {}", counter);
+                    },
+                    .fontSize = 32
+                },
+                HStack {
+                    .children = {
+                        Button {
+                            .text = "−",
+                            .onClick = [&]() { counter--; }
+                        },
+                        Button {
+                            .text = "+",
+                            .onClick = [&]() { counter++; }
+                        }
+                    }
+                }
+            }
+        }
+    );
+
+    return app.exec();
+}
+```
+
+**Key pattern:** Use **lambdas in properties** to capture state. When state changes, properties are re-evaluated during rendering, giving you automatic reactivity!
+
+## Framework Structure
+
+```
+include/
+├── Flux.hpp                    // Main header - includes everything
+└── Flux/
+    ├── Core/                   // Core types and system (10 headers)
+    │   ├── Types.hpp          // Point, Rect, Color, etc.
+    │   ├── State.hpp          // Reactive state
+    │   ├── Property.hpp       // Flexible properties
+    │   ├── View.hpp           // Base view class
+    │   ├── ViewHelpers.hpp    // View rendering helpers
+    │   ├── Application.hpp    // App lifecycle
+    │   ├── Window.hpp         // Window management
+    │   ├── LayoutTree.hpp     // Layout management
+    │   ├── TextUtils.hpp      // Text utilities
+    │   └── Utilities.hpp      // Common utilities
+    ├── Views/                  // UI components and layouts (5 headers)
+    │   ├── Text.hpp
+    │   ├── Button.hpp
+    │   ├── VStack.hpp
+    │   ├── HStack.hpp
+    │   └── Spacer.hpp
+    └── Graphics/               // Rendering (2 headers)
+        ├── RenderContext.hpp
+        └── Renderer.hpp
+```
+
+## Components
+
+**Layout Components (3):**
+- VStack, HStack, Spacer
+
+**UI Components (2):**
+- Text, Button
+
+## State Management
+
+State changes automatically trigger UI updates:
+
+```cpp
+State counter = 0;        // Automatic type deduction
+State name = "Alice";
+
+counter++;                // Triggers automatic redraw
+name = "Bob";             // Triggers automatic redraw
+
+// Lambda properties capture state
+window.setRootView(
+    Text {
+        .value = [&]() {
+            return std::format("Hello, {} (Count: {})", name, counter);
+        }
+    }
+);
+```
+
+**How it works:**
+- Modify state → triggers `requestRedraw()`
+- On next frame → renderer evaluates all lambda properties
+- Lambda properties read current state values
+- UI renders with fresh data
+
+## Documentation
+
+- **[docs/DESIGN.md](docs/DESIGN.md)** - Design philosophy and core principles
+- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System architecture and implementation details
+- **[docs/COMPONENT_GUIDE.md](docs/COMPONENT_GUIDE.md)** - Guide to creating components
+- **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)** - Development and contribution guide
+
+## Examples
+
+See `examples/` directory:
+- **01-hello-world** - Basic setup
+- **02-stack-alignment-demo** - Text alignment and custom components
+- **03-counter** - State + reactivity
+- **04-todo-app** - Dynamic lists and CRUD operations
+- **05-colors-and-theming** - Color system and theming
+- **07-custom-drawing** - Custom graphics rendering
+- **08-dashboard** - Chart components and business visualization
+- **09-flexbox-demo** - Flexible layouts with expansion/compression
+- **10-justify-content-demo** - Content justification and alignment
+
+## Building
+
+```bash
+mkdir build && cd build
+cmake ..
+make
+
+# Run examples (SDL2 window)
+./hello_world
+./counter
+./dashboard
+```
+
+## Include Patterns
+
+```cpp
+// Full framework
+#include <Flux.hpp>
+
+// Selective includes
+#include <Flux/Views/VStack.hpp>
+#include <Flux/Core/State.hpp>
+```
+
+## Project Status
+
+This is a minimal framework implementation with:
+- ✅ 17 headers (TitleCase convention)
+- ✅ 5 source files
+- ✅ 5 view components (Text, Button, VStack, HStack, Spacer)
+- ✅ Flexible layout system (expansionBias, compressionBias)
+- ✅ ViewHelpers for unified rendering
+- ✅ 8 comprehensive examples
+- ✅ Concept-based view system (no inheritance required)
+- ✅ SDL2 backend with hardware-accelerated rendering
+- 🚧 Vulkan/Skia render backend (for Linux)
+- 🚧 Wayland window backend
+- 🚧 Input handling
+
+## License
+
+MIT License
