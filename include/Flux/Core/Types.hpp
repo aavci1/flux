@@ -126,6 +126,46 @@ struct Shadow {
         return *this;
     }
 
+    // ============================================================================
+    // FACTORY METHODS
+    // ============================================================================
+
+    static Shadow drop(float offsetX, float offsetY, float blur, const Color& color = Colors::black) {
+        Shadow shadow;
+        shadow.offsetX = offsetX;
+        shadow.offsetY = offsetY;
+        shadow.blurRadius = blur;
+        shadow.color = color;
+        return shadow;
+    }
+
+    static Shadow inner(float offsetX, float offsetY, float blur, const Color& color = Colors::black) {
+        Shadow shadow;
+        shadow.offsetX = offsetX;
+        shadow.offsetY = offsetY;
+        shadow.blurRadius = blur;
+        shadow.color = color;
+        shadow.spreadRadius = -1; // Negative for inner shadows
+        return shadow;
+    }
+
+    static Shadow glow(float blur, const Color& color = Colors::black) {
+        Shadow shadow;
+        shadow.blurRadius = blur;
+        shadow.color = color;
+        return shadow;
+    }
+
+    static Shadow subtle(float offsetX, float offsetY, float blur, const Color& color = Colors::black) {
+        Shadow shadow;
+        shadow.offsetX = offsetX;
+        shadow.offsetY = offsetY;
+        shadow.blurRadius = blur;
+        shadow.color = color;
+        shadow.opacity = 0.1f; // Very subtle
+        return shadow;
+    }
+
     bool operator==(const Shadow& other) const = default;
 };
 

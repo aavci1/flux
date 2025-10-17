@@ -54,7 +54,8 @@ struct ProgressIcon {
         // Draw progress track (background ring)
         float trackRadius = radius;
         Color trackCol = trackColor;
-        ctx.drawArc({centerX, centerY}, trackRadius, 0, 2 * M_PI, trackCol, strokeWidth);
+        StrokeStyle trackStyle = {trackCol, strokeWidth};
+        ctx.drawArc({centerX, centerY}, trackRadius, 0, 2 * M_PI, trackStyle);
 
         // Draw progress arc
         int progressVal = progress.get() >= 0 ? progress.get() : 100;
@@ -67,7 +68,7 @@ struct ProgressIcon {
         // Draw progress arc starting from top (-π/2) and going clockwise
         float startAngle = -M_PI / 2; // Start at top
         float endAngle = startAngle + progressAngle;
-        ctx.drawArc({centerX, centerY}, progressRadius, startAngle, endAngle, progressCol, strokeWidth);
+        ctx.drawArc({centerX, centerY}, progressRadius, startAngle, endAngle, {progressCol, strokeWidth});
 
         Size textSize = ctx.measureText(textVal, 18, FontWeight::medium);
         Point textPos = {centerX, centerY};
@@ -104,7 +105,7 @@ struct Separator {
         float lineEndX = bounds.x + bounds.width - marginVal;
 
         // Draw the horizontal line
-        ctx.drawLine({lineStartX, lineY}, {lineEndX, lineY}, thicknessVal, lineColor);
+        ctx.drawLine({lineStartX, lineY}, {lineEndX, lineY}, {lineColor, thicknessVal});
     }
 
     Size preferredSize(TextMeasurement& textMeasurer) const {

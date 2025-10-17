@@ -132,6 +132,9 @@ if(BUILD_EXAMPLES)
     add_executable(colors_and_theming examples/05-colors-and-theming/main.cpp)
     target_link_libraries(colors_and_theming PRIVATE flux)
 
+    add_executable(media_player examples/06-media-player/main.cpp)
+    target_link_libraries(media_player PRIVATE flux)
+
     add_executable(dashboard examples/08-dashboard/main.cpp)
     target_link_libraries(dashboard PRIVATE flux)
 
@@ -152,6 +155,9 @@ if(BUILD_EXAMPLES)
 
         add_executable(svg_demo examples/14-svg-demo/main.cpp)
         target_link_libraries(svg_demo PRIVATE flux)
+
+        add_executable(render_context_demo examples/15-render-context-demo/main.cpp)
+        target_link_libraries(render_context_demo PRIVATE flux)
 
 endif()
 

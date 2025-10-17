@@ -49,7 +49,7 @@ struct LineChart {
             float x2 = chartArea.x + i * chartArea.width / (dataVec.size() - 1);
             float y2 = chartArea.y + chartArea.height - ((dataVec[i] - minVal) / range) * chartArea.height;
 
-            ctx.drawLine({x1, y1}, {x2, y2}, 3, lineCol);
+            ctx.drawLine({x1, y1}, {x2, y2}, {lineCol, 3.0f});
         }
 
         // Draw data points
@@ -179,7 +179,7 @@ struct DoughnutChart {
                 Point p4 = {centerX + std::cos(rad1) * innerRadius, centerY + std::sin(rad1) * innerRadius};
 
                 // Simple line approximation for arc
-                ctx.drawLine(p1, p2, 3, segmentColor);
+                ctx.drawLine(p1, p2, {segmentColor, 3.0f});
             }
 
             currentAngle += angle;

@@ -112,8 +112,16 @@ void SVG::renderPath(RenderContext& ctx, NSVGpath* path, const Rect& /* bounds *
     }
 
     // Fill and stroke the path
-    ctx.fillPath(fillColor);
-    ctx.strokePath(strokeColor, strokeWidth);
+    if (fillColor.a > 0.0f) {
+        ctx.setFillColor(fillColor);
+        ctx.fill();
+    }
+
+    if (strokeColor.a > 0.0f && strokeWidth > 0.0f) {
+        ctx.setStrokeColor(strokeColor);
+        ctx.setStrokeWidth(strokeWidth);
+        ctx.stroke();
+    }
 }
 
 Color SVG::nsvgColorToFluxColor(unsigned int color) const {

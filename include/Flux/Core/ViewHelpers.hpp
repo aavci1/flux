@@ -60,4 +60,3 @@ inline void renderView(const ViewType& view, RenderContext& ctx, const Rect& bou
 } // namespace ViewHelpers
 
 } // namespace flux
-

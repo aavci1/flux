@@ -8,6 +8,8 @@
 
 using namespace flux;
 
+// TODO: add basic items like circle, rectangle etc. ?
+
 // Battery Icon Component
 struct BatterySegment {
     FLUX_VIEW_PROPERTIES;
@@ -85,6 +87,161 @@ struct BatteryIcon {
     }
 };
 
+struct MediaPlayerAlbumCover {
+    FLUX_VIEW_PROPERTIES;
+
+    View body() const {
+        return Text {
+            .backgroundColor = Color::hex(0x0000ff),
+            .cornerRadius = 8
+        };
+    }
+};
+
+struct MediaPlayerButton {
+    FLUX_VIEW_PROPERTIES;
+
+    Property<std::string> value = "X";
+
+    View body() const {
+        return Text {
+            .value = this->value,
+        };
+    }
+
+    Size preferredSize(TextMeasurement& textMeasurer) const {
+        return this->body().preferredSize(textMeasurer);
+    }
+};
+
+struct MediaPlayerTrack {
+    FLUX_VIEW_PROPERTIES;
+
+    Property<int> trackCurrentTimeInSeconds = 0;
+    Property<int> trackDurationInSeconds = 335;
+
+    View body() const {
+        return HStack {
+            .spacing = 8,
+            .children = {
+                Text {
+                    .value = std::format("{:02}:{:02}", this->trackCurrentTimeInSeconds / 60, this->trackCurrentTimeInSeconds % 60),
+                    .color = Colors::darkGray,
+                    .fontSize = 14
+                },
+                Slider {
+                    .expansionBias = 1,
+                    .value = static_cast<float>(this->trackCurrentTimeInSeconds) / static_cast<float>(this->trackDurationInSeconds)
+                },
+                Text {
+                    .value = std::format("{:02}:{:02}", this->trackDurationInSeconds / 60, this->trackDurationInSeconds % 60),
+                    .color = Colors::darkGray,
+                    .fontSize = 14
+                }
+            }
+        };
+    }
+};
+
+struct MediaPlayer {
+    FLUX_VIEW_PROPERTIES;
+
+    Property<float> spacing = 16;
+
+    Property<std::string> trackTitle = std::string("Born of God");
+    Property<std::string> trackArtist = std::string("@Daft Punk");
+    Property<std::string> trackAlbum = std::string("Random Access Memories");
+    Property<std::string> trackAlbumCover = std::string("album_cover.jpg");
+    Property<int> trackCurrentTimeInSeconds = 0;
+    Property<int> trackDurationInSeconds = 335;
+
+    View body() const {
+        return VStack {
+            .backgroundColor = this->backgroundColor,
+            .borderWidth = this->borderWidth,
+            .borderColor = this->borderColor,
+            .cornerRadius = this->cornerRadius,
+            .compressionBias = this->compressionBias,
+            .expansionBias = this->expansionBias,
+            .padding = this->padding,
+            .spacing = this->spacing,
+            .children = {
+                HStack {
+                    // .backgroundColor = Color::hex(0x00ffff),
+                    .expansionBias = 2,
+                    .spacing = 16,
+                    .alignItems = AlignItems::center,
+                    .children = {
+                        MediaPlayerAlbumCover {
+                            // .backgroundColor = Color::hex(0x0000ff),
+                            .cornerRadius = 8,
+                            .expansionBias = 1
+                        },
+                        VStack {
+                            // .backgroundColor = Color::hex(0xffff00),
+                            .expansionBias = 2,
+                            .spacing = 8,
+                            .justifyContent = JustifyContent::center,
+                            .children = {
+                                Text {
+                                    // .backgroundColor = Color::hex(0xff0000),
+                                    .value = "Born of God",
+                                    .fontSize = 24,
+                                    .fontWeight = FontWeight::bold,
+                                    .horizontalAlignment = HorizontalAlignment::leading
+                                },
+                                Text {
+                                    // .backgroundColor = Color::hex(0x00ff00),
+                                    .value = "@Daft Punk",
+                                    .color = Color::hex(0x7f8c8d),
+                                    .fontSize = 16,
+                                    .fontWeight = FontWeight::bold,
+                                    .horizontalAlignment = HorizontalAlignment::leading
+                                }
+                            }
+                        }
+                    }
+                },
+                HStack {
+                    .expansionBias = 1,
+                    .justifyContent = JustifyContent::spaceBetween,
+                    .children = {
+                        MediaPlayerButton {
+                            .cornerRadius = 8,
+                            .value = "|<"
+                        },
+                        Spacer {},
+                        MediaPlayerButton {
+                            .cornerRadius = 8,
+                            .value = "<<"
+                        },
+                        Spacer {},
+                        MediaPlayerButton {
+                            .cornerRadius = 8,
+                            .value = "||"
+                        },
+                        Spacer {},
+                        MediaPlayerButton {
+                            .cornerRadius = 8,
+                            .value = ">>"
+                        },
+                        Spacer {},
+                        MediaPlayerButton {
+                            .cornerRadius = 8,
+                            .value = ">|"
+                        }
+                    }
+                },
+                MediaPlayerTrack {
+                    .expansionBias = 1,
+                    .trackCurrentTimeInSeconds = trackCurrentTimeInSeconds,
+                    .trackDurationInSeconds = trackDurationInSeconds
+                }
+            }
+        };
+    }
+};
+
 void timeout(std::function<void()> func, int interval) {
     std::thread([func, interval]()
     {
@@ -109,6 +266,14 @@ int main(int argc, char* argv[]) {
     State time = std::string("");
     State name = std::string("Abdurrahman Avcı");
     State chargeLevel = 80;
+
+
+    State trackTitle = std::string("Born of God");
+    State trackArtist = std::string("@Daft Punk");
+    State trackAlbum = std::string("Random Access Memories");
+    State trackAlbumCover = std::string("album_cover.jpg");
+    State trackCurrentTimeInSeconds = 0;
+    State trackDurationInSeconds = 335;
 
     window.setRootView(
         VStack {
@@ -183,14 +348,19 @@ int main(int argc, char* argv[]) {
                             .expansionBias = 1,
                             .spacing = 24,
                             .children = {
-                                Text {
+                                MediaPlayer {
                                     .expansionBias = 1,
                                     .backgroundColor = Color::hex(0xffffff),
                                     .borderWidth = 1,
                                     .borderColor = Colors::lightGray,
                                     .cornerRadius = 16,
                                     .padding = 24,
-                                    .value = "Media Player"
+                                    .trackTitle = trackTitle,
+                                    .trackArtist = trackArtist,
+                                    .trackAlbum = trackAlbum,
+                                    .trackAlbumCover = trackAlbumCover,
+                                    .trackCurrentTimeInSeconds = trackCurrentTimeInSeconds,
+                                    .trackDurationInSeconds = trackDurationInSeconds
                                 },
                                 VStack {
                                     .expansionBias = 2,
@@ -362,7 +532,7 @@ int main(int argc, char* argv[]) {
         }
     );
 
-    timeout([&date, &time]() {
+    timeout([&date, &time, &trackCurrentTimeInSeconds, &trackDurationInSeconds]() {
         auto now = std::chrono::system_clock::now();
         auto in_time_t = std::chrono::system_clock::to_time_t(now);
 
@@ -373,6 +543,11 @@ int main(int argc, char* argv[]) {
         std::stringstream ts;
         ts << std::put_time(std::localtime(&in_time_t), "%H:%M:%S");
         time = ts.str();
+
+        trackCurrentTimeInSeconds++;
+        if (trackCurrentTimeInSeconds >= trackDurationInSeconds) {
+            trackCurrentTimeInSeconds = 0;
+        }
     }, 1000);
 
     return app.exec();
