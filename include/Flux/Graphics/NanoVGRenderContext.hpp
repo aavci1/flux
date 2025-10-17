@@ -155,6 +155,12 @@ public:
     void drawImage(int imageId, const Rect& rect, float cornerRadius = 0, float alpha = 1.0f) override;
     void drawImage(const std::string& path, const Rect& rect, float cornerRadius = 0) override;
 
+    // CSS-like image sizing methods
+    void drawImageCover(int imageId, const Rect& rect, float cornerRadius = 0, float alpha = 1.0f) override;
+    void drawImageCover(const std::string& path, const Rect& rect, float cornerRadius = 0) override;
+    void drawImageContain(int imageId, const Rect& rect, float cornerRadius = 0, float alpha = 1.0f) override;
+    void drawImageContain(const std::string& path, const Rect& rect, float cornerRadius = 0) override;
+
     // ============================================================================
     // CLIPPING
     // ============================================================================

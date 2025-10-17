@@ -126,7 +126,16 @@ struct VStack {
 
         for (const auto& info : visibleChildren) {
             float childHeight = finalHeights[childIndex];
-            float childWidth = availableWidth;
+            float childWidth;
+
+            // Determine child width based on alignItems
+            if (alignItems == AlignItems::stretch) {
+                childWidth = availableWidth;
+            } else {
+                // Use preferred width for non-stretch alignments
+                Size childPreferredSize = info.child->preferredSize(static_cast<TextMeasurement&>(ctx));
+                childWidth = childPreferredSize.width;
+            }
 
             // Apply alignItems
             float childX = bounds.x + paddingVal.left;

@@ -17,6 +17,7 @@
 
 #include <Flux/Views/Button.hpp>
 #include <Flux/Views/HStack.hpp>
+#include <Flux/Views/Image.hpp>
 #include <Flux/Views/Slider.hpp>
 #include <Flux/Views/Spacer.hpp>
 #include <Flux/Views/SVG.hpp>

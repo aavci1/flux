@@ -159,6 +159,9 @@ if(BUILD_EXAMPLES)
         add_executable(render_context_demo examples/15-render-context-demo/main.cpp)
         target_link_libraries(render_context_demo PRIVATE flux)
 
+        add_executable(login_manager examples/17-login-manager/main.cpp)
+        target_link_libraries(login_manager PRIVATE flux)
+
 endif()
 
 # Installation rules

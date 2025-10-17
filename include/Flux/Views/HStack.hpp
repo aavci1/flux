@@ -126,7 +126,16 @@ struct HStack {
 
         for (const auto& info : visibleChildren) {
             float childWidth = finalWidths[childIndex];
-            float childHeight = availableHeight;
+            float childHeight;
+
+            // Determine child height based on alignItems
+            if (alignItems == AlignItems::stretch) {
+                childHeight = availableHeight;
+            } else {
+                // Use preferred height for non-stretch alignments
+                Size childPreferredSize = info.child->preferredSize(static_cast<TextMeasurement&>(ctx));
+                childHeight = childPreferredSize.height;
+            }
 
             // Apply alignItems
             float childY = bounds.y + paddingVal.top;

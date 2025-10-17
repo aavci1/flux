@@ -85,6 +85,18 @@ Explores HStack and VStack content justification:
 - Visual comparison of all justification modes
 - Practical layout patterns
 
+### 17. Login Manager (~320 lines)
+**Concepts:** Custom components, macOS Big Sur theme, real-time updates, system UI design
+
+A macOS Big Sur-inspired login manager featuring:
+- WhiteSur theme with gradient background
+- Real-time clock and date display
+- Custom circular user avatar component
+- Translucent password input field
+- System action buttons (emergency, restart, shutdown, switch user)
+- Custom rendering with NanoVG graphics
+- Modern UI design patterns
+
 ## Building Examples
 
 Each example is a standalone application. To build an example:
@@ -117,6 +129,7 @@ Follow the examples in order:
 7. **08-dashboard**: Custom chart components and business visualization
 8. **09-flexbox-demo**: Flexible layouts and space distribution
 9. **10-justify-content-demo**: Content justification and alignment modes
+10. **17-login-manager**: Custom components and macOS Big Sur theme
 
 ## Example Structure
 

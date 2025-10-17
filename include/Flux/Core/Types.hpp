@@ -215,6 +215,61 @@ enum class ButtonStyle {
     primary, secondary, outlined, text
 };
 
+// Background image sizing options (CSS background-size equivalent)
+enum class BackgroundSize {
+    Auto,        // Original size
+    Cover,       // Scale to cover entire area, may crop
+    Contain,     // Scale to fit entirely within area, may leave empty space
+    Stretch      // Stretch to fill exact dimensions, may distort
+};
+
+// Background image positioning (CSS background-position equivalent)
+enum class BackgroundPosition {
+    TopLeft,
+    TopCenter,
+    TopRight,
+    CenterLeft,
+    Center,
+    CenterRight,
+    BottomLeft,
+    BottomCenter,
+    BottomRight
+};
+
+// Background image repetition (CSS background-repeat equivalent)
+enum class BackgroundRepeat {
+    NoRepeat,
+    Repeat,
+    RepeatX,
+    RepeatY
+};
+
+// Background image attachment (CSS background-attachment equivalent)
+enum class BackgroundAttachment {
+    Scroll,      // Scrolls with content
+    Fixed        // Fixed relative to viewport
+};
+
+// Background image configuration
+struct BackgroundImage {
+    std::string imagePath = "";
+    BackgroundSize size = BackgroundSize::Cover;
+    BackgroundPosition position = BackgroundPosition::Center;
+    BackgroundRepeat repeat = BackgroundRepeat::NoRepeat;
+    BackgroundAttachment attachment = BackgroundAttachment::Scroll;
+    float opacity = 1.0f;
+
+    // Custom positioning (overrides enum position)
+    Point customPosition = {0.5f, 0.5f}; // 0.0-1.0 range for percentage positioning
+
+    // Custom sizing (overrides enum size)
+    Size customSize = {0, 0}; // 0,0 means use enum size
+
+    bool isValid() const {
+        return !imagePath.empty();
+    }
+};
+
 
 // Text measurement interface - provides only text measurement capabilities
 // This is a minimal interface that custom view developers can safely use

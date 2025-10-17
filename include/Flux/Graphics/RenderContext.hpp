@@ -400,6 +400,12 @@ public:
     virtual void drawImage(int imageId, const Rect& rect, float cornerRadius = 0, float alpha = 1.0f) = 0;
     virtual void drawImage(const std::string& path, const Rect& rect, float cornerRadius = 0) = 0;
 
+    // CSS-like image sizing methods
+    virtual void drawImageCover(int imageId, const Rect& rect, float cornerRadius = 0, float alpha = 1.0f) = 0;
+    virtual void drawImageCover(const std::string& path, const Rect& rect, float cornerRadius = 0) = 0;
+    virtual void drawImageContain(int imageId, const Rect& rect, float cornerRadius = 0, float alpha = 1.0f) = 0;
+    virtual void drawImageContain(const std::string& path, const Rect& rect, float cornerRadius = 0) = 0;
+
     // ============================================================================
     // CLIPPING
     // ============================================================================

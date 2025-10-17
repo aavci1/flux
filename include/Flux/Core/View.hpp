@@ -44,6 +44,7 @@ inline std::string demangleTypeName(const char* mangledName) {
     Property<EdgeInsets> margin = {}; \
     Property<EdgeInsets> padding = {}; \
     Property<Color> backgroundColor = Colors::transparent; \
+    Property<BackgroundImage> backgroundImage = BackgroundImage{}; \
     Property<Color> borderColor = Colors::transparent; \
     Property<float> borderWidth = 0; \
     Property<float> cornerRadius = 0; \

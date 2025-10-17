@@ -492,6 +492,131 @@ void NanoVGRenderContext::drawImage(const std::string& path, const Rect& rect, f
     }
 }
 
+// CSS-like image sizing methods
+void NanoVGRenderContext::drawImageCover(int imageId, const Rect& rect, float cornerRadius, float alpha) {
+    Size imageSize = getImageSize(imageId);
+    if (imageSize.width <= 0 || imageSize.height <= 0) {
+        return; // Invalid image
+    }
+
+    // Calculate scale factor to cover the entire area (CSS background-size: cover)
+    float scaleX = rect.width / imageSize.width;
+    float scaleY = rect.height / imageSize.height;
+    float scale = std::max(scaleX, scaleY); // Use max to ensure coverage
+
+    // Calculate scaled image dimensions
+    float scaledWidth = imageSize.width * scale;
+    float scaledHeight = imageSize.height * scale;
+
+    // Center the scaled image
+    float offsetX = (rect.width - scaledWidth) / 2;
+    float offsetY = (rect.height - scaledHeight) / 2;
+
+    Rect scaledRect = {
+        rect.x + offsetX,
+        rect.y + offsetY,
+        scaledWidth,
+        scaledHeight
+    };
+
+    // Draw the scaled image
+    FillStyle fillStyle;
+    fillStyle.type = FillType::ImagePattern;
+    fillStyle.imageId = imageId;
+    fillStyle.imageOrigin = scaledRect.origin();
+    fillStyle.imageSize = scaledRect.size();
+    fillStyle.imageAngle = 0.0f;
+    fillStyle.imageAlpha = alpha;
+
+    nvgBeginPath(nvgContext_);
+    if (cornerRadius > 0) {
+        nvgRoundedRect(nvgContext_, rect.x, rect.y, rect.width, rect.height, cornerRadius);
+    } else {
+        nvgRect(nvgContext_, rect.x, rect.y, rect.width, rect.height);
+    }
+    nvgFillPaint(nvgContext_, toNVGFillStyle(fillStyle));
+    nvgFill(nvgContext_);
+}
+
+void NanoVGRenderContext::drawImageCover(const std::string& path, const Rect& rect, float cornerRadius) {
+    int imageId = createImage(path);
+    if (imageId != -1) {
+        drawImageCover(imageId, rect, cornerRadius, 1.0f);
+    } else {
+        // Draw placeholder
+        nvgBeginPath(nvgContext_);
+        if (cornerRadius > 0) {
+            nvgRoundedRect(nvgContext_, rect.x, rect.y, rect.width, rect.height, cornerRadius);
+        } else {
+            nvgRect(nvgContext_, rect.x, rect.y, rect.width, rect.height);
+        }
+        nvgFillColor(nvgContext_, nvgRGBA(200, 200, 200, 255));
+        nvgFill(nvgContext_);
+    }
+}
+
+void NanoVGRenderContext::drawImageContain(int imageId, const Rect& rect, float cornerRadius, float alpha) {
+    Size imageSize = getImageSize(imageId);
+    if (imageSize.width <= 0 || imageSize.height <= 0) {
+        return; // Invalid image
+    }
+
+    // Calculate scale factor to fit within bounds (CSS background-size: contain)
+    float scaleX = rect.width / imageSize.width;
+    float scaleY = rect.height / imageSize.height;
+    float scale = std::min(scaleX, scaleY); // Use min to ensure it fits
+
+    // Calculate scaled image dimensions
+    float scaledWidth = imageSize.width * scale;
+    float scaledHeight = imageSize.height * scale;
+
+    // Center the scaled image
+    float offsetX = (rect.width - scaledWidth) / 2;
+    float offsetY = (rect.height - scaledHeight) / 2;
+
+    Rect scaledRect = {
+        rect.x + offsetX,
+        rect.y + offsetY,
+        scaledWidth,
+        scaledHeight
+    };
+
+    // Draw the scaled image
+    FillStyle fillStyle;
+    fillStyle.type = FillType::ImagePattern;
+    fillStyle.imageId = imageId;
+    fillStyle.imageOrigin = scaledRect.origin();
+    fillStyle.imageSize = scaledRect.size();
+    fillStyle.imageAngle = 0.0f;
+    fillStyle.imageAlpha = alpha;
+
+    nvgBeginPath(nvgContext_);
+    if (cornerRadius > 0) {
+        nvgRoundedRect(nvgContext_, rect.x, rect.y, rect.width, rect.height, cornerRadius);
+    } else {
+        nvgRect(nvgContext_, rect.x, rect.y, rect.width, rect.height);
+    }
+    nvgFillPaint(nvgContext_, toNVGFillStyle(fillStyle));
+    nvgFill(nvgContext_);
+}
+
+void NanoVGRenderContext::drawImageContain(const std::string& path, const Rect& rect, float cornerRadius) {
+    int imageId = createImage(path);
+    if (imageId != -1) {
+        drawImageContain(imageId, rect, cornerRadius, 1.0f);
+    } else {
+        // Draw placeholder
+        nvgBeginPath(nvgContext_);
+        if (cornerRadius > 0) {
+            nvgRoundedRect(nvgContext_, rect.x, rect.y, rect.width, rect.height, cornerRadius);
+        } else {
+            nvgRect(nvgContext_, rect.x, rect.y, rect.width, rect.height);
+        }
+        nvgFillColor(nvgContext_, nvgRGBA(200, 200, 200, 255));
+        nvgFill(nvgContext_);
+    }
+}
+
 // ============================================================================
 // CLIPPING
 // ============================================================================

@@ -96,6 +96,10 @@ struct MediaPlayerAlbumCover {
             .cornerRadius = 8
         };
     }
+
+    Size preferredSize(TextMeasurement& textMeasurer) const {
+        return Size{100, 100};
+    }
 };
 
 struct MediaPlayerButton {
@@ -109,8 +113,24 @@ struct MediaPlayerButton {
         };
     }
 
+    void render(RenderContext& ctx, const Rect& bounds) const {
+        ViewHelpers::renderView(*this, ctx, bounds);
+
+        auto radius = fmin(bounds.width, bounds.height) / 2;
+
+        ctx.beginPath();
+        ctx.arc(bounds.center(), radius, 0, 2 * M_PI, false);
+        ctx.closePath();
+
+        ctx.setFillStyle(FillStyle::solid(Color::hex(0x4A90E2).opacity(0.3)));
+        ctx.fill();
+
+        ctx.setStrokeStyle(StrokeStyle::solid(Color::hex(0x4A90E2).opacity(0.7)));
+        ctx.stroke();
+    }
+
     Size preferredSize(TextMeasurement& textMeasurer) const {
-        return this->body().preferredSize(textMeasurer);
+        return Size{48, 48};
     }
 };
 
@@ -175,7 +195,7 @@ struct MediaPlayer {
                         MediaPlayerAlbumCover {
                             // .backgroundColor = Color::hex(0x0000ff),
                             .cornerRadius = 8,
-                            .expansionBias = 1
+                            .expansionBias = 0
                         },
                         VStack {
                             // .backgroundColor = Color::hex(0xffff00),
