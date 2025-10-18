@@ -208,7 +208,7 @@ int main(int argc, char* argv[]) {
     window.setRootView(
         VStack {
             .backgroundImage = BackgroundImage {
-                .imagePath = "./white-sur-background.jpg",
+                .imagePath = "./background.jpg",
                 .size = BackgroundSize::Cover,
                 .position = BackgroundPosition::Center,
             },

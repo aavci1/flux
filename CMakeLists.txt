@@ -144,23 +144,26 @@ if(BUILD_EXAMPLES)
     add_executable(justify_content_demo examples/10-justify-content-demo/main.cpp)
     target_link_libraries(justify_content_demo PRIVATE flux)
 
-        add_executable(automotive_dashboard examples/11-automotive-dashboard/main.cpp)
-        target_link_libraries(automotive_dashboard PRIVATE flux)
+    add_executable(automotive_dashboard examples/11-automotive-dashboard/main.cpp)
+    target_link_libraries(automotive_dashboard PRIVATE flux)
 
-        add_executable(nanovg_demo examples/12-nanovg-demo/main.cpp)
-        target_link_libraries(nanovg_demo PRIVATE flux)
+    add_executable(nanovg_demo examples/12-nanovg-demo/main.cpp)
+    target_link_libraries(nanovg_demo PRIVATE flux)
 
-        add_executable(resize_test examples/13-resize-test/main.cpp)
-        target_link_libraries(resize_test PRIVATE flux)
+    add_executable(resize_test examples/13-resize-test/main.cpp)
+    target_link_libraries(resize_test PRIVATE flux)
 
-        add_executable(svg_demo examples/14-svg-demo/main.cpp)
-        target_link_libraries(svg_demo PRIVATE flux)
+    add_executable(svg_demo examples/14-svg-demo/main.cpp)
+    target_link_libraries(svg_demo PRIVATE flux)
 
-        add_executable(render_context_demo examples/15-render-context-demo/main.cpp)
-        target_link_libraries(render_context_demo PRIVATE flux)
+    add_executable(render_context_demo examples/15-render-context-demo/main.cpp)
+    target_link_libraries(render_context_demo PRIVATE flux)
 
-        add_executable(login_manager examples/17-login-manager/main.cpp)
-        target_link_libraries(login_manager PRIVATE flux)
+    add_executable(login_manager examples/17-login-manager/main.cpp)
+    target_link_libraries(login_manager PRIVATE flux)
+
+    add_executable(clock examples/19-clock/main.cpp)
+    target_link_libraries(clock PRIVATE flux)
 
 endif()
 

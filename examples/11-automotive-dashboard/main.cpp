@@ -287,7 +287,6 @@ int main(int argc, char* argv[]) {
     State name = std::string("Abdurrahman Avcı");
     State chargeLevel = 80;
 
-
     State trackTitle = std::string("Born of God");
     State trackArtist = std::string("@Daft Punk");
     State trackAlbum = std::string("Random Access Memories");
