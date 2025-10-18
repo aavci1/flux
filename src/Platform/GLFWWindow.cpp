@@ -18,6 +18,18 @@ void GLFWWindow::resizeCallback(GLFWwindow* window, int width, int height) {
     }
 }
 
+// Static callback function for GLFW window close events
+void GLFWWindow::closeCallback(GLFWwindow* window) {
+    GLFWWindow* glfwWin = static_cast<GLFWWindow*>(glfwGetWindowUserPointer(window));
+    if (glfwWin) {
+        Window* fluxWindow = glfwWin->fluxWindow();
+        if (fluxWindow) {
+            // Set the window to close
+            glfwSetWindowShouldClose(window, GLFW_TRUE);
+        }
+    }
+}
+
 int GLFWWindow::windowCount_ = 0;
 
 GLFWWindow::GLFWWindow(const std::string& title, const Size& size, bool resizable, bool fullscreen)
@@ -68,6 +80,9 @@ GLFWWindow::GLFWWindow(const std::string& title, const Size& size, bool resizabl
 
     // Set up resize callback
     glfwSetWindowSizeCallback(window_, resizeCallback);
+
+    // Set up close callback
+    glfwSetWindowCloseCallback(window_, closeCallback);
 
     // Store pointer to this GLFWWindow instance in the GLFW window user data
     glfwSetWindowUserPointer(window_, this);

@@ -25,6 +25,7 @@ private:
 
     // Static callback function for GLFW events
     static void resizeCallback(GLFWwindow* window, int width, int height);
+    static void closeCallback(GLFWwindow* window);
 
 public:
     GLFWWindow(const std::string& title, const Size& size, bool resizable, bool fullscreen);
