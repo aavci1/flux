@@ -42,14 +42,17 @@ int main(int argc, char* argv[]) {
     );
 
     timeout([&hours, &minutes, &seconds]() {
-        // auto now = std::chrono::system_clock::now();
+        // Get current time
+        auto now = std::chrono::system_clock::now();
+        std::time_t now_time = std::chrono::system_clock::to_time_t(now);
 
-        // auto dp = date::floor<date::days>(now);
-        // auto time = date::make_time(now - dp);
-        // hours = time.hours().count();
-        // minutes = time.minutes().count();
-        // seconds = time.seconds().count();
-        seconds++;
+        // Convert to local time
+        std::tm* local_time = std::localtime(&now_time);
+
+        // Extract hour, minute, second as integers
+        hours = local_time->tm_hour;     // 0-23
+        minutes = local_time->tm_min;    // 0-59
+        seconds = local_time->tm_sec;    // 0-59
     }, 1000);
 
     return app.exec();
