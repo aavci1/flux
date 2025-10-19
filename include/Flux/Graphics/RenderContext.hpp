@@ -337,12 +337,12 @@ public:
     // PATH SHAPES
     // ============================================================================
 
-    virtual void addRect(const Rect& rect) = 0;
-    virtual void addRoundedRect(const Rect& rect, float cornerRadius) = 0;
-    virtual void addRoundedRectVarying(const Rect& rect, float radTopLeft, float radTopRight,
-                                       float radBottomRight, float radBottomLeft) = 0;
-    virtual void addCircle(const Point& center, float radius) = 0;
-    virtual void addEllipse(const Point& center, float radiusX, float radiusY) = 0;
+    virtual void rect(const Rect& rect) = 0;
+    virtual void roundedRect(const Rect& rect, float cornerRadius) = 0;
+    virtual void roundedRectVarying(const Rect& rect, float radTopLeft, float radTopRight,
+                                    float radBottomRight, float radBottomLeft) = 0;
+    virtual void circle(const Point& center, float radius) = 0;
+    virtual void ellipse(const Point& center, float radiusX, float radiusY) = 0;
 
     // ============================================================================
     // PATH RENDERING

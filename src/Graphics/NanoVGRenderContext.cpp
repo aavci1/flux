@@ -240,25 +240,25 @@ void NanoVGRenderContext::arc(const Point& center, float radius, float startAngl
 // PATH SHAPES
 // ============================================================================
 
-void NanoVGRenderContext::addRect(const Rect& rect) {
+void NanoVGRenderContext::rect(const Rect& rect) {
     nvgRect(nvgContext_, rect.x, rect.y, rect.width, rect.height);
 }
 
-void NanoVGRenderContext::addRoundedRect(const Rect& rect, float cornerRadius) {
+void NanoVGRenderContext::roundedRect(const Rect& rect, float cornerRadius) {
     nvgRoundedRect(nvgContext_, rect.x, rect.y, rect.width, rect.height, cornerRadius);
 }
 
-void NanoVGRenderContext::addRoundedRectVarying(const Rect& rect, float radTopLeft, float radTopRight,
-                                                 float radBottomRight, float radBottomLeft) {
+void NanoVGRenderContext::roundedRectVarying(const Rect& rect, float radTopLeft, float radTopRight,
+                                             float radBottomRight, float radBottomLeft) {
     nvgRoundedRectVarying(nvgContext_, rect.x, rect.y, rect.width, rect.height,
                           radTopLeft, radTopRight, radBottomRight, radBottomLeft);
 }
 
-void NanoVGRenderContext::addCircle(const Point& center, float radius) {
+void NanoVGRenderContext::circle(const Point& center, float radius) {
     nvgCircle(nvgContext_, center.x, center.y, radius);
 }
 
-void NanoVGRenderContext::addEllipse(const Point& center, float radiusX, float radiusY) {
+void NanoVGRenderContext::ellipse(const Point& center, float radiusX, float radiusY) {
     nvgEllipse(nvgContext_, center.x, center.y, radiusX, radiusY);
 }
 

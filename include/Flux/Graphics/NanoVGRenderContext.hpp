@@ -98,12 +98,12 @@ public:
     // ============================================================================
     // PATH SHAPES
     // ============================================================================
-    void addRect(const Rect& rect) override;
-    void addRoundedRect(const Rect& rect, float cornerRadius) override;
-    void addRoundedRectVarying(const Rect& rect, float radTopLeft, float radTopRight,
-                               float radBottomRight, float radBottomLeft) override;
-    void addCircle(const Point& center, float radius) override;
-    void addEllipse(const Point& center, float radiusX, float radiusY) override;
+    void rect(const Rect& rect) override;
+    void roundedRect(const Rect& rect, float cornerRadius) override;
+    void roundedRectVarying(const Rect& rect, float radTopLeft, float radTopRight,
+                            float radBottomRight, float radBottomLeft) override;
+    void circle(const Point& center, float radius) override;
+    void ellipse(const Point& center, float radiusX, float radiusY) override;
 
     // ============================================================================
     // PATH RENDERING
