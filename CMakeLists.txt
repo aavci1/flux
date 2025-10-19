@@ -86,6 +86,7 @@ endif()
 
 # Generate Wayland protocol files for Linux
 if(UNIX AND NOT APPLE)
+    # XDG Shell protocol
     set(XDG_SHELL_PROTOCOL "${WAYLAND_PROTOCOLS_DIR}/stable/xdg-shell/xdg-shell.xml")
     set(XDG_SHELL_CLIENT_HEADER "${CMAKE_CURRENT_BINARY_DIR}/xdg-shell-client-protocol.h")
     set(XDG_SHELL_PRIVATE_CODE "${CMAKE_CURRENT_BINARY_DIR}/xdg-shell-protocol.c")
@@ -101,6 +102,25 @@ if(UNIX AND NOT APPLE)
         OUTPUT ${XDG_SHELL_PRIVATE_CODE}
         COMMAND ${WAYLAND_SCANNER} private-code ${XDG_SHELL_PROTOCOL} ${XDG_SHELL_PRIVATE_CODE}
         DEPENDS ${XDG_SHELL_PROTOCOL}
+        VERBATIM
+    )
+
+    # XDG Decoration protocol for window decorations
+    set(XDG_DECORATION_PROTOCOL "${WAYLAND_PROTOCOLS_DIR}/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml")
+    set(XDG_DECORATION_CLIENT_HEADER "${CMAKE_CURRENT_BINARY_DIR}/xdg-decoration-client-protocol.h")
+    set(XDG_DECORATION_PRIVATE_CODE "${CMAKE_CURRENT_BINARY_DIR}/xdg-decoration-protocol.c")
+
+    add_custom_command(
+        OUTPUT ${XDG_DECORATION_CLIENT_HEADER}
+        COMMAND ${WAYLAND_SCANNER} client-header ${XDG_DECORATION_PROTOCOL} ${XDG_DECORATION_CLIENT_HEADER}
+        DEPENDS ${XDG_DECORATION_PROTOCOL}
+        VERBATIM
+    )
+
+    add_custom_command(
+        OUTPUT ${XDG_DECORATION_PRIVATE_CODE}
+        COMMAND ${WAYLAND_SCANNER} private-code ${XDG_DECORATION_PROTOCOL} ${XDG_DECORATION_PRIVATE_CODE}
+        DEPENDS ${XDG_DECORATION_PROTOCOL}
         VERBATIM
     )
 endif()
@@ -121,6 +141,8 @@ if(UNIX AND NOT APPLE)
         src/Platform/WaylandWindow.cpp
         ${XDG_SHELL_CLIENT_HEADER}
         ${XDG_SHELL_PRIVATE_CODE}
+        ${XDG_DECORATION_CLIENT_HEADER}
+        ${XDG_DECORATION_PRIVATE_CODE}
     )
 else()
     list(APPEND FLUX_SOURCES

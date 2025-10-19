@@ -18,6 +18,8 @@ struct wl_egl_window;
 struct wl_seat;
 struct wl_pointer;
 struct wl_keyboard;
+struct zxdg_decoration_manager_v1;
+struct zxdg_toplevel_decoration_v1;
 
 // Forward declarations for EGL types
 typedef void *EGLDisplay;
@@ -53,6 +55,10 @@ private:
     wl_seat* seat_;
     wl_pointer* pointer_;
     wl_keyboard* keyboard_;
+    
+    // Decoration objects
+    zxdg_decoration_manager_v1* decoration_manager_;
+    zxdg_toplevel_decoration_v1* toplevel_decoration_;
     
     // EGL objects
     EGLDisplay egl_display_;

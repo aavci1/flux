@@ -14,6 +14,7 @@
 
 // Include the generated xdg-shell protocol header
 #include "xdg-shell-client-protocol.h"
+#include "xdg-decoration-client-protocol.h"
 
 namespace flux {
 
@@ -68,6 +69,8 @@ static void registry_global(void* data, wl_registry* registry,
                            uint32_t version) {
     WaylandWindow* window = static_cast<WaylandWindow*>(data);
     
+    std::cout << "[WaylandWindow] Registry: " << interface << " v" << version << std::endl;
+    
     if (strcmp(interface, wl_compositor_interface.name) == 0) {
         window->compositor_ = static_cast<wl_compositor*>(
             wl_registry_bind(registry, name, &wl_compositor_interface, 4));
@@ -78,6 +81,9 @@ static void registry_global(void* data, wl_registry* registry,
     } else if (strcmp(interface, wl_seat_interface.name) == 0) {
         window->seat_ = static_cast<wl_seat*>(
             wl_registry_bind(registry, name, &wl_seat_interface, 5));
+    } else if (strcmp(interface, zxdg_decoration_manager_v1_interface.name) == 0) {
+        window->decoration_manager_ = static_cast<zxdg_decoration_manager_v1*>(
+            wl_registry_bind(registry, name, &zxdg_decoration_manager_v1_interface, 1));
     }
 }
 
@@ -105,6 +111,8 @@ WaylandWindow::WaylandWindow(const std::string& title, const Size& size, bool re
     , seat_(nullptr)
     , pointer_(nullptr)
     , keyboard_(nullptr)
+    , decoration_manager_(nullptr)
+    , toplevel_decoration_(nullptr)
     , egl_display_(nullptr)
     , egl_context_(nullptr)
     , egl_surface_(nullptr)
@@ -190,6 +198,19 @@ bool WaylandWindow::initWayland(const std::string& title, const Size& size) {
     xdg_toplevel_ = xdg_surface_get_toplevel(xdg_surface_);
     xdg_toplevel_add_listener(xdg_toplevel_, &xdg_toplevel_listener, this);
     xdg_toplevel_set_title(xdg_toplevel_, title.c_str());
+
+    // Request server-side decorations if available
+    if (decoration_manager_) {
+        toplevel_decoration_ = zxdg_decoration_manager_v1_get_toplevel_decoration(
+            decoration_manager_, xdg_toplevel_);
+        if (toplevel_decoration_) {
+            zxdg_toplevel_decoration_v1_set_mode(toplevel_decoration_,
+                ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
+            std::cout << "[WaylandWindow] Requested server-side decorations\n";
+        }
+    } else {
+        std::cout << "[WaylandWindow] Decoration manager not available, windows will have no decorations\n";
+    }
 
     // Commit surface
     wl_surface_commit(surface_);
@@ -302,6 +323,11 @@ void WaylandWindow::cleanup() {
         egl_window_ = nullptr;
     }
 
+    if (toplevel_decoration_) {
+        zxdg_toplevel_decoration_v1_destroy(toplevel_decoration_);
+        toplevel_decoration_ = nullptr;
+    }
+
     if (xdg_toplevel_) {
         xdg_toplevel_destroy(xdg_toplevel_);
         xdg_toplevel_ = nullptr;
@@ -315,6 +341,11 @@ void WaylandWindow::cleanup() {
     if (surface_) {
         wl_surface_destroy(surface_);
         surface_ = nullptr;
+    }
+
+    if (decoration_manager_) {
+        zxdg_decoration_manager_v1_destroy(decoration_manager_);
+        decoration_manager_ = nullptr;
     }
 
     if (wm_base_) {
