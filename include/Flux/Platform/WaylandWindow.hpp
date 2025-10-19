@@ -18,6 +18,7 @@ struct wl_egl_window;
 struct wl_seat;
 struct wl_pointer;
 struct wl_keyboard;
+struct wl_output;
 struct zxdg_decoration_manager_v1;
 struct zxdg_toplevel_decoration_v1;
 
@@ -55,6 +56,8 @@ private:
     wl_seat* seat_;
     wl_pointer* pointer_;
     wl_keyboard* keyboard_;
+    wl_output* output_;
+    int32_t output_scale_;
     
     // Decoration objects
     zxdg_decoration_manager_v1* decoration_manager_;
@@ -115,6 +118,9 @@ public:
     // Window resize from Wayland events
     void handleWaylandResize(int32_t width, int32_t height);
     void handleClose();
+    
+    // Scale handling
+    void updateScale(int32_t scale);
 };
 
 } // namespace flux
