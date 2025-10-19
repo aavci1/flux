@@ -60,50 +60,83 @@ void SVG::renderSVG(RenderContext& ctx, NSVGimage* image, const Rect& bounds) co
 void SVG::renderShape(RenderContext& ctx, NSVGshape* shape, const Rect& bounds, float scale) const {
     if (!shape) return;
 
-
     std::cout << "[SVG] Shape: " << shape->id << std::endl;
     std::cout << "[SVG] Shape fill color: " << shape->fill.color << std::endl;
     std::cout << "[SVG] Shape stroke color: " << shape->stroke.color << std::endl;
     std::cout << "[SVG] Shape stroke width: " << shape->strokeWidth << std::endl;
     std::cout << "[SVG] Shape opacity: " << shape->opacity << std::endl;
-    std::cout << "[SVG] Shape paths: " << shape->paths << std::endl;
+    std::cout << "[SVG] Shape fillRule: " << (int)shape->fillRule << std::endl;
 
     // Convert NanoSVG color to Flux color
-    Color fillColor = Colors::transparent; //nsvgColorToFluxColor(shape->fill.color);
-    Color strokeColor = Colors::black; //nsvgColorToFluxColor(shape->stroke.color);
-    float strokeWidth = 1.0f; //shape->strokeWidth;
+    Color fillColor = nsvgColorToFluxColor(shape->fill.color);
+    Color strokeColor = nsvgColorToFluxColor(shape->stroke.color);
+    float strokeWidth = shape->strokeWidth;
 
     std::cout << "[SVG] Fill color: " << fillColor.r << ", " << fillColor.g << ", " << fillColor.b << ", " << fillColor.a << std::endl;
-
 
     // Apply opacity
     fillColor.a *= shape->opacity;
     strokeColor.a *= shape->opacity;
 
-    // Render all paths in this shape
+    // Based on VCV Rack's implementation, we can properly handle SVG fill rules
+    // by using ray casting to determine if each path is a hole or solid shape
+    // This works with NanoVG's even-odd fill rule
+    
+    std::cout << "[SVG] Shape fillRule: " << (shape->fillRule == NSVG_FILLRULE_EVENODD ? "EVENODD" : "NONZERO") << std::endl;
+    
+    // Render each path individually with proper winding directions
+    // This approach is more similar to VCV Rack's implementation
+    
     for (NSVGpath* path = shape->paths; path != nullptr; path = path->next) {
-        std::cout << "[SVG] Rendering path with " << path->npts << " points" << std::endl;
-        renderPath(ctx, path, bounds, scale, fillColor, strokeColor, strokeWidth);
+        // Use area calculation to determine winding direction
+        // Positive area = counter-clockwise = solid shape
+        // Negative area = clockwise = hole
+        float area = calculatePathArea(path);
+        bool isHole = area <= 0.0f;
+        
+        ctx.beginPath();
+        
+        if (isHole) {
+            ctx.setPathWinding(PathWinding::Clockwise);  // Hole (NVG_CW)
+            std::cout << "[SVG] Path is a hole (area=" << area << ")" << std::endl;
+        } else {
+            ctx.setPathWinding(PathWinding::CounterClockwise);  // Solid (NVG_CCW)
+            std::cout << "[SVG] Path is solid (area=" << area << ")" << std::endl;
+        }
+        
+        addPathToContext(ctx, path);
+        
+        // Fill this individual path
+        if (fillColor.a > 0.0f) {
+            ctx.setFillColor(fillColor);
+            ctx.fill();
+        }
+        
+        // Stroke this individual path
+        if (strokeColor.a > 0.0f && strokeWidth > 0.0f) {
+            ctx.setStrokeColor(strokeColor);
+            ctx.setStrokeWidth(strokeWidth);
+            ctx.stroke();
+        }
     }
 }
 
-void SVG::renderPath(RenderContext& ctx, NSVGpath* path, const Rect& /* bounds */, float /* scale */,
-                     const Color& fillColor, const Color& strokeColor, float strokeWidth) const {
+void SVG::addPathToContext(RenderContext& ctx, NSVGpath* path) const {
     if (!path || path->npts < 2) return;
 
-    // Use generic path building methods to render cubic bezier curves directly
-    ctx.beginPath();
-
+    // Based on VCV Rack's implementation, we need to determine if this path
+    // is a hole or solid shape using ray casting algorithm
+    
     // Move to first point
     ctx.moveTo({path->pts[0], path->pts[1]});
 
-    // Draw cubic bezier curves using the generic bezierTo method
+    // Draw cubic bezier curves
     for (int i = 1; i < path->npts - 1; i += 3) {
-        if (i + 5 < path->npts * 2) {
+        if (i + 2 < path->npts) {
             ctx.bezierTo(
-                {path->pts[i*2], path->pts[i*2+1]},      // c1
-                {path->pts[(i+1)*2], path->pts[(i+1)*2+1]}, // c2
-                {path->pts[(i+2)*2], path->pts[(i+2)*2+1]}  // end
+                {path->pts[i*2], path->pts[i*2+1]},         // control point 1
+                {path->pts[(i+1)*2], path->pts[(i+1)*2+1]}, // control point 2
+                {path->pts[(i+2)*2], path->pts[(i+2)*2+1]}  // end point
             );
         }
     }
@@ -112,27 +145,142 @@ void SVG::renderPath(RenderContext& ctx, NSVGpath* path, const Rect& /* bounds *
     if (path->closed) {
         ctx.closePath();
     }
+}
 
-    // Fill and stroke the path
-    if (fillColor.a > 0.0f) {
-        ctx.setFillColor(fillColor);
-        ctx.fill();
+bool SVG::isPathSolid(NSVGpath* path) const {
+    if (!path || path->npts < 2) return true;
+    
+    // Calculate signed area using shoelace formula
+    float area = 0.0f;
+    
+    // Use only the actual vertices (every 3rd point in cubic bezier data)
+    for (int i = 0; i < path->npts - 1; i += 3) {
+        float x1 = path->pts[i * 2];
+        float y1 = path->pts[i * 2 + 1];
+        float x2 = path->pts[(i + 3) * 2];
+        float y2 = path->pts[(i + 3) * 2 + 1];
+        area += (x1 * y2 - x2 * y1);
     }
+    
+    // Close the polygon if it's closed
+    if (path->closed) {
+        int lastVertex = (path->npts - 1) / 3 * 3;
+        float x1 = path->pts[lastVertex * 2];
+        float y1 = path->pts[lastVertex * 2 + 1];
+        float x2 = path->pts[0];
+        float y2 = path->pts[1];
+        area += (x1 * y2 - x2 * y1);
+    }
+    
+    // Positive area = counter-clockwise = solid shape
+    // Negative area = clockwise = hole
+    return area > 0.0f;
+}
 
-    if (strokeColor.a > 0.0f && strokeWidth > 0.0f) {
-        ctx.setStrokeColor(strokeColor);
-        ctx.setStrokeWidth(strokeWidth);
-        ctx.stroke();
+bool SVG::isPathHole(NSVGpath* path, NSVGpath* allPaths) const {
+    if (!path || path->npts < 2) return false;
+    
+    // Based on VCV Rack's ray casting algorithm
+    // Draw a line from a point on this path to a point outside the boundary
+    // and count crossings with other paths. Even crossings = solid, odd = hole
+    
+    float p0x = path->pts[0];
+    float p0y = path->pts[1];
+    float p1x = path->bounds[0] - 1.0f;  // Point outside bounds
+    float p1y = path->bounds[1] - 1.0f;
+    
+    int crossings = 0;
+    
+    // Iterate all paths in the shape
+    for (NSVGpath* path2 = allPaths; path2; path2 = path2->next) {
+        if (path2 == path) continue;
+        if (path2->npts < 4) continue;
+        
+        // Iterate all line segments in path2 - more closely matching VCV Rack
+        for (int i = 1; i < path2->npts + 3; i += 3) {
+            float* p = &path2->pts[2 * i];
+            
+            // Previous point
+            float p2x = p[-2];
+            float p2y = p[-1];
+            
+            // Current point
+            float p3x, p3y;
+            if (i < path2->npts) {
+                p3x = p[4];
+                p3y = p[5];
+            } else {
+                p3x = path2->pts[0];
+                p3y = path2->pts[1];
+            }
+            
+            // Check if line segments intersect
+            float crossing = getLineCrossing(p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y);
+            float crossing2 = getLineCrossing(p2x, p2y, p3x, p3y, p0x, p0y, p1x, p1y);
+            
+            if (0.0f <= crossing && crossing < 1.0f && 0.0f <= crossing2) {
+                crossings++;
+            }
+        }
     }
+    
+    // Even crossings = solid, odd crossings = hole
+    return (crossings % 2) == 1;
+}
+
+float SVG::getLineCrossing(float p0x, float p0y, float p1x, float p1y, 
+                          float p2x, float p2y, float p3x, float p3y) const {
+    // Based on VCV Rack's implementation
+    float bx = p2x - p0x;
+    float by = p2y - p0y;
+    float dx = p1x - p0x;
+    float dy = p1y - p0y;
+    float ex = p3x - p2x;
+    float ey = p3y - p2y;
+    
+    float m = dx * ey - dy * ex;
+    
+    // Check if lines are parallel
+    if (std::abs(m) < 1e-6f) return NAN;
+    
+    return -(dx * by - dy * bx) / m;
+}
+
+float SVG::calculatePathArea(NSVGpath* path) const {
+    if (!path || path->npts < 2) return 0.0f;
+    
+    // Calculate signed area using shoelace formula
+    float area = 0.0f;
+    
+    // Use only the actual vertices (every 3rd point in cubic bezier data)
+    for (int i = 0; i < path->npts - 1; i += 3) {
+        float x1 = path->pts[i * 2];
+        float y1 = path->pts[i * 2 + 1];
+        float x2 = path->pts[(i + 3) * 2];
+        float y2 = path->pts[(i + 3) * 2 + 1];
+        area += (x1 * y2 - x2 * y1);
+    }
+    
+    // Close the polygon if it's closed
+    if (path->closed) {
+        int lastVertex = (path->npts - 1) / 3 * 3;
+        float x1 = path->pts[lastVertex * 2];
+        float y1 = path->pts[lastVertex * 2 + 1];
+        float x2 = path->pts[0];
+        float y2 = path->pts[1];
+        area += (x1 * y2 - x2 * y1);
+    }
+    
+    return area * 0.5f;  // Shoelace formula gives 2*area
 }
 
 Color SVG::nsvgColorToFluxColor(unsigned int color) const {
-    // NanoSVG uses RGBA format, but there's a bug where green and blue channels are swapped
-    // We need to swap them back to get the correct colors
-    float r = ((color >> 24) & 0xFF) / 255.0f;
-    float g = ((color >> 8) & 0xFF) / 255.0f;   // Swap: use blue position for green
-    float b = ((color >> 16) & 0xFF) / 255.0f;  // Swap: use green position for blue
-    float a = (color & 0xFF) / 255.0f;
+    // NanoSVG uses BGR format: NSVG_RGB(r, g, b) = r | (g << 8) | (b << 16)
+    // So the format is 0x00BBGGRR
+    float r = (color & 0xFF) / 255.0f;           // bits 0-7
+    float g = ((color >> 8) & 0xFF) / 255.0f;    // bits 8-15
+    float b = ((color >> 16) & 0xFF) / 255.0f;   // bits 16-23
+    float a = 1.0f;  // Alpha is stored separately in NanoSVG (opacity, etc.)
 
     return Color(r, g, b, a);
 }

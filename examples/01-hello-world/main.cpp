@@ -6,7 +6,7 @@ int main(int argc, char* argv[]) {
     Application app(argc, argv);
 
     Window window({
-        .size = {800, 600},
+        .size = {400, 400},
         .title = "Flux App"
     });
 

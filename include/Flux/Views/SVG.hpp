@@ -76,8 +76,12 @@ private:
     std::shared_ptr<SVGData> parsecontent(const std::string& svgStr) const;
     void renderSVG(RenderContext& ctx, NSVGimage* image, const Rect& bounds) const;
     void renderShape(RenderContext& ctx, NSVGshape* shape, const Rect& bounds, float scale) const;
-    void renderPath(RenderContext& ctx, NSVGpath* path, const Rect& bounds, float scale,
-                    const Color& fillColor, const Color& strokeColor, float strokeWidth) const;
+    void addPathToContext(RenderContext& ctx, NSVGpath* path) const;
+    bool isPathSolid(NSVGpath* path) const;
+    bool isPathHole(NSVGpath* path, NSVGpath* allPaths) const;
+    float getLineCrossing(float p0x, float p0y, float p1x, float p1y, 
+                         float p2x, float p2y, float p3x, float p3y) const;
+    float calculatePathArea(NSVGpath* path) const;
 
     // Helper functions
     Color nsvgColorToFluxColor(unsigned int color) const;
