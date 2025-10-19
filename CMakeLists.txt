@@ -34,6 +34,15 @@ else()
     message(FATAL_ERROR "NanoSVG is required. Please ensure nanosvg submodule is initialized.")
 endif()
 
+# STB for single-file libraries (provides stb_truetype.h, stb_image.h, etc.)
+if(EXISTS "${CMAKE_SOURCE_DIR}/third_party/stb/stb_truetype.h")
+    message(STATUS "STB found - building with STB support")
+    set(FLUX_HAS_STB ON)
+    set(STB_SOURCE_DIR "${CMAKE_SOURCE_DIR}/third_party/stb")
+else()
+    message(FATAL_ERROR "STB is required. Please ensure stb submodule is initialized.")
+endif()
+
 # Platform-specific dependencies
 if(UNIX AND NOT APPLE)
     find_package(OpenGL REQUIRED)
@@ -59,10 +68,13 @@ endif()
 # Build NanoVG
 add_library(nanovg STATIC
     ${NANOVG_SOURCE_DIR}/src/nanovg.c
+    ${NANOVG_SOURCE_DIR}/src/nanovg_gl.c
+    ${NANOVG_SOURCE_DIR}/src/nanovg_gl_utils.c
 )
 
 target_include_directories(nanovg PUBLIC
     ${NANOVG_SOURCE_DIR}/src
+    ${STB_SOURCE_DIR}
 )
 
 # Set C standard for NanoVG
@@ -70,6 +82,9 @@ set_target_properties(nanovg PROPERTIES
     C_STANDARD 99
     C_STANDARD_REQUIRED ON
 )
+
+# Define OpenGL version for NanoVG
+target_compile_definitions(nanovg PRIVATE NANOVG_GL2)
 
 # Link OpenGL to NanoVG
 if(UNIX AND NOT APPLE)
@@ -86,6 +101,7 @@ target_include_directories(flux PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
     $<BUILD_INTERFACE:${NANOSVG_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${STB_SOURCE_DIR}>
 )
 
 target_link_libraries(flux PUBLIC

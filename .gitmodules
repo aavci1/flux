@@ -5,4 +5,10 @@
 	url = https://github.com/memononen/nanosvg.git
 [submodule "third_party/nanovg"]
 	path = third_party/nanovg
+	url = https://github.com/inniyah/nanovg.git
+[submodule "third_party/stb"]
+	path = third_party/stb
+	url = https://github.com/nothings/stb.git
+[submodule "third_party/nanovg-original"]
+	path = third_party/nanovg-original
 	url = https://github.com/memononen/nanovg.git
