@@ -26,12 +26,12 @@ else()
 endif()
 
 # NanoSVG for SVG parsing
-if(EXISTS "${CMAKE_SOURCE_DIR}/third_party/nanosvg/nanosvg.h")
+if(EXISTS "${CMAKE_SOURCE_DIR}/third_party/nanosvg/src/nanosvg.h")
     message(STATUS "NanoSVG found - building with SVG support")
     set(FLUX_HAS_NANOSVG ON)
-    set(NANOSVG_SOURCE_DIR "${CMAKE_SOURCE_DIR}/third_party/nanosvg")
+    set(NANOSVG_SOURCE_DIR "${CMAKE_SOURCE_DIR}/third_party/nanosvg/src")
 else()
-    message(FATAL_ERROR "NanoSVG is required. Please download nanosvg.h to third_party/nanosvg/")
+    message(FATAL_ERROR "NanoSVG is required. Please ensure nanosvg submodule is initialized.")
 endif()
 
 # Platform-specific dependencies
