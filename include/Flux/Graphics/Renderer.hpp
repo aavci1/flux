@@ -56,14 +56,36 @@ public:
     }
 
 private:
-    void renderTree(const LayoutNode& node) {
-        // Render the view with its bounds
-        node.view->render(*renderContext_, node.bounds);
+    void renderTree(const LayoutNode& node, Point parentOrigin = {0, 0}) {
+        // Save the current rendering state
+        renderContext_->save();
 
-        // Recursively render children
-        for (const auto& child : node.children) {
-            renderTree(child);
+        // Calculate position relative to parent
+        float relX = node.bounds.x - parentOrigin.x;
+        float relY = node.bounds.y - parentOrigin.y;
+
+        // Translate coordinate system to the view's position
+        renderContext_->translate(relX, relY);
+
+        // Create local bounds (view renders in its own coordinate system)
+        Rect localBounds = {0, 0, node.bounds.width, node.bounds.height};
+
+        // Clip rendering to the view's bounds if the view has clipping enabled
+        if (node.view.shouldClip()) {
+            renderContext_->clipRect(localBounds);
         }
+
+        // Render the view with local coordinates
+        node.view->render(*renderContext_, localBounds);
+
+        // Recursively render children with current view's position as their parent origin
+        Point currentOrigin = {node.bounds.x, node.bounds.y};
+        for (const auto& child : node.children) {
+            renderTree(child, currentOrigin);
+        }
+
+        // Restore the rendering state
+        renderContext_->restore();
     }
 };
 

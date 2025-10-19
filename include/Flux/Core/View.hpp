@@ -50,6 +50,7 @@ inline std::string demangleTypeName(const char* mangledName) {
     Property<float> cornerRadius = 0; \
     Property<float> opacity = 1.0; \
     Property<bool> visible = true; \
+    Property<bool> clip = false; \
     Property<float> rotation = 0; \
     Property<float> scaleX = 1.0; \
     Property<float> scaleY = 1.0; \
@@ -81,6 +82,7 @@ public:
 
     // Access to common properties (all components have these via FLUX_VIEW_PROPERTIES macro)
     virtual bool isVisible() const = 0;
+    virtual bool shouldClip() const = 0;
     virtual float getExpansionBias() const = 0;
     virtual float getCompressionBias() const = 0;
 
@@ -160,6 +162,10 @@ public:
         return component.visible;
     }
 
+    bool shouldClip() const override {
+        return component.clip;
+    }
+
     float getExpansionBias() const override {
         return component.expansionBias;
     }
@@ -214,6 +220,10 @@ public:
 
     Size preferredSize(TextMeasurement& textMeasurer) const {
         return component_ ? component_->preferredSize(textMeasurer) : Size{};
+    }
+
+    bool shouldClip() const {
+        return component_ ? component_->shouldClip() : false;
     }
 
     float getExpansionBias() const {

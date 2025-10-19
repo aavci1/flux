@@ -82,6 +82,7 @@ private:
     // Helper functions
     Color nsvgColorToFluxColor(unsigned int color) const;
     float parseFloat(const std::string& str) const;
+    void drawCheckerboardBackground(RenderContext& ctx, const Rect& bounds) const;
 };
 
 } // namespace flux

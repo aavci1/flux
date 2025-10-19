@@ -27,6 +27,8 @@ std::shared_ptr<SVGData> SVG::parsecontent(const std::string& svgStr) const {
 }
 
 void SVG::renderSVG(RenderContext& ctx, NSVGimage* image, const Rect& bounds) const {
+    drawCheckerboardBackground(ctx, bounds);
+
     if (!image) return;
 
     // Calculate scaling to fit within bounds
@@ -140,6 +142,21 @@ float SVG::parseFloat(const std::string& str) const {
         return std::stof(str);
     } catch (...) {
         return 0.0f;
+    }
+}
+
+void SVG::drawCheckerboardBackground(RenderContext& ctx, const Rect& bounds) const {
+    // Draw checkerboard pattern
+    const int squareSize = 20;
+    const Color lightGray = Color(0.9f, 0.9f, 0.9f, 1.0f);
+    const Color darkGray = Color(0.7f, 0.7f, 0.7f, 1.0f);
+    
+    for (int y = 0; y < bounds.height; y += squareSize) {
+        for (int x = 0; x < bounds.width; x += squareSize) {
+            bool isEven = ((x / squareSize) + (y / squareSize)) % 2 == 0;
+            Color color = isEven ? lightGray : darkGray;
+            ctx.drawRect({static_cast<float>(x) + bounds.x, static_cast<float>(y) + bounds.y, static_cast<float>(squareSize), static_cast<float>(squareSize)}, color);
+        }
     }
 }
 

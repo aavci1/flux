@@ -16,6 +16,7 @@ struct Spacer {
     Property<float> cornerRadius = 0;
     Property<float> opacity = 1.0;
     Property<bool> visible = true;
+    Property<bool> clip = false;
     Property<float> rotation = 0;
     Property<float> scaleX = 1.0;
     Property<float> scaleY = 1.0;
