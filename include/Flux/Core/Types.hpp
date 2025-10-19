@@ -62,6 +62,32 @@ struct EdgeInsets {
     constexpr bool operator!=(const EdgeInsets& other) const = default;
 };
 
+struct CornerRadius {
+    float topLeft, topRight, bottomRight, bottomLeft;
+
+    constexpr CornerRadius() : topLeft(0), topRight(0), bottomRight(0), bottomLeft(0) {}
+    constexpr CornerRadius(float all) : topLeft(all), topRight(all), bottomRight(all), bottomLeft(all) {}
+    constexpr CornerRadius(float tl, float tr, float br, float bl) 
+        : topLeft(tl), topRight(tr), bottomRight(br), bottomLeft(bl) {}
+
+    // Enable: .cornerRadius = 20.0f
+    CornerRadius& operator=(float value) {
+        topLeft = topRight = bottomRight = bottomLeft = value;
+        return *this;
+    }
+
+    constexpr bool isUniform() const {
+        return topLeft == topRight && topRight == bottomRight && bottomRight == bottomLeft;
+    }
+
+    constexpr bool isZero() const {
+        return topLeft == 0 && topRight == 0 && bottomRight == 0 && bottomLeft == 0;
+    }
+
+    constexpr bool operator==(const CornerRadius& other) const = default;
+    constexpr bool operator!=(const CornerRadius& other) const = default;
+};
+
 // Color system
 struct Color {
     float r, g, b, a;
@@ -103,71 +129,6 @@ namespace Colors {
     constexpr Color darkGray = Color::hex(0x424242);
     constexpr Color lightGray = Color::hex(0xEEEEEE);
 }
-
-struct Shadow {
-    float offsetX = 0;
-    float offsetY = 0;
-    float blurRadius = 0;
-    float spreadRadius = 0;
-    Color color = Colors::black;
-    float opacity = 0.3;
-
-    Shadow() = default;
-    Shadow(float x, float y, float blur, float spread = 0)
-        : offsetX(x), offsetY(y), blurRadius(blur), spreadRadius(spread) {}
-
-    // Enable: .shadow = {2, 4, 8}  // x, y, blur
-    Shadow& operator=(std::initializer_list<float> values) {
-        auto it = values.begin();
-        if (it != values.end()) offsetX = *it++;
-        if (it != values.end()) offsetY = *it++;
-        if (it != values.end()) blurRadius = *it++;
-        if (it != values.end()) spreadRadius = *it++;
-        return *this;
-    }
-
-    // ============================================================================
-    // FACTORY METHODS
-    // ============================================================================
-
-    static Shadow drop(float offsetX, float offsetY, float blur, const Color& color = Colors::black) {
-        Shadow shadow;
-        shadow.offsetX = offsetX;
-        shadow.offsetY = offsetY;
-        shadow.blurRadius = blur;
-        shadow.color = color;
-        return shadow;
-    }
-
-    static Shadow inner(float offsetX, float offsetY, float blur, const Color& color = Colors::black) {
-        Shadow shadow;
-        shadow.offsetX = offsetX;
-        shadow.offsetY = offsetY;
-        shadow.blurRadius = blur;
-        shadow.color = color;
-        shadow.spreadRadius = -1; // Negative for inner shadows
-        return shadow;
-    }
-
-    static Shadow glow(float blur, const Color& color = Colors::black) {
-        Shadow shadow;
-        shadow.blurRadius = blur;
-        shadow.color = color;
-        return shadow;
-    }
-
-    static Shadow subtle(float offsetX, float offsetY, float blur, const Color& color = Colors::black) {
-        Shadow shadow;
-        shadow.offsetX = offsetX;
-        shadow.offsetY = offsetY;
-        shadow.blurRadius = blur;
-        shadow.color = color;
-        shadow.opacity = 0.1f; // Very subtle
-        return shadow;
-    }
-
-    bool operator==(const Shadow& other) const = default;
-};
 
 // Enums
 

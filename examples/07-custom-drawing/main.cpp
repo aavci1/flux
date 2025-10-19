@@ -25,7 +25,10 @@ struct LineChart {
 
         // Background
         Color bgColor = resolveColor(backgroundColor);
-        ctx.drawRoundedRect(layout.bounds, 8, bgColor);
+        ctx.beginPath();
+        ctx.rect(layout.bounds, 8);
+        ctx.setFillColor(bgColor);
+        ctx.fill();
 
         std::vector<float> dataVec = data;
         if (dataVec.empty()) return;
@@ -95,7 +98,10 @@ struct BarChart {
 
         // Background
         Color bgColor = resolveColor(backgroundColor);
-        ctx.drawRoundedRect(layout.bounds, 8, bgColor);
+        ctx.beginPath();
+        ctx.rect(layout.bounds, 8);
+        ctx.setFillColor(bgColor);
+        ctx.fill();
 
         std::vector<float> dataVec = data;
         if (dataVec.empty()) return;
@@ -123,7 +129,10 @@ struct BarChart {
             float x = chartArea.x + i * (barWidth + spacing);
             float y = chartArea.y + chartArea.height - barHeight;
 
-            ctx.drawRoundedRect({x, y, barWidth, barHeight}, 4, barCol);
+            ctx.beginPath();
+            ctx.rect({x, y, barWidth, barHeight}, 4);
+            ctx.setFillColor(barCol);
+            ctx.fill();
         }
 
         // Title
@@ -157,7 +166,10 @@ struct DoughnutChart {
 
         // Background
         Color bgColor = resolveColor(backgroundColor);
-        ctx.drawRoundedRect(layout.bounds, 8, bgColor);
+        ctx.beginPath();
+        ctx.rect(layout.bounds, 8);
+        ctx.setFillColor(bgColor);
+        ctx.fill();
 
         std::vector<float> dataVec = data;
         if (dataVec.empty()) return;

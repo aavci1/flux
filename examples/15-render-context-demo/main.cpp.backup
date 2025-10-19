@@ -37,56 +37,54 @@ struct RenderContextDemo {
         // ============================================================================
 
         // Create a linear gradient background using factory method
+        FillStyle linearGradient = FillStyle::linearGradient(
+            Point(0, 0), Point(bounds.width, bounds.height),
+            Color::hex(0x667eea), Color::hex(0x764ba2)
+        );
+
+        ctx.setFillStyle(linearGradient);
         Path gradientPath;
         gradientPath.rect(bounds, 20);
-
-        ctx.setFillStyle(FillStyle::linearGradient(
-            Point(0, 0), 
-            Point(bounds.width, bounds.height),
-            Color::hex(0x667eea), 
-            Color::hex(0x764ba2)
-        ));
         ctx.drawPath(gradientPath, true, false);
 
         // Demo different fill styles using factory methods
         float fillY = 300;
 
         // Solid fill
+        ctx.setFillStyle(FillStyle::solid(Color::hex(0xe74c3c)));
         Path solidPath;
         solidPath.rect(Rect(50, fillY, 80, 60), 10);
-        
-        ctx.setFillStyle(FillStyle::solid(Color::hex(0xe74c3c)));
         ctx.drawPath(solidPath, true, false);
 
         // Linear gradient
-        Path linearPath;
-        linearPath.rect(Rect(150, fillY, 80, 60), 10);
-        
-        ctx.setFillStyle(FillStyle::linearGradient(
+        FillStyle linearFill = FillStyle::linearGradient(
             Point(0, 0), Point(80, 60),
             Color::hex(0x3498db), Color::hex(0x2ecc71)
-        ));
+        );
+        ctx.setFillStyle(linearFill);
+        Path linearPath;
+        linearPath.rect(Rect(150, fillY, 80, 60), 10);
         ctx.drawPath(linearPath, true, false);
 
         // Radial gradient
-        Path radialPath;
-        radialPath.rect(Rect(250, fillY, 80, 60), 10);
-        
-        ctx.setFillStyle(FillStyle::radialGradient(
+        FillStyle radialFill = FillStyle::radialGradient(
             Point(40, 30), 10, 40,
             Color::hex(0xf39c12), Color::hex(0xe67e22)
-        ));
-        ctx.drawPath(radialPath, true, false);
+        );
+        ctx.setFillStyle(radialFill);
+        ctx.beginPath();
+        ctx.rect(Rect(250, fillY, 80, 60), 10);
+        ctx.fill();
 
         // Box gradient
-        Path boxPath;
-        boxPath.rect(Rect(350, fillY, 80, 60), 15);
-        
-        ctx.setFillStyle(FillStyle::boxGradient(
+        FillStyle boxFill = FillStyle::boxGradient(
             Rect(0, 0, 80, 60), 15, 10,
             Color::hex(0x9b59b6), Color::hex(0x8e44ad)
-        ));
-        ctx.drawPath(boxPath, true, false);
+        );
+        ctx.setFillStyle(boxFill);
+        ctx.beginPath();
+        ctx.rect(Rect(350, fillY, 80, 60), 15);
+        ctx.fill();
 
         // ============================================================================
         // DEMONSTRATE STROKE STYLE FACTORY METHODS
@@ -96,50 +94,49 @@ struct RenderContextDemo {
         float strokeY = 100;
 
         // Solid stroke
-        Path solidPath2;
-        solidPath2.moveTo(Point(50, strokeY));
-        solidPath2.lineTo(Point(150, strokeY));
         ctx.setStrokeStyle(StrokeStyle::solid(Color::hex(0x2c3e50), 4.0f));
-        ctx.drawPath(solidPath2, false, true);
+        ctx.beginPath();
+        ctx.moveTo(Point(50, strokeY));
+        ctx.lineTo(Point(150, strokeY));
+        ctx.stroke();
 
         // Dashed stroke with animation
-        Path dashedPath;
-        dashedPath.moveTo(Point(50, strokeY + 30));
-        dashedPath.lineTo(Point(150, strokeY + 30));
-        ctx.setStrokeStyle(StrokeStyle::dashed(
-            Color::hex(0xe74c3c), 
-            3.0f, 
-            {10.0f, 5.0f, 3.0f, 5.0f}, 
-            animationTime * 20.0f
-        ));
-        ctx.drawPath(dashedPath, false, true);
+        auto dashedStroke = StrokeStyle::dashed(Color::hex(0xe74c3c), 3.0f, {10.0f, 5.0f, 3.0f, 5.0f});
+        dashedStroke.dashOffset = animationTime * 20.0f; // Animated dash offset
+        ctx.setStrokeStyle(dashedStroke);
+        ctx.beginPath();
+        ctx.moveTo(Point(50, strokeY + 30));
+        ctx.lineTo(Point(150, strokeY + 30));
+        ctx.stroke();
 
         // Rounded stroke
-        Path roundedPath;
-        roundedPath.moveTo(Point(50, strokeY + 60));
-        roundedPath.lineTo(Point(150, strokeY + 60));
         ctx.setStrokeStyle(StrokeStyle::rounded(Color::hex(0x27ae60), 5.0f));
-        ctx.drawPath(roundedPath, false, true);
+        ctx.beginPath();
+        ctx.moveTo(Point(50, strokeY + 60));
+        ctx.lineTo(Point(150, strokeY + 60));
+        ctx.stroke();
 
         // Square stroke
-        Path squarePath;
-        squarePath.moveTo(Point(50, strokeY + 90));
-        squarePath.lineTo(Point(150, strokeY + 90));
         ctx.setStrokeStyle(StrokeStyle::square(Color::hex(0x8e44ad), 3.0f));
-        ctx.drawPath(squarePath, false, true);
+        ctx.beginPath();
+        ctx.moveTo(Point(50, strokeY + 90));
+        ctx.lineTo(Point(150, strokeY + 90));
+        ctx.stroke();
 
         // ============================================================================
         // DEMONSTRATE RADIAL GRADIENTS
         // ============================================================================
 
         Point center = Point(400, 150);
-        Path radialPath2;
-        radialPath2.circle(center, 80);
-        ctx.setFillStyle(FillStyle::radialGradient(
+        FillStyle radialGradient = FillStyle::radialGradient(
             center, 20.0f, 80.0f,
             Color::hex(0xff6b6b), Color::hex(0x4ecdc4)
-        ));
-        ctx.drawPath(radialPath2, true, false);
+        );
+
+        ctx.setFillStyle(radialGradient);
+        ctx.beginPath();
+        ctx.circle(center, 80);
+        ctx.fill();
 
         // ============================================================================
         // DEMONSTRATE ADVANCED PATH BUILDING
@@ -150,25 +147,27 @@ struct RenderContextDemo {
         ctx.rotate(animationTime * 0.5f); // Rotate with animation
 
         // Create a complex shape using path building
-        Path complexPath;
-        complexPath.moveTo(Point(0, -50));
-        complexPath.quadTo(Point(25, -25), Point(0, 0));
-        complexPath.quadTo(Point(-25, 25), Point(0, 50));
-        complexPath.quadTo(Point(25, 25), Point(50, 0));
-        complexPath.quadTo(Point(25, -25), Point(0, -50));
-        complexPath.close();
-        ctx.setFillStyle(FillStyle::linearGradient(
+        ctx.beginPath();
+        ctx.moveTo(Point(0, -50));
+        ctx.quadTo(Point(25, -25), Point(0, 0));
+        ctx.quadTo(Point(-25, 25), Point(0, 50));
+        ctx.quadTo(Point(25, 25), Point(50, 0));
+        ctx.quadTo(Point(25, -25), Point(0, -50));
+        ctx.closePath();
+
+        // Fill with a gradient
+        FillStyle starGradient = FillStyle::linearGradient(
             Point(-50, -50), Point(50, 50),
             Color::hex(0xffd700), Color::hex(0xff8c00)
-        ));
-        ctx.drawPath(complexPath, true, false);
+        );
+        ctx.setFillStyle(starGradient);
+        ctx.fill();
 
         // Stroke with a contrasting color
-        Path strokePath;
-        strokePath.moveTo(Point(50, strokeY + 120));
-        strokePath.lineTo(Point(150, strokeY + 120));
-        ctx.setStrokeStyle(StrokeStyle::solid(Color::hex(0x8b4513), 3.0f));
-        ctx.drawPath(strokePath, false, true);
+        ctx.setStrokeColor(Color::hex(0x8b4513));
+        ctx.setStrokeWidth(3.0f);
+        ctx.setLineCap(LineCap::Round);
+        ctx.stroke();
 
         ctx.restore();
 
@@ -177,16 +176,20 @@ struct RenderContextDemo {
         // ============================================================================
 
         // Draw an ellipse
-        Path ellipsePath;
-        ellipsePath.ellipse(Point(350, 350), 60, 30);
-        ctx.setFillStyle(FillStyle::solid(Color::hex(0x9b59b6).opacity(0.7)));
-        ctx.drawPath(ellipsePath, true, false);
+        ctx.beginPath();
+        ctx.ellipse(Point(350, 350), 60, 30);
+        ctx.setFillColor(Color::hex(0x9b59b6).opacity(0.7));
+        ctx.fill();
 
         // Draw an arc with advanced stroke style
-        Path arcPath;
-        arcPath.arc(Point(350, 350), 80, 0, animationTime * 2.0f);
-        ctx.setStrokeStyle(StrokeStyle::rounded(Color::hex(0xe74c3c), 8.0f));
-        ctx.drawPath(arcPath, false, true);
+        StrokeStyle arcStyle;
+        arcStyle.color = Color::hex(0xe74c3c);
+        arcStyle.width = 8.0f;
+        arcStyle.cap = LineCap::Round;
+        ctx.beginPath();
+        ctx.arc(Point(350, 350), 80, 0, animationTime * 2.0f);
+        ctx.setStrokeStyle(arcStyle);
+        ctx.stroke();
 
         // ============================================================================
         // DEMONSTRATE TEXT STYLE FACTORY METHODS
@@ -200,19 +203,19 @@ struct RenderContextDemo {
         titleStyle.hAlign = HorizontalAlignment::center;
         titleStyle.vAlign = VerticalAlignment::top;
         titleStyle.letterSpacing = 1.0f;
-        ctx.drawText("Advanced RenderContext Demo", Point(400, textY), titleStyle);
+        ctx.text("Advanced RenderContext Demo", Point(400, textY), titleStyle);
 
         // Regular text
         auto regularStyle = TextStyle::regular("default", 16.0f, Color::hex(0x34495e));
-        ctx.drawText("Regular Text Style", Point(50, textY + 40), regularStyle);
+        ctx.text("Regular Text Style", Point(50, textY + 40), regularStyle);
 
         // Light text
         auto lightStyle = TextStyle::light("default", 14.0f, Color::hex(0x7f8c8d));
-        ctx.drawText("Light Text Style", Point(50, textY + 70), lightStyle);
+        ctx.text("Light Text Style", Point(50, textY + 70), lightStyle);
 
         // Centered text
         auto centeredStyle = TextStyle::centered("default", 18.0f, Color::hex(0xe74c3c));
-        ctx.drawText("Centered Text", Point(400, textY + 100), centeredStyle);
+        ctx.text("Centered Text", Point(400, textY + 100), centeredStyle);
 
         // Gradient text
         FillStyle textGradient = FillStyle::linearGradient(
@@ -220,7 +223,7 @@ struct RenderContextDemo {
             Color::hex(0x667eea), Color::hex(0x764ba2)
         );
         auto gradientStyle = TextStyle::gradient("default", 16.0f, textGradient);
-        ctx.drawText("Gradient Text Style", Point(50, textY + 130), gradientStyle);
+        ctx.text("Gradient Text Style", Point(50, textY + 130), gradientStyle);
 
         // ============================================================================
         // DEMONSTRATE COMPOSITE OPERATIONS
@@ -230,17 +233,17 @@ struct RenderContextDemo {
         ctx.translate(600, 300);
 
         // Draw base circle
-        Path baseCircle;
-        baseCircle.circle(Point(0, 0), 50);
-        ctx.setFillStyle(FillStyle::solid(Color::hex(0x3498db)));
-        ctx.drawPath(baseCircle, true, false);
+        ctx.beginPath();
+        ctx.circle(Point(0, 0), 50);
+        ctx.setFillColor(Color::hex(0x3498db));
+        ctx.fill();
 
         // Draw overlapping circle with different composite operation
         ctx.setCompositeOperation(CompositeOperation::Lighter);
-        Path overlappingCircle;
-        overlappingCircle.circle(Point(30, 0), 50);
-        ctx.setFillStyle(FillStyle::solid(Color::hex(0xe74c3c)));
-        ctx.drawPath(overlappingCircle, true, false);
+        ctx.beginPath();
+        ctx.circle(Point(30, 0), 50);
+        ctx.setFillColor(Color::hex(0xe74c3c));
+        ctx.fill();
 
         ctx.restore();
 
@@ -249,15 +252,17 @@ struct RenderContextDemo {
         // ============================================================================
 
         ctx.save();
-        Path clippingPath;
-        clippingPath.rect(Rect(50, 450, 300, 100), 20);
-        ctx.clipPath(clippingPath);
+        ctx.beginPath();
+        ctx.rect(Rect(50, 450, 300, 100), 20);
+        ctx.clip();
 
         // Draw a pattern that will be clipped
-        Path patternPath;
-        patternPath.rect(Rect(50, 450, 300, 100), 20);
-        ctx.setFillStyle(FillStyle::solid(Color::hex(0x3498db).opacity(0.3)));
-        ctx.drawPath(patternPath, true, false);
+        for (int i = 0; i < 10; i++) {
+            ctx.beginPath();
+            ctx.rect(Rect(i * 30, 450 + i * 5, 25, 25));
+            ctx.setFillColor(Color::hex(0x3498db).opacity(0.3));
+            ctx.fill();
+        }
 
         ctx.restore();
 
@@ -270,10 +275,10 @@ struct RenderContextDemo {
         ctx.rotate(animationTime);
         ctx.scale(1.0f + 0.3f * std::sin(animationTime * 2.0f), 1.0f + 0.3f * std::cos(animationTime * 2.0f));
 
-        Path transformationPath;
-        transformationPath.rect(Rect(-25, -25, 50, 50));
-        ctx.setFillStyle(FillStyle::solid(Color::hex(0xf39c12)));
-        ctx.drawPath(transformationPath, true, false);
+        ctx.beginPath();
+        ctx.rect(Rect(-25, -25, 50, 50));
+        ctx.setFillColor(Color::hex(0xf39c12));
+        ctx.fill();
 
         ctx.restore();
 

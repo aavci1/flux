@@ -21,7 +21,10 @@ struct LineChart {
 
         // Background
         Color bgColor = backgroundColor;
-        ctx.drawRoundedRect(bounds, 8, bgColor);
+        Path bgPath;
+        bgPath.rect(bounds, 8);
+        ctx.setFillColor(bgColor);
+        ctx.drawPath(bgPath, true, false);
 
         std::vector<float> dataVec = data;
         if (dataVec.empty()) return;
@@ -49,14 +52,22 @@ struct LineChart {
             float x2 = chartArea.x + i * chartArea.width / (dataVec.size() - 1);
             float y2 = chartArea.y + chartArea.height - ((dataVec[i] - minVal) / range) * chartArea.height;
 
-            ctx.drawLine({x1, y1}, {x2, y2}, {lineCol, 3.0f});
+            Path linePath;
+            linePath.moveTo({x1, y1});
+            linePath.lineTo({x2, y2});
+            ctx.setStrokeColor(lineCol);
+            ctx.setStrokeWidth(3.0f);
+            ctx.drawPath(linePath, false, true);
         }
 
         // Draw data points
         for (size_t i = 0; i < dataVec.size(); i++) {
             float x = chartArea.x + i * chartArea.width / (dataVec.size() - 1);
             float y = chartArea.y + chartArea.height - ((dataVec[i] - minVal) / range) * chartArea.height;
-            ctx.drawCircle({x, y}, 4, lineCol);
+            Path pointPath;
+            pointPath.circle({x, y}, 4);
+            ctx.setFillColor(lineCol);
+            ctx.drawPath(pointPath, true, false);
         }
 
         // Title
@@ -87,7 +98,10 @@ struct BarChart {
 
         // Background
         Color bgColor = backgroundColor;
-        ctx.drawRoundedRect(bounds, 8, bgColor);
+        Path bgPath;
+        bgPath.rect(bounds, 8);
+        ctx.setFillColor(bgColor);
+        ctx.drawPath(bgPath, true, false);
 
         std::vector<float> dataVec = data;
         if (dataVec.empty()) return;
@@ -115,7 +129,10 @@ struct BarChart {
             float x = chartArea.x + i * (barWidth + spacing);
             float y = chartArea.y + chartArea.height - barHeight;
 
-            ctx.drawRoundedRect({x, y, barWidth, barHeight}, 4, barCol);
+            Path barPath;
+            barPath.rect({x, y, barWidth, barHeight}, 4);
+            ctx.setFillColor(barCol);
+            ctx.drawPath(barPath, true, false);
         }
 
         // Title
@@ -145,7 +162,10 @@ struct DoughnutChart {
 
         // Background
         Color bgColor = backgroundColor;
-        ctx.drawRoundedRect(bounds, 8, bgColor);
+        Path bgPath;
+        bgPath.rect(bounds, 8);
+        ctx.setFillColor(bgColor);
+        ctx.drawPath(bgPath, true, false);
 
         std::vector<float> dataVec = data;
         if (dataVec.empty()) return;
@@ -179,7 +199,12 @@ struct DoughnutChart {
                 Point p4 = {centerX + std::cos(rad1) * innerRadius, centerY + std::sin(rad1) * innerRadius};
 
                 // Simple line approximation for arc
-                ctx.drawLine(p1, p2, {segmentColor, 3.0f});
+                Path arcPath;
+                arcPath.moveTo(p1);
+                arcPath.lineTo(p2);
+                ctx.setStrokeColor(segmentColor);
+                ctx.setStrokeWidth(3.0f);
+                ctx.drawPath(arcPath, false, true);
             }
 
             currentAngle += angle;

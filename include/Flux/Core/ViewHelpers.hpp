@@ -44,16 +44,13 @@ inline void renderView(const ViewType& view, RenderContext& ctx, const Rect& bou
         ctx.setOpacity(opacityVal);
     }
 
-    // Draw shadow if needed
-    Shadow shadowVal = view.shadow;
-    if (shadowVal.blurRadius > 0 || shadowVal.spreadRadius > 0) {
-        ctx.drawShadow(bounds, static_cast<float>(view.cornerRadius), shadowVal);
-    }
-
     // Draw background
     Color bgColor = view.backgroundColor;
     if (bgColor.a > 0) {
-        ctx.drawRoundedRect(bounds, static_cast<float>(view.cornerRadius), bgColor);
+        Path path;
+        path.rect(bounds, static_cast<float>(view.cornerRadius));
+        ctx.setFillColor(bgColor);
+        ctx.drawPath(path, true, false);
     }
 
     // Draw background image if present
@@ -67,8 +64,9 @@ inline void renderView(const ViewType& view, RenderContext& ctx, const Rect& bou
 
         // Create clipping path for rounded corners if needed
         if (static_cast<float>(view.cornerRadius) > 0) {
-            ctx.beginPath();
-            ctx.clipRoundedRect(bounds, static_cast<float>(view.cornerRadius));
+            Path clipPath;
+            clipPath.rect(bounds, static_cast<float>(view.cornerRadius));
+            ctx.clipPath(clipPath);
         }
 
         // Draw the background image with proper sizing
@@ -81,7 +79,11 @@ inline void renderView(const ViewType& view, RenderContext& ctx, const Rect& bou
     float borderWidth = view.borderWidth;
     Color borderColor = view.borderColor;
     if (borderWidth > 0 && borderColor.a > 0) {
-        ctx.drawRoundedRectBorder(bounds, static_cast<float>(view.cornerRadius), borderColor, borderWidth);
+        Path path;
+        path.rect(bounds, static_cast<float>(view.cornerRadius));
+        ctx.setStrokeColor(borderColor);
+        ctx.setStrokeWidth(borderWidth);
+        ctx.drawPath(path, false, true);
     }
 
     ctx.restore();
@@ -109,7 +111,7 @@ inline void drawBackgroundImageWithSizing(RenderContext& ctx, const BackgroundIm
 
         case BackgroundSize::Stretch:
             // Stretch to fill exact bounds, may distort
-            ctx.drawImage(imagePath, bounds);
+            ctx.drawImage(imagePath, bounds, ImageFit::Fill);
             break;
     }
 }
@@ -123,21 +125,21 @@ inline void drawBackgroundImageAtPosition(RenderContext& ctx, const std::string&
 
     // For now, just draw centered at original size
     // This is a simplified implementation - in practice you'd need image loading
-    ctx.drawImage(imagePath, bounds);
+    ctx.drawImage(imagePath, bounds, ImageFit::None);
 }
 
 // Helper function to draw background image scaled to cover
 inline void drawBackgroundImageScaledToCover(RenderContext& ctx, const std::string& imagePath, const Rect& bounds,
                                            BackgroundPosition position, const Point& customPosition) {
-    // Use the new CSS-like Cover method that maintains aspect ratio
-    ctx.drawImageCover(imagePath, bounds);
+    // Use the CSS-like Cover method that maintains aspect ratio
+    ctx.drawImage(imagePath, bounds, ImageFit::Cover);
 }
 
 // Helper function to draw background image scaled to contain
 inline void drawBackgroundImageScaledToContain(RenderContext& ctx, const std::string& imagePath, const Rect& bounds,
                                              BackgroundPosition position, const Point& customPosition) {
-    // Use the new CSS-like Contain method that maintains aspect ratio
-    ctx.drawImageContain(imagePath, bounds);
+    // Use the CSS-like Contain method that maintains aspect ratio
+    ctx.drawImage(imagePath, bounds, ImageFit::Contain);
 }
 
 } // namespace ViewHelpers

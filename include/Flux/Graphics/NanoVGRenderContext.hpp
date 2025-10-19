@@ -84,43 +84,9 @@ public:
     void setPathWinding(PathWinding winding) override;
 
     // ============================================================================
-    // PATH BUILDING
-    // ============================================================================
-    void beginPath() override;
-    void closePath() override;
-    void moveTo(const Point& point) override;
-    void lineTo(const Point& point) override;
-    void quadTo(const Point& control, const Point& end) override;
-    void bezierTo(const Point& c1, const Point& c2, const Point& end) override;
-    void arcTo(const Point& p1, const Point& p2, float radius) override;
-    void arc(const Point& center, float radius, float startAngle, float endAngle, bool clockwise = false) override;
-
-    // ============================================================================
-    // PATH SHAPES
-    // ============================================================================
-    void rect(const Rect& rect) override;
-    void roundedRect(const Rect& rect, float cornerRadius) override;
-    void roundedRectVarying(const Rect& rect, float radTopLeft, float radTopRight,
-                            float radBottomRight, float radBottomLeft) override;
-    void circle(const Point& center, float radius) override;
-    void ellipse(const Point& center, float radiusX, float radiusY) override;
-
-    // ============================================================================
     // PATH RENDERING
     // ============================================================================
-    void fill() override;
-    void stroke() override;
-
-    // ============================================================================
-    // CONVENIENCE DRAWING METHODS
-    // ============================================================================
-    void drawRect(const Rect& rect, const Color& color) override;
-    void drawRoundedRect(const Rect& rect, float cornerRadius, const Color& color) override;
-    void drawRoundedRectBorder(const Rect& rect, float cornerRadius, const Color& color, float width) override;
-    void drawCircle(const Point& center, float radius, const Color& color) override;
-    void drawEllipse(const Point& center, float radiusX, float radiusY, const Color& color) override;
-    void drawLine(const Point& start, const Point& end, const StrokeStyle& style) override;
-    void drawArc(const Point& center, float radius, float startAngle, float endAngle, const StrokeStyle& style) override;
+    void drawPath(const Path& path, bool fill = true, bool stroke = false) override;
 
     // ============================================================================
     // TEXT RENDERING
@@ -152,27 +118,22 @@ public:
     void updateImage(int imageId, const unsigned char* data) override;
     Size getImageSize(int imageId) override;
     void deleteImage(int imageId) override;
-    void drawImage(int imageId, const Rect& rect, float cornerRadius = 0, float alpha = 1.0f) override;
-    void drawImage(const std::string& path, const Rect& rect, float cornerRadius = 0) override;
-
-    // CSS-like image sizing methods
-    void drawImageCover(int imageId, const Rect& rect, float cornerRadius = 0, float alpha = 1.0f) override;
-    void drawImageCover(const std::string& path, const Rect& rect, float cornerRadius = 0) override;
-    void drawImageContain(int imageId, const Rect& rect, float cornerRadius = 0, float alpha = 1.0f) override;
-    void drawImageContain(const std::string& path, const Rect& rect, float cornerRadius = 0) override;
+    
+    // Unified image rendering with ImageFit enum and CornerRadius
+    void drawImage(int imageId, const Rect& rect, 
+                  ImageFit fit = ImageFit::Fill,
+                  const CornerRadius& cornerRadius = CornerRadius(),
+                  float alpha = 1.0f) override;
+    void drawImage(const std::string& path, const Rect& rect,
+                  ImageFit fit = ImageFit::Fill,
+                  const CornerRadius& cornerRadius = CornerRadius(),
+                  float alpha = 1.0f) override;
 
     // ============================================================================
     // CLIPPING
     // ============================================================================
-    void clipRect(const Rect& rect) override;
-    void clipRoundedRect(const Rect& rect, float cornerRadius) override;
-    void intersectClipRect(const Rect& rect) override;
+    void clipPath(const Path& path) override;
     void resetClip() override;
-
-    // ============================================================================
-    // SHADOWS AND EFFECTS
-    // ============================================================================
-    void drawShadow(const Rect& rect, float cornerRadius, const Shadow& shadow) override;
 
     // ============================================================================
     // UTILITIES
@@ -191,7 +152,6 @@ private:
     // Helper functions
     NVGcolor toNVGColor(const Color& color) const;
     NVGpaint toNVGFillStyle(const FillStyle& fillStyle) const;
-    NVGpaint createShadowPaint(const Shadow& shadow) const;
     int getFont(const std::string& fontName, FontWeight weight);
     int getNVGLineCap(LineCap cap) const;
     int getNVGLineJoin(LineJoin join) const;

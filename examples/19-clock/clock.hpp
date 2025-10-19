@@ -15,12 +15,12 @@ struct Clock {
         auto x = center.x + (length * static_cast<float>(sin((180 - angle) * M_PI / 180.0f)));
         auto y = center.y + (length * static_cast<float>(cos((180 - angle) * M_PI / 180.0f)));
 
-        ctx.beginPath();
-        ctx.moveTo(center);
-        ctx.lineTo({ x, y });
-        ctx.closePath();
+        Path path;
+        path.moveTo(center);
+        path.lineTo({ x, y });
+        
         ctx.setStrokeStyle(StrokeStyle::rounded(color, width));
-        ctx.stroke();
+        ctx.drawPath(path, false, true);
     }
 
     void render(RenderContext& ctx, const Rect& bounds) const {
@@ -28,17 +28,17 @@ struct Clock {
 
         auto radius = fmin(bounds.width, bounds.height) / 2 - 20;
 
-        ctx.beginPath();
-        ctx.arc(bounds.center(), radius, 0, 2 * M_PI, false);
-        ctx.closePath();
+        Path frame;
+        frame.circle(bounds.center(), radius);
         ctx.setFillStyle(FillStyle::solid(Colors::white));
-        ctx.fill();
         ctx.setStrokeStyle(StrokeStyle::solid(Colors::black, 20));
-        ctx.stroke();
+        ctx.drawPath(frame, false, true);
 
         // Hour marks
         auto hourTickLength = radius / 10.0f;
         auto hourTickWidth = 6.0f;
+
+        Path hourMarks;
         for (int i = 0; i < 12; i++) {
             auto angle = i * 2 * M_PI / 12;
             float x1 = bounds.center().x + (radius - 20 - hourTickLength) * static_cast<float>(cos(angle));
@@ -46,17 +46,18 @@ struct Clock {
             float x2 = bounds.center().x + (radius - 20) * static_cast<float>(cos(angle));
             float y2 = bounds.center().y + (radius - 20) * static_cast<float>(sin(angle));
 
-            ctx.beginPath();
-            ctx.moveTo({ x1, y1 });
-            ctx.lineTo({ x2, y2 });
-            ctx.closePath();
-            ctx.setStrokeStyle(StrokeStyle::solid(Colors::black, hourTickWidth));
-            ctx.stroke();
+            hourMarks.moveTo({ x1, y1 });
+            hourMarks.lineTo({ x2, y2 });
         }
+
+        ctx.setStrokeStyle(StrokeStyle::solid(Colors::black, hourTickWidth));
+        ctx.drawPath(hourMarks, false, true);
 
         // Minute marks
         auto minuteTickLength = radius / 10.0f;
         auto minuteTickWidth = 2.0f;
+
+        Path minuteMarks;
         for (int i = 0; i < 60; i++) {
             auto angle = i * 2 * M_PI / 60;
             float x1 = bounds.center().x + (radius - 20 - minuteTickLength) * static_cast<float>(cos(angle));
@@ -64,13 +65,12 @@ struct Clock {
             float x2 = bounds.center().x + (radius - 20) * static_cast<float>(cos(angle));
             float y2 = bounds.center().y + (radius - 20) * static_cast<float>(sin(angle));
 
-            ctx.beginPath();
-            ctx.moveTo({ x1, y1 });
-            ctx.lineTo({ x2, y2 });
-            ctx.closePath();
-            ctx.setStrokeStyle(StrokeStyle::solid(Colors::black, minuteTickWidth));
-            ctx.stroke();
+            minuteMarks.moveTo({ x1, y1 });
+            minuteMarks.lineTo({ x2, y2 });
         }
+
+        ctx.setStrokeStyle(StrokeStyle::solid(Colors::black, minuteTickWidth));
+        ctx.drawPath(minuteMarks, false, true);
 
         // numbers
         for (int i = 1; i <= 12; i++) {
@@ -84,12 +84,10 @@ struct Clock {
         drawHand(ctx, bounds.center(), radius * 0.55f, 8.0f, (minutes * 6) + (seconds * 0.1f), Colors::black);
         drawHand(ctx, bounds.center(), radius * 0.7f, 4.0f, seconds * 6, Colors::red);
 
-        ctx.beginPath();
-        ctx.arc(bounds.center(), 16, 2 * M_PI, false);
-        ctx.closePath();
+        Path centerCircle;
+        centerCircle.circle(bounds.center(), 16);
         ctx.setFillStyle(FillStyle::solid(Colors::white));
-        ctx.fill();
         ctx.setStrokeStyle(StrokeStyle::solid(Colors::red, 6));
-        ctx.stroke();
+        ctx.drawPath(centerCircle, true, true);
     }
 };

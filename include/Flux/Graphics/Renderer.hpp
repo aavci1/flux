@@ -72,7 +72,9 @@ private:
 
         // Clip rendering to the view's bounds if the view has clipping enabled
         if (node.view.shouldClip()) {
-            renderContext_->clipRect(localBounds);
+            Path clipPath;
+            clipPath.rect(localBounds);
+            renderContext_->clipPath(clipPath);
         }
 
         // Render the view with local coordinates

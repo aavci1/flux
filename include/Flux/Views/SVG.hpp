@@ -76,7 +76,7 @@ private:
     std::shared_ptr<SVGData> parsecontent(const std::string& svgStr) const;
     void renderSVG(RenderContext& ctx, NSVGimage* image, const Rect& bounds) const;
     void renderShape(RenderContext& ctx, NSVGshape* shape, const Rect& bounds, float scale) const;
-    void addPathToContext(RenderContext& ctx, NSVGpath* path) const;
+    Path buildPathFromSVG(NSVGpath* path) const;
     bool isPathSolid(NSVGpath* path) const;
     bool isPathHole(NSVGpath* path, NSVGpath* allPaths) const;
     float getLineCrossing(float p0x, float p0y, float p1x, float p1y, 

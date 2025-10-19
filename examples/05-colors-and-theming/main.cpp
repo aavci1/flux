@@ -52,31 +52,26 @@ int main(int argc, char* argv[]) {
                                     .borderWidth = 1,
                                     .cornerRadius = 12,
                                     .padding = 40,
-                                    .shadow = Shadow{0, 2, 4}
                                 },
                                 VStack {
                                     .backgroundColor = Colors::black,
                                     .cornerRadius = 12,
                                     .padding = 40,
-                                    .shadow = Shadow{0, 2, 4}
                                 },
                                 VStack {
                                     .backgroundColor = Colors::gray,
                                     .cornerRadius = 12,
                                     .padding = 40,
-                                    .shadow = Shadow{0, 2, 4}
                                 },
                                 VStack {
                                     .backgroundColor = Colors::darkGray,
                                     .cornerRadius = 12,
                                     .padding = 40,
-                                    .shadow = Shadow{0, 2, 4}
                                 },
                                 VStack {
                                     .backgroundColor = Colors::lightGray,
                                     .cornerRadius = 12,
                                     .padding = 40,
-                                    .shadow = Shadow{0, 2, 4}
                                 }
                             }
                         }
@@ -102,25 +97,21 @@ int main(int argc, char* argv[]) {
                                     .backgroundColor = Colors::blue,
                                     .cornerRadius = 12,
                                     .padding = 40,
-                                    .shadow = Shadow{0, 2, 4}
                                 },
                                 VStack {
                                     .backgroundColor = Colors::gray,
                                     .cornerRadius = 12,
                                     .padding = 40,
-                                    .shadow = Shadow{0, 2, 4}
                                 },
                                 VStack {
                                     .backgroundColor = Colors::blue,
                                     .cornerRadius = 12,
                                     .padding = 40,
-                                    .shadow = Shadow{0, 2, 4}
                                 },
                                 VStack {
                                     .backgroundColor = Colors::black,
                                     .cornerRadius = 12,
                                     .padding = 40,
-                                    .shadow = Shadow{0, 2, 4}
                                 },
                                 VStack {
                                     .backgroundColor = Colors::lightGray,
@@ -128,7 +119,6 @@ int main(int argc, char* argv[]) {
                                     .borderWidth = 1,
                                     .cornerRadius = 12,
                                     .padding = 40,
-                                    .shadow = Shadow{0, 2, 4}
                                 }
                             }
                         }
@@ -154,25 +144,21 @@ int main(int argc, char* argv[]) {
                                     .backgroundColor = Colors::red,
                                     .cornerRadius = 12,
                                     .padding = 40,
-                                    .shadow = Shadow{0, 2, 4}
                                 },
                                 VStack {
                                     .backgroundColor = Colors::blue,
                                     .cornerRadius = 12,
                                     .padding = 40,
-                                    .shadow = Shadow{0, 2, 4}
                                 },
                                 VStack {
                                     .backgroundColor = Colors::green,
                                     .cornerRadius = 12,
                                     .padding = 40,
-                                    .shadow = Shadow{0, 2, 4}
                                 },
                                 VStack {
                                     .backgroundColor = Colors::yellow,
                                     .cornerRadius = 12,
                                     .padding = 40,
-                                    .shadow = Shadow{0, 2, 4}
                                 }
                             }
                         }
@@ -198,19 +184,16 @@ int main(int argc, char* argv[]) {
                                     .backgroundColor = Colors::green,
                                     .cornerRadius = 12,
                                     .padding = 40,
-                                    .shadow = Shadow{0, 2, 4}
                                 },
                                 VStack {
                                     .backgroundColor = Colors::yellow,
                                     .cornerRadius = 12,
                                     .padding = 40,
-                                    .shadow = Shadow{0, 2, 4}
                                 },
                                 VStack {
                                     .backgroundColor = Colors::red,
                                     .cornerRadius = 12,
                                     .padding = 40,
-                                    .shadow = Shadow{0, 2, 4}
                                 }
                             }
                         }
@@ -236,25 +219,21 @@ int main(int argc, char* argv[]) {
                                     .backgroundColor = Color::hex(0xFF6B6B),
                                     .cornerRadius = 12,
                                     .padding = 40,
-                                    .shadow = Shadow{0, 2, 4}
                                 },
                                 VStack {
                                     .backgroundColor = Color::hex(0x4ECDC4),
                                     .cornerRadius = 12,
                                     .padding = 40,
-                                    .shadow = Shadow{0, 2, 4}
                                 },
                                 VStack {
                                     .backgroundColor = Color::hex(0xFFBE0B),
                                     .cornerRadius = 12,
                                     .padding = 40,
-                                    .shadow = Shadow{0, 2, 4}
                                 },
                                 VStack {
                                     .backgroundColor = Color::rgb(138, 43, 226),
                                     .cornerRadius = 12,
                                     .padding = 40,
-                                    .shadow = Shadow{0, 2, 4}
                                 }
                             }
                         }
@@ -325,25 +304,21 @@ int main(int argc, char* argv[]) {
                                     .backgroundColor = Colors::green,
                                     .cornerRadius = 12,
                                     .padding = 40,
-                                    .shadow = Shadow{0, 2, 4}
                                 },
                                 VStack {
                                     .backgroundColor = Color::hex(0x4CAF50).darken(0.1),
                                     .cornerRadius = 12,
                                     .padding = 40,
-                                    .shadow = Shadow{0, 2, 4}
                                 },
                                 VStack {
                                     .backgroundColor = Color::hex(0x4CAF50).darken(0.3),
                                     .cornerRadius = 12,
                                     .padding = 40,
-                                    .shadow = Shadow{0, 2, 4}
                                 },
                                 VStack {
                                     .backgroundColor = Color::hex(0x4CAF50).darken(0.5),
                                     .cornerRadius = 12,
                                     .padding = 40,
-                                    .shadow = Shadow{0, 2, 4}
                                 }
                             }
                         }

@@ -85,7 +85,7 @@ private:
 
             case BackgroundSize::Stretch:
                 // Stretch to fill exact bounds, may distort
-                ctx.drawImage(imagePath, bounds);
+                ctx.drawImage(imagePath, bounds, ImageFit::Fill);
                 break;
         }
     }
@@ -97,7 +97,7 @@ private:
         // 2. Calculate the position based on contentPosition
         // 3. Draw at the calculated position
 
-        ctx.drawImage(imagePath, bounds);
+        ctx.drawImage(imagePath, bounds, ImageFit::None);
     }
 
     void drawImageScaledToCover(RenderContext& ctx, const std::string& imagePath, const Rect& bounds) const {
@@ -108,7 +108,7 @@ private:
         // 3. Calculate the crop area to center the image
         // 4. Draw the cropped and scaled image
 
-        ctx.drawImage(imagePath, bounds);
+        ctx.drawImage(imagePath, bounds, ImageFit::Cover);
     }
 
     void drawImageScaledToContain(RenderContext& ctx, const std::string& imagePath, const Rect& bounds) const {
@@ -119,7 +119,7 @@ private:
         // 3. Calculate the centered position
         // 4. Draw the scaled image at the calculated position
 
-        ctx.drawImage(imagePath, bounds);
+        ctx.drawImage(imagePath, bounds, ImageFit::Contain);
     }
 };
 

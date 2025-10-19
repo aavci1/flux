@@ -94,8 +94,6 @@ void SVG::renderShape(RenderContext& ctx, NSVGshape* shape, const Rect& bounds, 
         float area = calculatePathArea(path);
         bool isHole = area <= 0.0f;
         
-        ctx.beginPath();
-        
         if (isHole) {
             ctx.setPathWinding(PathWinding::Clockwise);  // Hole (NVG_CW)
             std::cout << "[SVG] Path is a hole (area=" << area << ")" << std::endl;
@@ -104,47 +102,47 @@ void SVG::renderShape(RenderContext& ctx, NSVGshape* shape, const Rect& bounds, 
             std::cout << "[SVG] Path is solid (area=" << area << ")" << std::endl;
         }
         
-        addPathToContext(ctx, path);
+        Path renderPath = buildPathFromSVG(path);
         
         // Fill this individual path
         if (fillColor.a > 0.0f) {
             ctx.setFillColor(fillColor);
-            ctx.fill();
+            ctx.drawPath(renderPath, true, false);
         }
         
         // Stroke this individual path
         if (strokeColor.a > 0.0f && strokeWidth > 0.0f) {
             ctx.setStrokeColor(strokeColor);
             ctx.setStrokeWidth(strokeWidth);
-            ctx.stroke();
+            ctx.drawPath(renderPath, false, true);
         }
     }
 }
 
-void SVG::addPathToContext(RenderContext& ctx, NSVGpath* path) const {
-    if (!path || path->npts < 2) return;
+Path SVG::buildPathFromSVG(NSVGpath* svgPath) const {
+    Path path;
+    if (!svgPath || svgPath->npts < 2) return path;
 
-    // Based on VCV Rack's implementation, we need to determine if this path
-    // is a hole or solid shape using ray casting algorithm
-    
     // Move to first point
-    ctx.moveTo({path->pts[0], path->pts[1]});
+    path.moveTo({svgPath->pts[0], svgPath->pts[1]});
 
     // Draw cubic bezier curves
-    for (int i = 1; i < path->npts - 1; i += 3) {
-        if (i + 2 < path->npts) {
-            ctx.bezierTo(
-                {path->pts[i*2], path->pts[i*2+1]},         // control point 1
-                {path->pts[(i+1)*2], path->pts[(i+1)*2+1]}, // control point 2
-                {path->pts[(i+2)*2], path->pts[(i+2)*2+1]}  // end point
+    for (int i = 1; i < svgPath->npts - 1; i += 3) {
+        if (i + 2 < svgPath->npts) {
+            path.bezierTo(
+                {svgPath->pts[i*2], svgPath->pts[i*2+1]},         // control point 1
+                {svgPath->pts[(i+1)*2], svgPath->pts[(i+1)*2+1]}, // control point 2
+                {svgPath->pts[(i+2)*2], svgPath->pts[(i+2)*2+1]}  // end point
             );
         }
     }
 
     // Close path if it's closed
-    if (path->closed) {
-        ctx.closePath();
+    if (svgPath->closed) {
+        path.close();
     }
+    
+    return path;
 }
 
 bool SVG::isPathSolid(NSVGpath* path) const {
@@ -303,7 +301,10 @@ void SVG::drawCheckerboardBackground(RenderContext& ctx, const Rect& bounds) con
         for (int x = 0; x < bounds.width; x += squareSize) {
             bool isEven = ((x / squareSize) + (y / squareSize)) % 2 == 0;
             Color color = isEven ? lightGray : darkGray;
-            ctx.drawRect({static_cast<float>(x) + bounds.x, static_cast<float>(y) + bounds.y, static_cast<float>(squareSize), static_cast<float>(squareSize)}, color);
+            Path path;
+            path.rect({static_cast<float>(x) + bounds.x, static_cast<float>(y) + bounds.y, static_cast<float>(squareSize), static_cast<float>(squareSize)});
+            ctx.setFillColor(color);
+            ctx.drawPath(path, true, false);
         }
     }
 }

@@ -42,20 +42,21 @@ struct ProgressIcon {
         float centerY = bounds.y + bounds.height / 2;
         float radius = (iconSize - strokeWidth) / 2;
 
-        // Draw shadow
-        Shadow shadow{0, 2, 4};
-        Rect shadowRect = {centerX - iconSize/2, centerY - iconSize/2, iconSize, iconSize};
-        ctx.drawShadow(shadowRect, iconSize/2, shadow);
-
         // Draw background circle
         Color bgColor = iconBackgroundColor;
-        ctx.drawCircle({centerX, centerY}, iconSize/2, bgColor);
+        Path bgPath;
+        bgPath.circle({centerX, centerY}, iconSize/2);
+        ctx.setFillColor(bgColor);
+        ctx.drawPath(bgPath, true, false);
 
         // Draw progress track (background ring)
         float trackRadius = radius;
         Color trackCol = trackColor;
-        StrokeStyle trackStyle = {trackCol, strokeWidth};
-        ctx.drawArc({centerX, centerY}, trackRadius, 0, 2 * M_PI, trackStyle);
+        Path trackPath;
+        trackPath.arc({centerX, centerY}, trackRadius, 0, 2 * M_PI);
+        ctx.setStrokeColor(trackCol);
+        ctx.setStrokeWidth(strokeWidth);
+        ctx.drawPath(trackPath, false, true);
 
         // Draw progress arc
         int progressVal = progress.get() >= 0 ? progress.get() : 100;
@@ -68,7 +69,11 @@ struct ProgressIcon {
         // Draw progress arc starting from top (-π/2) and going clockwise
         float startAngle = -M_PI / 2; // Start at top
         float endAngle = startAngle + progressAngle;
-        ctx.drawArc({centerX, centerY}, progressRadius, startAngle, endAngle, {progressCol, strokeWidth});
+        Path progressPath;
+        progressPath.arc({centerX, centerY}, progressRadius, startAngle, endAngle);
+        ctx.setStrokeColor(progressCol);
+        ctx.setStrokeWidth(strokeWidth);
+        ctx.drawPath(progressPath, false, true);
 
         Size textSize = ctx.measureText(textVal, 18, FontWeight::medium);
         Point textPos = {centerX, centerY};
@@ -105,7 +110,12 @@ struct Separator {
         float lineEndX = bounds.x + bounds.width - marginVal;
 
         // Draw the horizontal line
-        ctx.drawLine({lineStartX, lineY}, {lineEndX, lineY}, {lineColor, thicknessVal});
+        Path linePath;
+        linePath.moveTo({lineStartX, lineY});
+        linePath.lineTo({lineEndX, lineY});
+        ctx.setStrokeColor(lineColor);
+        ctx.setStrokeWidth(thicknessVal);
+        ctx.drawPath(linePath, false, true);
     }
 
     Size preferredSize(TextMeasurement& textMeasurer) const {

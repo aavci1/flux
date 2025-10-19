@@ -29,7 +29,7 @@ struct Button {
             opacityVal *= 0.5f;
         }
 
-        // Apply view decorations (but handle shadow separately for button styles)
+        // Apply view decorations
         ctx.save();
 
         // Apply transforms
@@ -88,20 +88,21 @@ struct Button {
                 break;
         }
 
-        // Draw shadow for elevated buttons
-        if (buttonStyle == ButtonStyle::primary || buttonStyle == ButtonStyle::secondary) {
-            Shadow buttonShadow = pressed ? Shadow{0, 1, 2} : Shadow{0, 2, 4};
-            ctx.drawShadow(layout, 6, buttonShadow);
-        }
-
         // Draw button background
         float radius = static_cast<float>(cornerRadius);
-        ctx.drawRoundedRect(layout, radius, bgColor);
+        Path bgPath;
+        bgPath.rect(layout, radius);
+        ctx.setFillColor(bgColor);
+        ctx.drawPath(bgPath, true, false);
 
         // Draw border for outlined style
         if (buttonStyle == ButtonStyle::outlined ||
             (buttonStyle == ButtonStyle::secondary && borderColor.a > 0)) {
-            ctx.drawRoundedRectBorder(layout, radius, borderColor, 1);
+            Path borderPath;
+            borderPath.rect(layout, radius);
+            ctx.setStrokeColor(borderColor);
+            ctx.setStrokeWidth(1);
+            ctx.drawPath(borderPath, false, true);
         }
 
         // Draw button text

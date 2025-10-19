@@ -204,129 +204,103 @@ void NanoVGRenderContext::setPathWinding(PathWinding winding) {
 // PATH BUILDING
 // ============================================================================
 
-void NanoVGRenderContext::beginPath() {
-    nvgBeginPath(nvgContext_);
-}
-
-void NanoVGRenderContext::closePath() {
-    nvgClosePath(nvgContext_);
-}
-
-void NanoVGRenderContext::moveTo(const Point& point) {
-    nvgMoveTo(nvgContext_, point.x, point.y);
-}
-
-void NanoVGRenderContext::lineTo(const Point& point) {
-    nvgLineTo(nvgContext_, point.x, point.y);
-}
-
-void NanoVGRenderContext::quadTo(const Point& control, const Point& end) {
-    nvgQuadTo(nvgContext_, control.x, control.y, end.x, end.y);
-}
-
-void NanoVGRenderContext::bezierTo(const Point& c1, const Point& c2, const Point& end) {
-    nvgBezierTo(nvgContext_, c1.x, c1.y, c2.x, c2.y, end.x, end.y);
-}
-
-void NanoVGRenderContext::arcTo(const Point& p1, const Point& p2, float radius) {
-    nvgArcTo(nvgContext_, p1.x, p1.y, p2.x, p2.y, radius);
-}
-
-void NanoVGRenderContext::arc(const Point& center, float radius, float startAngle, float endAngle, bool clockwise) {
-    nvgArc(nvgContext_, center.x, center.y, radius, startAngle, endAngle, clockwise ? NVG_CW : NVG_CCW);
-}
-
-// ============================================================================
-// PATH SHAPES
-// ============================================================================
-
-void NanoVGRenderContext::rect(const Rect& rect) {
-    nvgRect(nvgContext_, rect.x, rect.y, rect.width, rect.height);
-}
-
-void NanoVGRenderContext::roundedRect(const Rect& rect, float cornerRadius) {
-    nvgRoundedRect(nvgContext_, rect.x, rect.y, rect.width, rect.height, cornerRadius);
-}
-
-void NanoVGRenderContext::roundedRectVarying(const Rect& rect, float radTopLeft, float radTopRight,
-                                             float radBottomRight, float radBottomLeft) {
-    nvgRoundedRectVarying(nvgContext_, rect.x, rect.y, rect.width, rect.height,
-                          radTopLeft, radTopRight, radBottomRight, radBottomLeft);
-}
-
-void NanoVGRenderContext::circle(const Point& center, float radius) {
-    nvgCircle(nvgContext_, center.x, center.y, radius);
-}
-
-void NanoVGRenderContext::ellipse(const Point& center, float radiusX, float radiusY) {
-    nvgEllipse(nvgContext_, center.x, center.y, radiusX, radiusY);
-}
-
 // ============================================================================
 // PATH RENDERING
 // ============================================================================
 
-void NanoVGRenderContext::fill() {
-    nvgFill(nvgContext_);
-}
-
-void NanoVGRenderContext::stroke() {
-    nvgStroke(nvgContext_);
-}
-
-// ============================================================================
-// CONVENIENCE DRAWING METHODS
-// ============================================================================
-
-void NanoVGRenderContext::drawRect(const Rect& rect, const Color& color) {
+void NanoVGRenderContext::drawPath(const Path& path, bool fillPath, bool strokePath) {
+    if (path.isEmpty()) {
+        return;
+    }
+    
     nvgBeginPath(nvgContext_);
-    nvgRect(nvgContext_, rect.x, rect.y, rect.width, rect.height);
-    nvgFillColor(nvgContext_, toNVGColor(color));
-    nvgFill(nvgContext_);
-}
-
-void NanoVGRenderContext::drawRoundedRect(const Rect& rect, float cornerRadius, const Color& color) {
-    nvgBeginPath(nvgContext_);
-    nvgRoundedRect(nvgContext_, rect.x, rect.y, rect.width, rect.height, cornerRadius);
-    nvgFillColor(nvgContext_, toNVGColor(color));
-    nvgFill(nvgContext_);
-}
-
-void NanoVGRenderContext::drawRoundedRectBorder(const Rect& rect, float cornerRadius, const Color& color, float width) {
-    nvgBeginPath(nvgContext_);
-    nvgRoundedRect(nvgContext_, rect.x, rect.y, rect.width, rect.height, cornerRadius);
-    nvgStrokeColor(nvgContext_, toNVGColor(color));
-    nvgStrokeWidth(nvgContext_, width);
-    nvgStroke(nvgContext_);
-}
-
-void NanoVGRenderContext::drawCircle(const Point& center, float radius, const Color& color) {
-    nvgBeginPath(nvgContext_);
-    nvgCircle(nvgContext_, center.x, center.y, radius);
-    nvgFillColor(nvgContext_, toNVGColor(color));
-    nvgFill(nvgContext_);
-}
-
-void NanoVGRenderContext::drawEllipse(const Point& center, float radiusX, float radiusY, const Color& color) {
-    nvgBeginPath(nvgContext_);
-    nvgEllipse(nvgContext_, center.x, center.y, radiusX, radiusY);
-    nvgFillColor(nvgContext_, toNVGColor(color));
-    nvgFill(nvgContext_);
-}
-
-void NanoVGRenderContext::drawLine(const Point& start, const Point& end, const StrokeStyle& style) {
-    nvgBeginPath(nvgContext_);
-    nvgMoveTo(nvgContext_, start.x, start.y);
-    nvgLineTo(nvgContext_, end.x, end.y);
-    setStrokeStyle(style);
-    nvgStroke(nvgContext_);
-}
-
-void NanoVGRenderContext::drawArc(const Point& center, float radius, float startAngle, float endAngle, const StrokeStyle& style) {
-    nvgBeginPath(nvgContext_);
-    nvgArc(nvgContext_, center.x, center.y, radius, startAngle, endAngle, NVG_CW);
-    setStrokeStyle(style);
-    nvgStroke(nvgContext_);
+    
+    // Replay path commands to NanoVG
+    for (const auto& cmd : path.commands_) {
+        switch (cmd.type) {
+            case Path::CommandType::MoveTo:
+                if (cmd.data.size() >= 2) {
+                    nvgMoveTo(nvgContext_, cmd.data[0], cmd.data[1]);
+                }
+                break;
+                
+            case Path::CommandType::LineTo:
+                if (cmd.data.size() >= 2) {
+                    nvgLineTo(nvgContext_, cmd.data[0], cmd.data[1]);
+                }
+                break;
+                
+            case Path::CommandType::QuadTo:
+                if (cmd.data.size() >= 4) {
+                    nvgQuadTo(nvgContext_, cmd.data[0], cmd.data[1], cmd.data[2], cmd.data[3]);
+                }
+                break;
+                
+            case Path::CommandType::BezierTo:
+                if (cmd.data.size() >= 6) {
+                    nvgBezierTo(nvgContext_, cmd.data[0], cmd.data[1], cmd.data[2], 
+                               cmd.data[3], cmd.data[4], cmd.data[5]);
+                }
+                break;
+                
+            case Path::CommandType::ArcTo:
+                if (cmd.data.size() >= 5) {
+                    nvgArcTo(nvgContext_, cmd.data[0], cmd.data[1], cmd.data[2], cmd.data[3], cmd.data[4]);
+                }
+                break;
+                
+            case Path::CommandType::Arc:
+                if (cmd.data.size() >= 6) {
+                    bool clockwise = cmd.data[5] > 0.5f;
+                    nvgArc(nvgContext_, cmd.data[0], cmd.data[1], cmd.data[2], 
+                          cmd.data[3], cmd.data[4], clockwise ? NVG_CW : NVG_CCW);
+                }
+                break;
+                
+            case Path::CommandType::Rect:
+                if (cmd.data.size() >= 8) {
+                    float x = cmd.data[0];
+                    float y = cmd.data[1];
+                    float w = cmd.data[2];
+                    float h = cmd.data[3];
+                    CornerRadius cr(cmd.data[4], cmd.data[5], cmd.data[6], cmd.data[7]);
+                    
+                    if (cr.isZero()) {
+                        nvgRect(nvgContext_, x, y, w, h);
+                    } else if (cr.isUniform()) {
+                        nvgRoundedRect(nvgContext_, x, y, w, h, cr.topLeft);
+                    } else {
+                        nvgRoundedRectVarying(nvgContext_, x, y, w, h,
+                                            cr.topLeft, cr.topRight, cr.bottomRight, cr.bottomLeft);
+                    }
+                }
+                break;
+                
+            case Path::CommandType::Circle:
+                if (cmd.data.size() >= 3) {
+                    nvgCircle(nvgContext_, cmd.data[0], cmd.data[1], cmd.data[2]);
+                }
+                break;
+                
+            case Path::CommandType::Ellipse:
+                if (cmd.data.size() >= 4) {
+                    nvgEllipse(nvgContext_, cmd.data[0], cmd.data[1], cmd.data[2], cmd.data[3]);
+                }
+                break;
+                
+            case Path::CommandType::Close:
+                nvgClosePath(nvgContext_);
+                break;
+        }
+    }
+    
+    // Render the path
+    if (fillPath) {
+        nvgFill(nvgContext_);
+    }
+    if (strokePath) {
+        nvgStroke(nvgContext_);
+    }
 }
 
 // ============================================================================
@@ -451,36 +425,118 @@ void NanoVGRenderContext::deleteImage(int imageId) {
     nvgDeleteImage(nvgContext_, imageId);
 }
 
-void NanoVGRenderContext::drawImage(int imageId, const Rect& rect, float cornerRadius, float alpha) {
+void NanoVGRenderContext::drawImage(int imageId, const Rect& rect, ImageFit fit, 
+                                const CornerRadius& cornerRadius, float alpha) {
+    Size imageSize = getImageSize(imageId);
+    if (imageSize.width <= 0 || imageSize.height <= 0) {
+        return; // Invalid image
+    }
+
+    // Calculate the rect to use for the image pattern based on fit mode
+    Rect imageRect = rect;
+    
+    switch (fit) {
+        case ImageFit::Fill:
+            // Stretch to fill - use rect as-is
+            imageRect = rect;
+            break;
+            
+        case ImageFit::Cover: {
+            // Scale to cover entire area (may crop)
+            float scaleX = rect.width / imageSize.width;
+            float scaleY = rect.height / imageSize.height;
+            float scale = std::max(scaleX, scaleY);
+            
+            float scaledWidth = imageSize.width * scale;
+            float scaledHeight = imageSize.height * scale;
+            
+            float offsetX = (rect.width - scaledWidth) / 2;
+            float offsetY = (rect.height - scaledHeight) / 2;
+            
+            imageRect = Rect{
+                rect.x + offsetX,
+                rect.y + offsetY,
+                scaledWidth,
+                scaledHeight
+            };
+            break;
+        }
+            
+        case ImageFit::Contain: {
+            // Scale to fit inside (may letterbox)
+            float scaleX = rect.width / imageSize.width;
+            float scaleY = rect.height / imageSize.height;
+            float scale = std::min(scaleX, scaleY);
+            
+            float scaledWidth = imageSize.width * scale;
+            float scaledHeight = imageSize.height * scale;
+            
+            float offsetX = (rect.width - scaledWidth) / 2;
+            float offsetY = (rect.height - scaledHeight) / 2;
+            
+            imageRect = Rect{
+                rect.x + offsetX,
+                rect.y + offsetY,
+                scaledWidth,
+                scaledHeight
+            };
+            break;
+        }
+            
+        case ImageFit::None:
+            // Use original size, centered
+            float offsetX = (rect.width - imageSize.width) / 2;
+            float offsetY = (rect.height - imageSize.height) / 2;
+            
+            imageRect = Rect{
+                rect.x + offsetX,
+                rect.y + offsetY,
+                imageSize.width,
+                imageSize.height
+            };
+            break;
+    }
+
+    // Create fill style with image pattern
     FillStyle fillStyle;
     fillStyle.type = FillType::ImagePattern;
     fillStyle.imageId = imageId;
-    fillStyle.imageOrigin = rect.origin();
-    fillStyle.imageSize = rect.size();
+    fillStyle.imageOrigin = imageRect.origin();
+    fillStyle.imageSize = imageRect.size();
     fillStyle.imageAngle = 0.0f;
     fillStyle.imageAlpha = alpha;
 
+    // Draw the image
     nvgBeginPath(nvgContext_);
-    if (cornerRadius > 0) {
-        nvgRoundedRect(nvgContext_, rect.x, rect.y, rect.width, rect.height, cornerRadius);
-    } else {
+    if (cornerRadius.isZero()) {
         nvgRect(nvgContext_, rect.x, rect.y, rect.width, rect.height);
+    } else if (cornerRadius.isUniform()) {
+        nvgRoundedRect(nvgContext_, rect.x, rect.y, rect.width, rect.height, cornerRadius.topLeft);
+    } else {
+        nvgRoundedRectVarying(nvgContext_, rect.x, rect.y, rect.width, rect.height,
+                              cornerRadius.topLeft, cornerRadius.topRight,
+                              cornerRadius.bottomRight, cornerRadius.bottomLeft);
     }
     nvgFillPaint(nvgContext_, toNVGFillStyle(fillStyle));
     nvgFill(nvgContext_);
 }
 
-void NanoVGRenderContext::drawImage(const std::string& path, const Rect& rect, float cornerRadius) {
+void NanoVGRenderContext::drawImage(const std::string& path, const Rect& rect, ImageFit fit,
+                                const CornerRadius& cornerRadius, float alpha) {
     int imageId = createImage(path);
     if (imageId != -1) {
-        drawImage(imageId, rect, cornerRadius, 1.0f);
+        drawImage(imageId, rect, fit, cornerRadius, alpha);
     } else {
         // Draw placeholder
         nvgBeginPath(nvgContext_);
-        if (cornerRadius > 0) {
-            nvgRoundedRect(nvgContext_, rect.x, rect.y, rect.width, rect.height, cornerRadius);
-        } else {
+        if (cornerRadius.isZero()) {
             nvgRect(nvgContext_, rect.x, rect.y, rect.width, rect.height);
+        } else if (cornerRadius.isUniform()) {
+            nvgRoundedRect(nvgContext_, rect.x, rect.y, rect.width, rect.height, cornerRadius.topLeft);
+        } else {
+            nvgRoundedRectVarying(nvgContext_, rect.x, rect.y, rect.width, rect.height,
+                                  cornerRadius.topLeft, cornerRadius.topRight,
+                                  cornerRadius.bottomRight, cornerRadius.bottomLeft);
         }
         nvgFillColor(nvgContext_, nvgRGBA(200, 200, 200, 255));
         nvgFill(nvgContext_);
@@ -492,165 +548,19 @@ void NanoVGRenderContext::drawImage(const std::string& path, const Rect& rect, f
     }
 }
 
-// CSS-like image sizing methods
-void NanoVGRenderContext::drawImageCover(int imageId, const Rect& rect, float cornerRadius, float alpha) {
-    Size imageSize = getImageSize(imageId);
-    if (imageSize.width <= 0 || imageSize.height <= 0) {
-        return; // Invalid image
-    }
-
-    // Calculate scale factor to cover the entire area (CSS background-size: cover)
-    float scaleX = rect.width / imageSize.width;
-    float scaleY = rect.height / imageSize.height;
-    float scale = std::max(scaleX, scaleY); // Use max to ensure coverage
-
-    // Calculate scaled image dimensions
-    float scaledWidth = imageSize.width * scale;
-    float scaledHeight = imageSize.height * scale;
-
-    // Center the scaled image
-    float offsetX = (rect.width - scaledWidth) / 2;
-    float offsetY = (rect.height - scaledHeight) / 2;
-
-    Rect scaledRect = {
-        rect.x + offsetX,
-        rect.y + offsetY,
-        scaledWidth,
-        scaledHeight
-    };
-
-    // Draw the scaled image
-    FillStyle fillStyle;
-    fillStyle.type = FillType::ImagePattern;
-    fillStyle.imageId = imageId;
-    fillStyle.imageOrigin = scaledRect.origin();
-    fillStyle.imageSize = scaledRect.size();
-    fillStyle.imageAngle = 0.0f;
-    fillStyle.imageAlpha = alpha;
-
-    nvgBeginPath(nvgContext_);
-    if (cornerRadius > 0) {
-        nvgRoundedRect(nvgContext_, rect.x, rect.y, rect.width, rect.height, cornerRadius);
-    } else {
-        nvgRect(nvgContext_, rect.x, rect.y, rect.width, rect.height);
-    }
-    nvgFillPaint(nvgContext_, toNVGFillStyle(fillStyle));
-    nvgFill(nvgContext_);
-}
-
-void NanoVGRenderContext::drawImageCover(const std::string& path, const Rect& rect, float cornerRadius) {
-    int imageId = createImage(path);
-    if (imageId != -1) {
-        drawImageCover(imageId, rect, cornerRadius, 1.0f);
-    } else {
-        // Draw placeholder
-        nvgBeginPath(nvgContext_);
-        if (cornerRadius > 0) {
-            nvgRoundedRect(nvgContext_, rect.x, rect.y, rect.width, rect.height, cornerRadius);
-        } else {
-            nvgRect(nvgContext_, rect.x, rect.y, rect.width, rect.height);
-        }
-        nvgFillColor(nvgContext_, nvgRGBA(200, 200, 200, 255));
-        nvgFill(nvgContext_);
-    }
-}
-
-void NanoVGRenderContext::drawImageContain(int imageId, const Rect& rect, float cornerRadius, float alpha) {
-    Size imageSize = getImageSize(imageId);
-    if (imageSize.width <= 0 || imageSize.height <= 0) {
-        return; // Invalid image
-    }
-
-    // Calculate scale factor to fit within bounds (CSS background-size: contain)
-    float scaleX = rect.width / imageSize.width;
-    float scaleY = rect.height / imageSize.height;
-    float scale = std::min(scaleX, scaleY); // Use min to ensure it fits
-
-    // Calculate scaled image dimensions
-    float scaledWidth = imageSize.width * scale;
-    float scaledHeight = imageSize.height * scale;
-
-    // Center the scaled image
-    float offsetX = (rect.width - scaledWidth) / 2;
-    float offsetY = (rect.height - scaledHeight) / 2;
-
-    Rect scaledRect = {
-        rect.x + offsetX,
-        rect.y + offsetY,
-        scaledWidth,
-        scaledHeight
-    };
-
-    // Draw the scaled image
-    FillStyle fillStyle;
-    fillStyle.type = FillType::ImagePattern;
-    fillStyle.imageId = imageId;
-    fillStyle.imageOrigin = scaledRect.origin();
-    fillStyle.imageSize = scaledRect.size();
-    fillStyle.imageAngle = 0.0f;
-    fillStyle.imageAlpha = alpha;
-
-    nvgBeginPath(nvgContext_);
-    if (cornerRadius > 0) {
-        nvgRoundedRect(nvgContext_, rect.x, rect.y, rect.width, rect.height, cornerRadius);
-    } else {
-        nvgRect(nvgContext_, rect.x, rect.y, rect.width, rect.height);
-    }
-    nvgFillPaint(nvgContext_, toNVGFillStyle(fillStyle));
-    nvgFill(nvgContext_);
-}
-
-void NanoVGRenderContext::drawImageContain(const std::string& path, const Rect& rect, float cornerRadius) {
-    int imageId = createImage(path);
-    if (imageId != -1) {
-        drawImageContain(imageId, rect, cornerRadius, 1.0f);
-    } else {
-        // Draw placeholder
-        nvgBeginPath(nvgContext_);
-        if (cornerRadius > 0) {
-            nvgRoundedRect(nvgContext_, rect.x, rect.y, rect.width, rect.height, cornerRadius);
-        } else {
-            nvgRect(nvgContext_, rect.x, rect.y, rect.width, rect.height);
-        }
-        nvgFillColor(nvgContext_, nvgRGBA(200, 200, 200, 255));
-        nvgFill(nvgContext_);
-    }
-}
-
 // ============================================================================
 // CLIPPING
 // ============================================================================
 
-void NanoVGRenderContext::clipRect(const Rect& rect) {
-    nvgScissor(nvgContext_, rect.x, rect.y, rect.width, rect.height);
-}
-
-void NanoVGRenderContext::clipRoundedRect(const Rect& rect, float cornerRadius) {
-    nvgBeginPath(nvgContext_);
-    nvgRoundedRect(nvgContext_, rect.x, rect.y, rect.width, rect.height, cornerRadius);
-    nvgScissor(nvgContext_, rect.x, rect.y, rect.width, rect.height);
-}
-
-void NanoVGRenderContext::intersectClipRect(const Rect& rect) {
-    nvgIntersectScissor(nvgContext_, rect.x, rect.y, rect.width, rect.height);
+void NanoVGRenderContext::clipPath(const Path& path) {
+    // NanoVG doesn't support arbitrary path clipping, only rectangular scissors
+    // Use the bounding box of the path
+    Rect bounds = path.getBounds();
+    nvgIntersectScissor(nvgContext_, bounds.x, bounds.y, bounds.width, bounds.height);
 }
 
 void NanoVGRenderContext::resetClip() {
     nvgResetScissor(nvgContext_);
-}
-
-// ============================================================================
-// SHADOWS AND EFFECTS
-// ============================================================================
-
-void NanoVGRenderContext::drawShadow(const Rect& rect, float cornerRadius, const Shadow& shadow) {
-    NVGpaint shadowPaint = createShadowPaint(shadow);
-
-    nvgBeginPath(nvgContext_);
-    nvgRoundedRect(nvgContext_, rect.x + shadow.offsetX, rect.y + shadow.offsetY,
-                   rect.width, rect.height, cornerRadius);
-    nvgFillPaint(nvgContext_, shadowPaint);
-    nvgFill(nvgContext_);
 }
 
 // ============================================================================
@@ -768,14 +678,6 @@ NVGpaint NanoVGRenderContext::toNVGFillStyle(const FillStyle& fillStyle) const {
         default:
             return nvgLinearGradient(nvgContext_, 0, 0, 0, 0, toNVGColor(fillStyle.color), toNVGColor(fillStyle.color));
     }
-}
-
-NVGpaint NanoVGRenderContext::createShadowPaint(const Shadow& shadow) const {
-    Color shadowColor = shadow.color;
-    shadowColor.a *= shadow.opacity;
-
-    NVGcolor nvgShadowColor = nvgRGBAf(shadowColor.r, shadowColor.g, shadowColor.b, shadowColor.a);
-    return nvgBoxGradient(nvgContext_, 0, 0, 0, 0, shadow.blurRadius, shadow.blurRadius, nvgShadowColor, nvgRGBA(0, 0, 0, 0));
 }
 
 int NanoVGRenderContext::getFont(const std::string& fontName, FontWeight weight) {

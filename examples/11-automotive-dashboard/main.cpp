@@ -118,15 +118,13 @@ struct MediaPlayerButton {
 
         auto radius = fmin(bounds.width, bounds.height) / 2;
 
-        ctx.beginPath();
-        ctx.arc(bounds.center(), radius, 0, 2 * M_PI, false);
-        ctx.closePath();
+        Path circlePath;
+        circlePath.arc(bounds.center(), radius, 0, 2 * M_PI, false);
+        circlePath.close();
 
         ctx.setFillStyle(FillStyle::solid(Color::hex(0x4A90E2).opacity(0.3)));
-        ctx.fill();
-
         ctx.setStrokeStyle(StrokeStyle::solid(Color::hex(0x4A90E2).opacity(0.7)));
-        ctx.stroke();
+        ctx.drawPath(circlePath, true, true);
     }
 
     Size preferredSize(TextMeasurement& textMeasurer) const {

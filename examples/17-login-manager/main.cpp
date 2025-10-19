@@ -22,11 +22,16 @@ struct UserAvatar {
 
         // Draw circular background with gradient-like effect
         Color bgColor = Color::hex(0x4A90E2); // Blue gradient start
-        ctx.drawCircle(bounds.center(), radius, bgColor);
+        Path path;
+        path.circle(bounds.center(), radius);
+        ctx.setFillStyle(FillStyle::solid(bgColor));
+        ctx.drawPath(path, true, false);
 
         // Draw border
-        StrokeStyle borderStyle = StrokeStyle::solid(static_cast<Color>(avatarBorderColor), static_cast<float>(avatarBorderWidth));
-        ctx.drawArc(bounds.center(), radius, 0, 2 * M_PI, borderStyle);
+        Path borderPath;
+        borderPath.arc(bounds.center(), radius, 0, 2 * M_PI);
+        ctx.setStrokeStyle(StrokeStyle::solid(static_cast<Color>(avatarBorderColor), static_cast<float>(avatarBorderWidth)));
+        ctx.drawPath(borderPath, false, true);
 
         // Draw user initial
         std::string initial = static_cast<std::string>(username).substr(0, 1);
@@ -57,22 +62,35 @@ struct PasswordField {
         ViewHelpers::renderView(*this, ctx, bounds);
 
         // Draw glass background with multiple layers
+        float radius = static_cast<float>(fieldCornerRadius);
+        
         // Layer 1: Darker base
         Color darkBase = Color(0.0f, 0.0f, 0.0f, 0.1f);
-        ctx.drawRoundedRect(bounds, static_cast<float>(fieldCornerRadius), darkBase);
+        Path path;
+        path.rect(bounds, radius);
+        ctx.setFillStyle(FillStyle::solid(darkBase));
+        ctx.drawPath(path, true, false);
 
         // Layer 2: Main glass background
         Color bgColor = static_cast<Color>(fieldBackgroundColor);
-        ctx.drawRoundedRect(bounds, static_cast<float>(fieldCornerRadius), bgColor);
+        Path path2;
+        path2.rect(bounds, radius);
+        ctx.setFillStyle(FillStyle::solid(bgColor));
+        ctx.drawPath(path2, true, false);
 
         // Layer 3: Subtle highlight at top
         Color highlight = Color(1.0f, 1.0f, 1.0f, 0.1f);
         Rect highlightRect = {bounds.x, bounds.y, bounds.width, bounds.height * 0.4f};
-        ctx.drawRoundedRect(highlightRect, static_cast<float>(fieldCornerRadius), highlight);
+        Path path3;
+        path3.rect(highlightRect, radius);
+        ctx.setFillStyle(FillStyle::solid(highlight));
+        ctx.drawPath(path3, true, false);
 
         // Draw border
-        ctx.drawRoundedRectBorder(bounds, static_cast<float>(fieldCornerRadius),
-                                 static_cast<Color>(fieldBorderColor), static_cast<float>(fieldBorderWidth));
+        Path path4;
+        path4.rect(bounds, radius);
+        ctx.setStrokeStyle(StrokeStyle::solid(static_cast<Color>(fieldBorderColor), static_cast<float>(fieldBorderWidth)));
+        ctx.drawPath(path4, false, true);
 
         // Draw placeholder or password dots
         std::string displayText = static_cast<std::string>(value).empty() ?
@@ -105,20 +123,22 @@ struct SubmitButton {
 
         // Draw circular button
         Color bgColor = static_cast<Color>(buttonBackgroundColor);
-        ctx.drawRoundedRect(bounds, static_cast<float>(buttonCornerRadius), bgColor);
+        Path path;
+        path.rect(bounds, static_cast<float>(buttonCornerRadius));
+        ctx.setFillStyle(FillStyle::solid(bgColor));
+        ctx.drawPath(path, true, false);
 
         // Draw arrow icon (simple triangle)
         Point center = bounds.center();
         float arrowSize = 12.0f;
 
         // Draw right-pointing arrow
-        StrokeStyle arrowStyle = StrokeStyle::solid(Color::hex(0x333333), 3.0f);
-        ctx.drawLine({center.x - arrowSize/2, center.y - arrowSize/2},
-                    {center.x + arrowSize/2, center.y},
-                    arrowStyle);
-        ctx.drawLine({center.x - arrowSize/2, center.y + arrowSize/2},
-                    {center.x + arrowSize/2, center.y},
-                    arrowStyle);
+        Path path2;
+        path2.moveTo({center.x - arrowSize/2, center.y - arrowSize/2});
+        path2.lineTo({center.x + arrowSize/2, center.y});
+        path2.lineTo({center.x - arrowSize/2, center.y + arrowSize/2});
+        ctx.setStrokeStyle(StrokeStyle::solid(Color::hex(0x333333), 3.0f));
+        ctx.drawPath(path2, false, true);
     }
 
     Size preferredSize(TextMeasurement& /* textMeasurer */) const {
@@ -140,8 +160,10 @@ struct ActionButton {
         ViewHelpers::renderView(*this, ctx, bounds);
 
         // Draw circular border
-        StrokeStyle borderStyle = StrokeStyle::solid(static_cast<Color>(buttonBorderColor), static_cast<float>(buttonBorderWidth));
-        ctx.drawArc(bounds.center(), bounds.width / 2, 0, 2 * M_PI, borderStyle);
+        Path path;
+        path.arc(bounds.center(), bounds.width / 2, 0, 2 * M_PI);
+        ctx.setStrokeStyle(StrokeStyle::solid(static_cast<Color>(buttonBorderColor), static_cast<float>(buttonBorderWidth)));
+        ctx.drawPath(path, false, true);
 
         // Draw icon based on action type
         std::string actionType = static_cast<std::string>(action);
@@ -156,33 +178,42 @@ struct ActionButton {
         } else if (actionType == "restart") {
             // Draw circular arrow
             float radius = 15.0f;
-            StrokeStyle circleStyle = StrokeStyle::solid(Colors::white, 2.0f);
-            ctx.drawArc(center, radius, 0, 2 * M_PI, circleStyle);
+            Path path;
+            path.arc(center, radius, 0, 2 * M_PI);
+            ctx.setStrokeStyle(StrokeStyle::solid(Colors::white, 2.0f));
+            ctx.drawPath(path, false, true);
             // Draw arrow head
-            StrokeStyle arrowStyle = StrokeStyle::solid(Colors::white, 3.0f);
-            ctx.drawLine({center.x + radius - 5, center.y},
-                        {center.x + radius + 5, center.y},
-                        arrowStyle);
+            Path path2;
+            path2.moveTo({center.x + radius - 5, center.y});
+            path2.lineTo({center.x + radius + 5, center.y});
+            ctx.setStrokeStyle(StrokeStyle::solid(Colors::white, 3.0f));
+            ctx.drawPath(path2, false, true);
         } else if (actionType == "shutdown") {
             // Draw power symbol
             float radius = 15.0f;
-            StrokeStyle circleStyle = StrokeStyle::solid(Colors::white, 2.0f);
-            ctx.drawArc(center, radius, 0, 2 * M_PI, circleStyle);
+            Path path;
+            path.arc(center, radius, 0, 2 * M_PI);
+            ctx.setStrokeStyle(StrokeStyle::solid(Colors::white, 2.0f));
+            ctx.drawPath(path, false, true);
             // Draw vertical line
-            StrokeStyle lineStyle = StrokeStyle::solid(Colors::white, 3.0f);
-            ctx.drawLine({center.x, center.y - radius + 5},
-                        {center.x, center.y + radius - 5},
-                        lineStyle);
+            Path path2;
+            path2.moveTo({center.x, center.y - radius + 5});
+            path2.lineTo({center.x, center.y + radius - 5});
+            ctx.setStrokeStyle(StrokeStyle::solid(Colors::white, 3.0f));
+            ctx.drawPath(path2, false, true);
         } else if (actionType == "switch") {
             // Draw double arrow
             float arrowSize = 8.0f;
-            StrokeStyle arrowStyle = StrokeStyle::solid(Colors::white, 3.0f);
-            ctx.drawLine({center.x - arrowSize, center.y},
-                        {center.x + arrowSize, center.y},
-                        arrowStyle);
-            ctx.drawLine({center.x - arrowSize, center.y - 5},
-                        {center.x + arrowSize, center.y - 5},
-                        arrowStyle);
+            Path path;
+            path.moveTo({center.x - arrowSize, center.y});
+            path.lineTo({center.x + arrowSize, center.y});
+            ctx.setStrokeStyle(StrokeStyle::solid(Colors::white, 3.0f));
+            ctx.drawPath(path, false, true);
+            Path path2;
+            path2.moveTo({center.x - arrowSize, center.y - 5});
+            path2.lineTo({center.x + arrowSize, center.y - 5});
+            ctx.setStrokeStyle(StrokeStyle::solid(Colors::white, 3.0f));
+            ctx.drawPath(path2, false, true);
         }
     }
 

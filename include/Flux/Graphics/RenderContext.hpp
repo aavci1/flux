@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Flux/Core/Types.hpp>
+#include <Flux/Graphics/Path.hpp>
 #include <string>
 #include <vector>
 
@@ -36,6 +37,13 @@ enum class CompositeOperation {
     Lighter,             // Lighter of source and destination
     Copy,                // Copy source
     Xor                  // Exclusive or
+};
+
+enum class ImageFit {
+    Fill,      // Stretch to fill rect (may distort aspect ratio)
+    Contain,   // Scale to fit inside rect (maintains aspect, may letterbox)
+    Cover,     // Scale to cover entire rect (maintains aspect, may crop)
+    None       // Use original size, no scaling
 };
 
 enum class FillType {
@@ -165,11 +173,12 @@ struct StrokeStyle {
         return style;
     }
 
-    static StrokeStyle dashed(const Color& color, float width, const std::vector<float>& pattern) {
+    static StrokeStyle dashed(const Color& color, float width, const std::vector<float>& pattern, float dashOffset = 0.0f) {
         StrokeStyle style;
         style.color = color;
         style.width = width;
         style.dashPattern = pattern;
+        style.dashOffset = dashOffset;
         return style;
     }
 
@@ -321,48 +330,16 @@ public:
 
 
     // ============================================================================
-    // PATH BUILDING
-    // ============================================================================
-
-    virtual void beginPath() = 0;
-    virtual void closePath() = 0;
-    virtual void moveTo(const Point& point) = 0;
-    virtual void lineTo(const Point& point) = 0;
-    virtual void quadTo(const Point& control, const Point& end) = 0;
-    virtual void bezierTo(const Point& c1, const Point& c2, const Point& end) = 0;
-    virtual void arcTo(const Point& p1, const Point& p2, float radius) = 0;
-    virtual void arc(const Point& center, float radius, float startAngle, float endAngle, bool clockwise = false) = 0;
-
-    // ============================================================================
-    // PATH SHAPES
-    // ============================================================================
-
-    virtual void rect(const Rect& rect) = 0;
-    virtual void roundedRect(const Rect& rect, float cornerRadius) = 0;
-    virtual void roundedRectVarying(const Rect& rect, float radTopLeft, float radTopRight,
-                                    float radBottomRight, float radBottomLeft) = 0;
-    virtual void circle(const Point& center, float radius) = 0;
-    virtual void ellipse(const Point& center, float radiusX, float radiusY) = 0;
-
-    // ============================================================================
     // PATH RENDERING
     // ============================================================================
 
-    virtual void fill() = 0;
-    virtual void stroke() = 0;
-
-    // ============================================================================
-    // CONVENIENCE DRAWING METHODS (using current styles)
-    // ============================================================================
-
-    virtual void drawRect(const Rect& rect, const Color& color) = 0;
-    virtual void drawRoundedRect(const Rect& rect, float cornerRadius, const Color& color) = 0;
-    virtual void drawRoundedRectBorder(const Rect& rect, float cornerRadius,
-                                       const Color& color, float width) = 0;
-    virtual void drawCircle(const Point& center, float radius, const Color& color) = 0;
-    virtual void drawEllipse(const Point& center, float radiusX, float radiusY, const Color& color) = 0;
-    virtual void drawLine(const Point& start, const Point& end, const StrokeStyle& style) = 0;
-    virtual void drawArc(const Point& center, float radius, float startAngle, float endAngle, const StrokeStyle& style) = 0;
+    /**
+     * Draw a path to the screen using current fill and/or stroke styles
+     * @param path The path to draw
+     * @param fill Whether to fill the path (default: true)
+     * @param stroke Whether to stroke the path (default: false)
+     */
+    virtual void drawPath(const Path& path, bool fill = true, bool stroke = false) = 0;
 
     // ============================================================================
     // TEXT RENDERING
@@ -381,7 +358,6 @@ public:
                          FontWeight weight = FontWeight::regular,
                          HorizontalAlignment hAlign = HorizontalAlignment::leading,
                          VerticalAlignment vAlign = VerticalAlignment::center) = 0;
-
     virtual void drawTextBox(const std::string& text, const Point& position, float breakWidth, const TextStyle& style) = 0;
     virtual Size measureText(const std::string& text, const TextStyle& style) = 0;
     virtual Size measureText(const std::string& text, float fontSize, FontWeight weight = FontWeight::regular) = 0;
@@ -397,29 +373,31 @@ public:
     virtual void updateImage(int imageId, const unsigned char* data) = 0;
     virtual Size getImageSize(int imageId) = 0;
     virtual void deleteImage(int imageId) = 0;
-    virtual void drawImage(int imageId, const Rect& rect, float cornerRadius = 0, float alpha = 1.0f) = 0;
-    virtual void drawImage(const std::string& path, const Rect& rect, float cornerRadius = 0) = 0;
-
-    // CSS-like image sizing methods
-    virtual void drawImageCover(int imageId, const Rect& rect, float cornerRadius = 0, float alpha = 1.0f) = 0;
-    virtual void drawImageCover(const std::string& path, const Rect& rect, float cornerRadius = 0) = 0;
-    virtual void drawImageContain(int imageId, const Rect& rect, float cornerRadius = 0, float alpha = 1.0f) = 0;
-    virtual void drawImageContain(const std::string& path, const Rect& rect, float cornerRadius = 0) = 0;
+    
+    // Unified image rendering with ImageFit enum and CornerRadius
+    virtual void drawImage(int imageId, const Rect& rect, 
+                          ImageFit fit = ImageFit::Fill,
+                          const CornerRadius& cornerRadius = CornerRadius(),
+                          float alpha = 1.0f) = 0;
+    virtual void drawImage(const std::string& path, const Rect& rect,
+                          ImageFit fit = ImageFit::Fill,
+                          const CornerRadius& cornerRadius = CornerRadius(),
+                          float alpha = 1.0f) = 0;
 
     // ============================================================================
     // CLIPPING
     // ============================================================================
 
-    virtual void clipRect(const Rect& rect) = 0;
-    virtual void clipRoundedRect(const Rect& rect, float cornerRadius) = 0;
-    virtual void intersectClipRect(const Rect& rect) = 0;
+    /**
+     * Clip rendering to the given path
+     * @param path The path defining the clipping region
+     */
+    virtual void clipPath(const Path& path) = 0;
+    
+    /**
+     * Reset clipping to the full render area
+     */
     virtual void resetClip() = 0;
-
-    // ============================================================================
-    // SHADOWS AND EFFECTS
-    // ============================================================================
-
-    virtual void drawShadow(const Rect& rect, float cornerRadius, const Shadow& shadow) = 0;
 
     // ============================================================================
     // UTILITIES

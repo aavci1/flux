@@ -21,7 +21,6 @@ struct Spacer {
     Property<float> scaleX = 1.0;
     Property<float> scaleY = 1.0;
     Property<Point> offset = Point{0, 0};
-    Property<Shadow> shadow = Shadow{};
     Property<float> expansionBias = 1.0f;
     Property<float> compressionBias = 1.0f;
 

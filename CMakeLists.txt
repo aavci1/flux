@@ -129,6 +129,7 @@ endif()
 set(FLUX_SOURCES
     src/Core/Application.cpp
     src/Core/Window.cpp
+    src/Graphics/Path.cpp
     src/Graphics/NanoVGRenderer.cpp
     src/Graphics/NanoVGRenderContext.cpp
     src/Views/SVG.cpp
