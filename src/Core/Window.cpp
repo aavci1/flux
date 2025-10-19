@@ -3,7 +3,13 @@
 #include <Flux/Graphics/Renderer.hpp>
 #include <Flux/Graphics/RenderContext.hpp>
 #include <Flux/Platform/PlatformWindow.hpp> // Include PlatformWindow header
-#include <Flux/Platform/GLFWWindow.hpp>
+
+#if defined(__linux__) && !defined(__ANDROID__)
+    #include <Flux/Platform/WaylandWindow.hpp>
+#else
+    #include <Flux/Platform/GLFWWindow.hpp>
+#endif
+
 #include <iostream>
 #include <cstdlib>
 
@@ -27,7 +33,23 @@ Window::Window(const WindowConfig& config)
 
     // Initialize the appropriate backend
     if (backendToUse == WindowBackend::Default) {
-        // Create GLFW window and use its render context
+#if defined(__linux__) && !defined(__ANDROID__)
+        // Create Wayland window on Linux
+        platformWindow_ = std::make_unique<WaylandWindow>(
+            config.title,
+            config.size,
+            config.resizable,
+            config.fullscreen
+        );
+
+        // Set the Flux Window reference in the WaylandWindow for resize callbacks
+        static_cast<WaylandWindow*>(platformWindow_.get())->setFluxWindow(this);
+
+        renderContext_.reset(); // PlatformWindow owns the render context
+        renderer_ = std::make_unique<ImmediateModeRenderer>(platformWindow_->renderContext());
+        std::cout << "[WINDOW] Using Wayland + NanoVG backend\n";
+#else
+        // Create GLFW window on macOS and Windows
         platformWindow_ = std::make_unique<GLFWWindow>(
             config.title,
             config.size,
@@ -41,6 +63,7 @@ Window::Window(const WindowConfig& config)
         renderContext_.reset(); // PlatformWindow owns the render context
         renderer_ = std::make_unique<ImmediateModeRenderer>(platformWindow_->renderContext());
         std::cout << "[WINDOW] Using GLFW + NanoVG backend\n";
+#endif
     } else {
         throw std::runtime_error("Unsupported backend. Please use WindowBackend::Default or WindowBackend::Auto.");
     }

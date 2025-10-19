@@ -1,6 +1,13 @@
 #include <Flux/Platform/NanoVGRenderer.hpp>
 #include <Flux/Graphics/NanoVGRenderContext.hpp>
-#define NANOVG_GL2_IMPLEMENTATION
+
+// Platform-specific NanoVG backend
+#if defined(__linux__) && !defined(__ANDROID__)
+    #define NANOVG_GLES2_IMPLEMENTATION
+#else
+    #define NANOVG_GL2_IMPLEMENTATION
+#endif
+
 #include <nanovg_gl.h>
 #include <iostream>
 #include <stdexcept>
@@ -21,8 +28,13 @@ bool NanoVGRenderer::initialize(int width, int height, float dpiScaleX, float dp
     dpiScaleX_ = dpiScaleX;
     dpiScaleY_ = dpiScaleY;
 
-    // Initialize NanoVG with OpenGL backend
+    // Initialize NanoVG with platform-specific backend
+#if defined(__linux__) && !defined(__ANDROID__)
+    nvgContext_ = nvgCreateGLES2(NVG_ANTIALIAS | NVG_STENCIL_STROKES);
+#else
     nvgContext_ = nvgCreateGL2(NVG_ANTIALIAS | NVG_STENCIL_STROKES);
+#endif
+    
     if (!nvgContext_) {
         std::cerr << "[NanoVGRenderer] Failed to initialize NanoVG\n";
         return false;
@@ -41,7 +53,11 @@ void NanoVGRenderer::cleanup() {
     renderContext_.reset();
 
     if (nvgContext_) {
+#if defined(__linux__) && !defined(__ANDROID__)
+        nvgDeleteGLES2(nvgContext_);
+#else
         nvgDeleteGL2(nvgContext_);
+#endif
         nvgContext_ = nullptr;
     }
 }

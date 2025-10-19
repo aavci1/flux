@@ -6,8 +6,14 @@
 #include <algorithm>
 
 #include <Flux/Platform/PlatformWindow.hpp>
-#include <Flux/Platform/GLFWWindow.hpp>
-#include <GLFW/glfw3.h> // Include GLFW header for event polling
+
+#if defined(__linux__) && !defined(__ANDROID__)
+    #include <Flux/Platform/WaylandWindow.hpp>
+    #include <wayland-client.h>
+#else
+    #include <Flux/Platform/GLFWWindow.hpp>
+    #include <GLFW/glfw3.h> // Include GLFW header for event polling
+#endif
 
 namespace flux {
 
@@ -61,6 +67,23 @@ void Application::unregisterWindow(Window* window) {
 }
 
 void Application::processEvents() {
+#if defined(__linux__) && !defined(__ANDROID__)
+    // Process Wayland events
+    for (auto* window : windows_) {
+        if (window->backend() == WindowBackend::Default) {
+            auto* waylandWin = dynamic_cast<WaylandWindow*>(window->platformWindow());
+            if (waylandWin && waylandWin->display()) {
+                // Process pending events without blocking
+                while (wl_display_prepare_read(waylandWin->display()) != 0) {
+                    wl_display_dispatch_pending(waylandWin->display());
+                }
+                wl_display_flush(waylandWin->display());
+                wl_display_read_events(waylandWin->display());
+                wl_display_dispatch_pending(waylandWin->display());
+            }
+        }
+    }
+#else
     // Process GLFW events
     glfwPollEvents();
 
@@ -74,6 +97,7 @@ void Application::processEvents() {
             }
         }
     }
+#endif
 }
 
 void Application::waitForNextFrame() {

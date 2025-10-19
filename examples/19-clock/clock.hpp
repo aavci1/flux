@@ -1,5 +1,6 @@
 #include <Flux.hpp>
 #include <iostream>
+#include <cmath>
 
 using namespace flux;
 
@@ -40,10 +41,10 @@ struct Clock {
         auto hourTickWidth = 6.0f;
         for (int i = 0; i < 12; i++) {
             auto angle = i * 2 * M_PI / 12;
-            auto x1 = bounds.center().x + (radius - 20 - hourTickLength) * static_cast<float>(cos(angle));
-            auto y1 = bounds.center().y + (radius - 20 - hourTickLength) * static_cast<float>(sin(angle));
-            auto x2 = bounds.center().x + (radius - 20) * static_cast<float>(cos(angle));
-            auto y2 = bounds.center().y + (radius - 20) * static_cast<float>(sin(angle));
+            float x1 = bounds.center().x + (radius - 20 - hourTickLength) * static_cast<float>(cos(angle));
+            float y1 = bounds.center().y + (radius - 20 - hourTickLength) * static_cast<float>(sin(angle));
+            float x2 = bounds.center().x + (radius - 20) * static_cast<float>(cos(angle));
+            float y2 = bounds.center().y + (radius - 20) * static_cast<float>(sin(angle));
 
             ctx.beginPath();
             ctx.moveTo({ x1, y1 });
@@ -58,10 +59,10 @@ struct Clock {
         auto minuteTickWidth = 2.0f;
         for (int i = 0; i < 60; i++) {
             auto angle = i * 2 * M_PI / 60;
-            auto x1 = bounds.center().x + (radius - 20 - minuteTickLength) * static_cast<float>(cos(angle));
-            auto y1 = bounds.center().y + (radius - 20 - minuteTickLength) * static_cast<float>(sin(angle));
-            auto x2 = bounds.center().x + (radius - 20) * static_cast<float>(cos(angle));
-            auto y2 = bounds.center().y + (radius - 20) * static_cast<float>(sin(angle));
+            float x1 = bounds.center().x + (radius - 20 - minuteTickLength) * static_cast<float>(cos(angle));
+            float y1 = bounds.center().y + (radius - 20 - minuteTickLength) * static_cast<float>(sin(angle));
+            float x2 = bounds.center().x + (radius - 20) * static_cast<float>(cos(angle));
+            float y2 = bounds.center().y + (radius - 20) * static_cast<float>(sin(angle));
 
             ctx.beginPath();
             ctx.moveTo({ x1, y1 });
@@ -74,8 +75,8 @@ struct Clock {
         // numbers
         for (int i = 1; i <= 12; i++) {
             auto angle = i * 30 * M_PI / 180 - M_PI / 2;
-            auto x = bounds.center().x + (radius * 0.7f) * static_cast<float>(cos(angle));
-            auto y = bounds.center().y + (radius * 0.7f) * static_cast<float>(sin(angle));
+            float x = bounds.center().x + (radius * 0.7f) * static_cast<float>(cos(angle));
+            float y = bounds.center().y + (radius * 0.7f) * static_cast<float>(sin(angle));
             ctx.drawText(std::to_string(i), { x, y }, TextStyle::centered("bold", 72.0f, Colors::black));
         }
 
