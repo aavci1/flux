@@ -25,10 +25,12 @@ struct Text {
         // Draw text
         EdgeInsets paddingVal = padding;
 
+        // Set text style
+        ctx.setTextStyle(TextStyle::regular("default", static_cast<float>(fontSize)));
+        ctx.setFillStyle(FillStyle::solid(color));
+        
         // Measure text for alignment calculations
-        Size textSize = ctx.measureText(static_cast<std::string>(value),
-                                       static_cast<float>(fontSize),
-                                       static_cast<FontWeight>(fontWeight));
+        Size textSize = ctx.measureText(static_cast<std::string>(value), TextStyle::regular("default", static_cast<float>(fontSize)));
 
         Point textPos = {
             bounds.x + paddingVal.left,
@@ -64,7 +66,7 @@ struct Text {
                 textPos.y = bounds.y + paddingVal.top;
                 break;
             case VerticalAlignment::center:
-                textPos.y = bounds.y + bounds.height / 2;
+                textPos.y = bounds.y + bounds.height / 2 + 0.075f * static_cast<float>(fontSize);
                 break;
             case VerticalAlignment::bottom:
                 textPos.y = bounds.y + bounds.height - paddingVal.bottom;
@@ -72,16 +74,7 @@ struct Text {
         }
 
         // Draw the text using the new method that supports both horizontal and vertical alignment
-        Color textColor = color;
-        ctx.drawText(
-            static_cast<std::string>(value),
-            textPos,
-            static_cast<float>(fontSize),
-            textColor,
-            static_cast<FontWeight>(fontWeight),
-            hAlign,
-            vAlign
-        );
+        ctx.drawText(static_cast<std::string>(value), textPos, hAlign, vAlign);
     }
 
     Size preferredSize(TextMeasurement& textMeasurer) const {
@@ -90,7 +83,7 @@ struct Text {
         EdgeInsets paddingVal = padding;
 
         // Use accurate measurement from renderer
-        Size textSize = textMeasurer.measureText(text, fontSz, static_cast<FontWeight>(fontWeight));
+        Size textSize = textMeasurer.measureText(text, TextStyle::regular("default", fontSz));
         return {textSize.width + paddingVal.horizontal(),
                 textSize.height + paddingVal.vertical()};
     }

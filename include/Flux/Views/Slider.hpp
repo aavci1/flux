@@ -15,32 +15,27 @@ struct Slider {
         ViewHelpers::renderView(*this, ctx, bounds);
 
         // Draw progress line
-        Path progressPath;
-        progressPath.moveTo({ bounds.x, bounds.y + bounds.height / 2 });
-        progressPath.lineTo({ bounds.x + bounds.width * this->value, bounds.y + bounds.height / 2 });
+        ctx.setFillStyle(FillStyle::none());
         ctx.setStrokeStyle(StrokeStyle {
             .color = Colors::blue,
             .width = 4.0f,
             .cap = LineCap::Round
         });
-        ctx.drawPath(progressPath, false, true);
+        ctx.drawLine({ bounds.x, bounds.y + bounds.height / 2 }, { bounds.x + bounds.width * this->value, bounds.y + bounds.height / 2 });
 
         // Draw remaining line
-        Path remainingPath;
-        remainingPath.moveTo({ bounds.x + bounds.width * this->value, bounds.y + bounds.height / 2 });
-        remainingPath.lineTo({ bounds.x + bounds.width, bounds.y + bounds.height / 2 });
+        ctx.setFillStyle(FillStyle::none());
         ctx.setStrokeStyle(StrokeStyle {
             .color = Colors::gray,
             .width = 4.0f,
             .cap = LineCap::Round
         });
-        ctx.drawPath(remainingPath, false, true);
+        ctx.drawLine({ bounds.x + bounds.width * this->value, bounds.y + bounds.height / 2 }, { bounds.x + bounds.width, bounds.y + bounds.height / 2 });
 
         // Draw thumb
-        Path thumbPath;
-        thumbPath.circle({ bounds.x + bounds.width * this->value, bounds.y + bounds.height / 2 }, 6);
-        ctx.setFillColor(Colors::blue);
-        ctx.drawPath(thumbPath, true, false);
+        ctx.setFillStyle(FillStyle::solid(Colors::blue));
+        ctx.setStrokeStyle(StrokeStyle::none());
+        ctx.drawCircle({ bounds.x + bounds.width * this->value, bounds.y + bounds.height / 2 }, 6);
     }
 };
 

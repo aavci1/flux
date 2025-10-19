@@ -258,8 +258,6 @@ if(BUILD_EXAMPLES)
     add_executable(hello_world examples/01-hello-world/main.cpp)
     target_link_libraries(hello_world PRIVATE flux)
 
-    add_executable(stack_demo examples/02-stack-alignment-demo/main.cpp)
-    target_link_libraries(stack_demo PRIVATE flux)
 
     add_executable(counter examples/03-counter/main.cpp)
     target_link_libraries(counter PRIVATE flux)
@@ -270,11 +268,7 @@ if(BUILD_EXAMPLES)
     add_executable(colors_and_theming examples/05-colors-and-theming/main.cpp)
     target_link_libraries(colors_and_theming PRIVATE flux)
 
-    add_executable(media_player examples/06-media-player/main.cpp)
-    target_link_libraries(media_player PRIVATE flux)
 
-    add_executable(dashboard examples/08-dashboard/main.cpp)
-    target_link_libraries(dashboard PRIVATE flux)
 
     add_executable(flexbox_demo examples/09-flexbox-demo/main.cpp)
     target_link_libraries(flexbox_demo PRIVATE flux)
@@ -285,11 +279,7 @@ if(BUILD_EXAMPLES)
     add_executable(automotive_dashboard examples/11-automotive-dashboard/main.cpp)
     target_link_libraries(automotive_dashboard PRIVATE flux)
 
-    add_executable(nanovg_demo examples/12-nanovg-demo/main.cpp)
-    target_link_libraries(nanovg_demo PRIVATE flux)
 
-    add_executable(resize_test examples/13-resize-test/main.cpp)
-    target_link_libraries(resize_test PRIVATE flux)
 
     add_executable(svg_demo examples/14-svg-demo/main.cpp)
     target_link_libraries(svg_demo PRIVATE flux)

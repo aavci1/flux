@@ -8,6 +8,42 @@
 
 using namespace flux;
 
+struct StatusCard {
+    FLUX_VIEW_PROPERTIES;
+
+    Property<int> count;
+    Property<std::string> status;
+    Property<Color> textColor = Colors::white;
+
+    View body() const {
+        return VStack {
+            .padding = 32,
+            .spacing = 32,
+            .backgroundColor = backgroundColor,
+            .borderWidth = 2,
+            .borderColor = borderColor,
+            .cornerRadius = 16,
+            .expansionBias = 1.0f,
+            .children = {
+                Text {
+                    .value = std::to_string(count),
+                    .color = textColor,
+                    .fontSize = 56,
+                    .fontWeight = FontWeight::bold,
+                    .horizontalAlignment = HorizontalAlignment::leading
+                },
+                Text {
+                    .value = status,
+                    .color = textColor,
+                    .fontSize = 21,
+                    .fontWeight = FontWeight::bold,
+                    .horizontalAlignment = HorizontalAlignment::leading
+                }
+            }
+        };
+    }
+};
+
 // ProgressIcon - Circular progress indicator component
 struct CalendarIcon {
     FLUX_VIEW_PROPERTIES;
@@ -44,19 +80,14 @@ struct ProgressIcon {
 
         // Draw background circle
         Color bgColor = iconBackgroundColor;
-        Path bgPath;
-        bgPath.circle({centerX, centerY}, iconSize/2);
-        ctx.setFillColor(bgColor);
-        ctx.drawPath(bgPath, true, false);
+        ctx.setFillStyle(FillStyle::solid(bgColor));
+        ctx.drawCircle({centerX, centerY}, iconSize/2);
 
         // Draw progress track (background ring)
         float trackRadius = radius;
         Color trackCol = trackColor;
-        Path trackPath;
-        trackPath.arc({centerX, centerY}, trackRadius, 0, 2 * M_PI);
-        ctx.setStrokeColor(trackCol);
-        ctx.setStrokeWidth(strokeWidth);
-        ctx.drawPath(trackPath, false, true);
+        ctx.setStrokeStyle(StrokeStyle::solid(trackCol, strokeWidth));
+        ctx.drawArc({centerX, centerY}, trackRadius, 0, 2 * M_PI);
 
         // Draw progress arc
         int progressVal = progress.get() >= 0 ? progress.get() : 100;
@@ -69,16 +100,16 @@ struct ProgressIcon {
         // Draw progress arc starting from top (-π/2) and going clockwise
         float startAngle = -M_PI / 2; // Start at top
         float endAngle = startAngle + progressAngle;
-        Path progressPath;
-        progressPath.arc({centerX, centerY}, progressRadius, startAngle, endAngle);
-        ctx.setStrokeColor(progressCol);
-        ctx.setStrokeWidth(strokeWidth);
-        ctx.drawPath(progressPath, false, true);
+        ctx.setStrokeStyle(StrokeStyle::solid(progressCol, strokeWidth));
+        ctx.drawArc({centerX, centerY}, progressRadius, startAngle, endAngle);
 
-        Size textSize = ctx.measureText(textVal, 18, FontWeight::medium);
+        // Set text style for progress text
+        ctx.setTextStyle(TextStyle::regular("default", 18));
+        ctx.setFillStyle(FillStyle::solid(textColor));
+        
+        Size textSize = ctx.measureText(textVal, TextStyle::regular("default", 18));
         Point textPos = {centerX, centerY};
-        Color txtColor = textColor;
-        ctx.drawText(textVal, textPos, 18, txtColor, FontWeight::medium, HorizontalAlignment::center, VerticalAlignment::center);
+        ctx.drawText(textVal, textPos, HorizontalAlignment::center, VerticalAlignment::center);
     }
 
     Size preferredSize(TextMeasurement& textMeasurer) const {
@@ -115,7 +146,8 @@ struct Separator {
         linePath.lineTo({lineEndX, lineY});
         ctx.setStrokeColor(lineColor);
         ctx.setStrokeWidth(thicknessVal);
-        ctx.drawPath(linePath, false, true);
+        ctx.setFillStyle(FillStyle::none());
+        ctx.drawPath(linePath);
     }
 
     Size preferredSize(TextMeasurement& textMeasurer) const {
@@ -164,6 +196,14 @@ int main(int argc, char* argv[]) {
         .title = "Task Manager"
     });
 
+    auto countTasks = [&](TaskStatus status) {
+        int count = 0;
+        for (const auto& task : static_cast<std::vector<TodoItem>>(todos)) {
+            if (task.status == status) count++;
+        }
+        return count;
+    };
+
     window.setRootView(
         VStack {
             .backgroundColor = Color::hex(0xF8F8F8),
@@ -173,101 +213,33 @@ int main(int argc, char* argv[]) {
                 HStack {
                     .spacing = 16,
                     .children = {
-                        // To do card
-                        VStack {
-                            .padding = 32,
-                            .spacing = 32,
+                        StatusCard {
                             .backgroundColor = Color::hex(0x313F4D),
-                            .borderWidth = 2,
                             .borderColor = Color::hex(0xF8F8F8),
-                            .cornerRadius = 16,
+                            .textColor = Colors::white,
                             .expansionBias = 1.0f,
-                            .children = {
-                                Text {
-                                    .value = [&]() {
-                                        int count = 0;
-                                        for (const auto& task : static_cast<std::vector<TodoItem>>(todos)) {
-                                            if (task.status == TaskStatus::todo) count++;
-                                        }
-                                        return std::to_string(count);
-                                    },
-                                    .color = Colors::white,
-                                    .fontSize = 56,
-                                    .fontWeight = FontWeight::bold,
-                                    .horizontalAlignment = HorizontalAlignment::leading
-                                },
-                                Text {
-                                    .value = "To do",
-                                    .color = Colors::lightGray,
-                                    .fontSize = 21,
-                                    .fontWeight = FontWeight::bold,
-                                    .horizontalAlignment = HorizontalAlignment::leading
-                                }
-                            }
+                            .count = [&]() {
+                                return countTasks(TaskStatus::todo);
+                            },
+                            .status = "To do",
                         },
-                        // On going card
-                        VStack {
-                            .padding = 32,
-                            .spacing = 32,
+                        StatusCard {
                             .backgroundColor = Color::hex(0xF1F3F4),
-                            .borderWidth = 2,
                             .borderColor = Color::hex(0xE0E1E2),
-                            .cornerRadius = 16,
-                            .expansionBias = 1.0f,
-                            .children = {
-                                Text {
-                                    .value = [&]() {
-                                        int count = 0;
-                                        for (const auto& task : static_cast<std::vector<TodoItem>>(todos)) {
-                                            if (task.status == TaskStatus::ongoing) count++;
-                                        }
-                                        return std::to_string(count);
-                                    },
-                                    .color = Color::hex(0x37393B),
-                                    .fontSize = 56,
-                                    .fontWeight = FontWeight::bold,
-                                    .horizontalAlignment = HorizontalAlignment::leading
-                                },
-                                Text {
-                                    .value = "On going",
-                                    .color = Color::hex(0x555759),
-                                    .fontSize = 21,
-                                    .fontWeight = FontWeight::bold,
-                                    .horizontalAlignment = HorizontalAlignment::leading
-                                }
-                            }
+                            .textColor = Color::hex(0x37393B),
+                            .count = [&]() {
+                                return countTasks(TaskStatus::ongoing);
+                            },
+                            .status = "On going",
                         },
-                        // On review card
-                        VStack {
-                            .padding = 32,
-                            .spacing = 32,
+                        StatusCard {
                             .backgroundColor = Color::hex(0xF1F3F4),
-                            .borderWidth = 2,
                             .borderColor = Color::hex(0xE0E1E2),
-                            .cornerRadius = 16,
-                            .expansionBias = 1.0f,
-                            .children = {
-                                Text {
-                                    .value = [&]() {
-                                        int count = 0;
-                                        for (const auto& task : static_cast<std::vector<TodoItem>>(todos)) {
-                                            if (task.status == TaskStatus::review) count++;
-                                        }
-                                        return std::to_string(count);
-                                    },
-                                    .color = Color::hex(0x37393B),
-                                    .fontSize = 56,
-                                    .fontWeight = FontWeight::bold,
-                                    .horizontalAlignment = HorizontalAlignment::leading
-                                },
-                                Text {
-                                    .value = "On review",
-                                    .color = Color::hex(0x555759),
-                                    .fontSize = 21,
-                                    .fontWeight = FontWeight::bold,
-                                    .horizontalAlignment = HorizontalAlignment::leading
-                                }
-                            }
+                            .textColor = Color::hex(0x37393B),
+                            .count = [&]() {
+                                return countTasks(TaskStatus::review);
+                            },
+                            .status = "On review",
                         }
                     }
                 },

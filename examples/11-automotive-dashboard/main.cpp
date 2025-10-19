@@ -124,7 +124,7 @@ struct MediaPlayerButton {
 
         ctx.setFillStyle(FillStyle::solid(Color::hex(0x4A90E2).opacity(0.3)));
         ctx.setStrokeStyle(StrokeStyle::solid(Color::hex(0x4A90E2).opacity(0.7)));
-        ctx.drawPath(circlePath, true, true);
+        ctx.drawPath(circlePath);
     }
 
     Size preferredSize(TextMeasurement& textMeasurer) const {
@@ -276,7 +276,7 @@ int main(int argc, char* argv[]) {
     Application app(argc, argv);
 
     Window window({
-        .size = {1200, 800},
+        .size = {1600, 1200},
         .title = "Automotive Dashboard"
     });
 

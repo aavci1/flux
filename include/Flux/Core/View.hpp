@@ -157,21 +157,10 @@ public:
         return std::make_unique<ViewAdapter<T>>(component);
     }
 
-    bool isVisible() const override {
-        return component.visible;
-    }
-
-    bool shouldClip() const override {
-        return component.clip;
-    }
-
-    float getExpansionBias() const override {
-        return component.expansionBias;
-    }
-
-    float getCompressionBias() const override {
-        return component.compressionBias;
-    }
+    bool isVisible() const override;
+    bool shouldClip() const override;
+    float getExpansionBias() const override;
+    float getCompressionBias() const override;
 
     std::string getTypeName() const override {
         return demangleTypeName(typeid(T).name());
@@ -326,12 +315,17 @@ inline View ViewAdapter<T>::body() const {
 
 template<ViewComponent T>
 inline void ViewAdapter<T>::render(RenderContext& ctx, const Rect& bounds) const {
-    if constexpr (has_render<T>::value) {
+    if constexpr (has_body<T>::value) {
+        // If view has body(), render the body recursively (no parent decorations)
+        View bodyView = component.body();
+        if (bodyView.isValid()) {
+            bodyView.render(ctx, bounds);
+        }
+    } else if constexpr (has_render<T>::value) {
         component.render(ctx, bounds);
     } else {
         // Default: apply basic view decorations
         // Note: children rendering is now handled by the renderer using LayoutNode.children
-        // No more body() calls here - results are stored in LayoutNode and reused
         ViewHelpers::renderView(component, ctx, bounds);
     }
 }
@@ -340,6 +334,15 @@ template<ViewComponent T>
 inline Size ViewAdapter<T>::preferredSize(TextMeasurement& textMeasurer) const {
     if constexpr (has_preferredSize<T>::value) {
         return component.preferredSize(textMeasurer);
+    } else if constexpr (has_body<T>::value) {
+        // If component has body() but no preferredSize(), use preferredSize of body()
+        View bodyView = component.body();
+        if (bodyView.isValid()) {
+            return bodyView.preferredSize(textMeasurer);
+        }
+        // Fallback: minimal size with padding
+        EdgeInsets paddingVal = component.padding;
+        return {paddingVal.horizontal(), paddingVal.vertical()};
     } else {
         // Default: minimal size with padding
         EdgeInsets paddingVal = component.padding;
@@ -353,6 +356,74 @@ inline bool ViewAdapter<T>::hasChildrenProperty() const {
         return true;
     }
     return false;
+}
+
+template<ViewComponent T>
+inline bool ViewAdapter<T>::isVisible() const {
+    // If component has body(), inherit visible from body unless explicitly overridden
+    if constexpr (has_body<T>::value) {
+        View bodyView = component.body();
+        if (bodyView.isValid()) {
+            // If component's visible is not the default (true), use component's value
+            if (static_cast<bool>(component.visible) != true) {
+                return component.visible;
+            }
+            // Otherwise, use body's visible property
+            return bodyView->isVisible();
+        }
+    }
+    return component.visible;
+}
+
+template<ViewComponent T>
+inline bool ViewAdapter<T>::shouldClip() const {
+    // If component has body(), inherit clip from body unless explicitly overridden
+    if constexpr (has_body<T>::value) {
+        View bodyView = component.body();
+        if (bodyView.isValid()) {
+            // If component's clip is not the default (false), use component's value
+            if (static_cast<bool>(component.clip) != false) {
+                return component.clip;
+            }
+            // Otherwise, use body's clip property
+            return bodyView->shouldClip();
+        }
+    }
+    return component.clip;
+}
+
+template<ViewComponent T>
+inline float ViewAdapter<T>::getExpansionBias() const {
+    // If component has body(), inherit expansionBias from body unless explicitly overridden
+    if constexpr (has_body<T>::value) {
+        View bodyView = component.body();
+        if (bodyView.isValid()) {
+            // If component's expansionBias is not the default (0.0f), use component's value
+            if (static_cast<float>(component.expansionBias) != 0.0f) {
+                return component.expansionBias;
+            }
+            // Otherwise, use body's expansionBias property
+            return bodyView->getExpansionBias();
+        }
+    }
+    return component.expansionBias;
+}
+
+template<ViewComponent T>
+inline float ViewAdapter<T>::getCompressionBias() const {
+    // If component has body(), inherit compressionBias from body unless explicitly overridden
+    if constexpr (has_body<T>::value) {
+        View bodyView = component.body();
+        if (bodyView.isValid()) {
+            // If component's compressionBias is not the default (1.0f), use component's value
+            if (static_cast<float>(component.compressionBias) != 1.0f) {
+                return component.compressionBias;
+            }
+            // Otherwise, use body's compressionBias property
+            return bodyView->getCompressionBias();
+        }
+    }
+    return component.compressionBias;
 }
 
 template<ViewComponent T>

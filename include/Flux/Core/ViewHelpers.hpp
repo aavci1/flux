@@ -47,13 +47,12 @@ inline void renderView(const ViewType& view, RenderContext& ctx, const Rect& bou
     // Draw background
     Color bgColor = view.backgroundColor;
     if (bgColor.a > 0) {
-        Path path;
-        path.rect(bounds, static_cast<float>(view.cornerRadius));
-        ctx.setFillColor(bgColor);
-        ctx.drawPath(path, true, false);
+        ctx.setFillStyle(FillStyle::solid(bgColor));
+        ctx.setStrokeStyle(StrokeStyle::none());
+        ctx.drawRect(bounds, CornerRadius(static_cast<float>(view.cornerRadius)));
     }
 
-    // Draw background image if present
+    // // Draw background image if present
     BackgroundImage bgImage = view.backgroundImage;
     if (bgImage.isValid()) {
         // Simple background image rendering for now
@@ -79,11 +78,9 @@ inline void renderView(const ViewType& view, RenderContext& ctx, const Rect& bou
     float borderWidth = view.borderWidth;
     Color borderColor = view.borderColor;
     if (borderWidth > 0 && borderColor.a > 0) {
-        Path path;
-        path.rect(bounds, static_cast<float>(view.cornerRadius));
-        ctx.setStrokeColor(borderColor);
-        ctx.setStrokeWidth(borderWidth);
-        ctx.drawPath(path, false, true);
+        ctx.setFillStyle(FillStyle::none());
+        ctx.setStrokeStyle(StrokeStyle::solid(borderColor, borderWidth));
+        ctx.drawRect(bounds, CornerRadius(static_cast<float>(view.cornerRadius)));
     }
 
     ctx.restore();

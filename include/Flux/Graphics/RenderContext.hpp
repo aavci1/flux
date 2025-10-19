@@ -45,18 +45,18 @@ enum class ImageFit {
     Cover,     // Scale to cover entire rect (maintains aspect, may crop)
     None       // Use original size, no scaling
 };
-
-enum class FillType {
-    Solid,              // Solid color fill
-    LinearGradient,     // Linear gradient fill
-    RadialGradient,     // Radial gradient fill
-    BoxGradient,        // Box gradient fill (rounded rectangle)
-    ImagePattern        // Image/texture pattern fill
-};
-
 // Unified fill style configuration
 struct FillStyle {
-    FillType type = FillType::Solid;
+    enum class Type {
+        None,               // No fill
+        Solid,              // Solid color fill
+        LinearGradient,     // Linear gradient fill
+        RadialGradient,     // Radial gradient fill
+        BoxGradient,        // Box gradient fill (rounded rectangle)
+        ImagePattern        // Image/texture pattern fill
+    };
+    
+    Type type = Type::Solid;
     PathWinding winding = PathWinding::CounterClockwise;
 
     // ============================================================================
@@ -97,9 +97,15 @@ struct FillStyle {
     // FACTORY METHODS
     // ============================================================================
 
+    static FillStyle none() {
+        FillStyle style;
+        style.type = Type::None;
+        return style;
+    }
+
     static FillStyle solid(const Color& color) {
         FillStyle style;
-        style.type = FillType::Solid;
+        style.type = Type::Solid;
         style.color = color;
         return style;
     }
@@ -107,7 +113,7 @@ struct FillStyle {
     static FillStyle linearGradient(const Point& start, const Point& end,
                                     const Color& startColor, const Color& endColor) {
         FillStyle style;
-        style.type = FillType::LinearGradient;
+        style.type = Type::LinearGradient;
         style.startPoint = start;
         style.endPoint = end;
         style.startColor = startColor;
@@ -118,7 +124,7 @@ struct FillStyle {
     static FillStyle radialGradient(const Point& center, float innerRadius, float outerRadius,
                                     const Color& startColor, const Color& endColor) {
         FillStyle style;
-        style.type = FillType::RadialGradient;
+        style.type = Type::RadialGradient;
         style.center = center;
         style.innerRadius = innerRadius;
         style.outerRadius = outerRadius;
@@ -130,7 +136,7 @@ struct FillStyle {
     static FillStyle boxGradient(const Rect& bounds, float cornerRadius, float feather,
                                  const Color& innerColor, const Color& outerColor) {
         FillStyle style;
-        style.type = FillType::BoxGradient;
+        style.type = Type::BoxGradient;
         style.bounds = bounds;
         style.cornerRadius = cornerRadius;
         style.feather = feather;
@@ -142,7 +148,7 @@ struct FillStyle {
     static FillStyle imagePattern(int imageId, const Point& origin, const Size& size,
                                   float angle = 0.0f, float alpha = 1.0f) {
         FillStyle style;
-        style.type = FillType::ImagePattern;
+        style.type = Type::ImagePattern;
         style.imageId = imageId;
         style.imageOrigin = origin;
         style.imageSize = size;
@@ -154,6 +160,15 @@ struct FillStyle {
 
 // Stroke style configuration
 struct StrokeStyle {
+    enum class Type {
+        None,           // No stroke
+        Solid,          // Solid stroke
+        Dashed,         // Dashed stroke
+        Rounded,        // Rounded caps and joins
+        Square          // Square caps
+    };
+    
+    Type type = Type::Solid;
     Color color = Colors::black;
     float width = 1.0f;
     LineCap cap = LineCap::Butt;
@@ -166,8 +181,15 @@ struct StrokeStyle {
     // FACTORY METHODS
     // ============================================================================
 
+    static StrokeStyle none() {
+        StrokeStyle style;
+        style.type = Type::None;
+        return style;
+    }
+
     static StrokeStyle solid(const Color& color, float width = 1.0f) {
         StrokeStyle style;
+        style.type = Type::Solid;
         style.color = color;
         style.width = width;
         return style;
@@ -175,6 +197,7 @@ struct StrokeStyle {
 
     static StrokeStyle dashed(const Color& color, float width, const std::vector<float>& pattern, float dashOffset = 0.0f) {
         StrokeStyle style;
+        style.type = Type::Dashed;
         style.color = color;
         style.width = width;
         style.dashPattern = pattern;
@@ -184,6 +207,7 @@ struct StrokeStyle {
 
     static StrokeStyle rounded(const Color& color, float width) {
         StrokeStyle style;
+        style.type = Type::Rounded;
         style.color = color;
         style.width = width;
         style.cap = LineCap::Round;
@@ -193,6 +217,7 @@ struct StrokeStyle {
 
     static StrokeStyle square(const Color& color, float width) {
         StrokeStyle style;
+        style.type = Type::Square;
         style.color = color;
         style.width = width;
         style.cap = LineCap::Square;
@@ -208,60 +233,32 @@ struct TextStyle {
     float size = 16.0f;
     float letterSpacing = 0.0f;
     float lineHeight = 1.0f;
-    float blur = 0.0f;
-    HorizontalAlignment hAlign = HorizontalAlignment::leading;
-    VerticalAlignment vAlign = VerticalAlignment::center;
-    Color color = Colors::black;
-    FillStyle fillStyle = FillStyle{.type = FillType::Solid, .color = Colors::black}; // For gradient text (optional)
 
     // ============================================================================
     // FACTORY METHODS
     // ============================================================================
 
-    static TextStyle regular(const std::string& fontName, float size, const Color& color) {
+    static TextStyle regular(const std::string& fontName, float size) {
         TextStyle style;
         style.fontName = fontName;
         style.size = size;
-        style.color = color;
         style.weight = FontWeight::regular;
         return style;
     }
 
-    static TextStyle bold(const std::string& fontName, float size, const Color& color) {
+    static TextStyle bold(const std::string& fontName, float size) {
         TextStyle style;
         style.fontName = fontName;
         style.size = size;
-        style.color = color;
         style.weight = FontWeight::bold;
         return style;
     }
 
-    static TextStyle light(const std::string& fontName, float size, const Color& color) {
+    static TextStyle light(const std::string& fontName, float size) {
         TextStyle style;
         style.fontName = fontName;
         style.size = size;
-        style.color = color;
         style.weight = FontWeight::light;
-        return style;
-    }
-
-    static TextStyle gradient(const std::string& fontName, float size, const FillStyle& fillStyle) {
-        TextStyle style;
-        style.fontName = fontName;
-        style.size = size;
-        style.fillStyle = fillStyle;
-        style.weight = FontWeight::regular;
-        return style;
-    }
-
-    static TextStyle centered(const std::string& fontName, float size, const Color& color) {
-        TextStyle style;
-        style.fontName = fontName;
-        style.size = size;
-        style.color = color;
-        style.weight = FontWeight::regular;
-        style.hAlign = HorizontalAlignment::center;
-        style.vAlign = VerticalAlignment::center;
         return style;
     }
 };
@@ -324,9 +321,9 @@ public:
     // FILL STYLING
     // ============================================================================
 
-    virtual void setFillStyle(const FillStyle& style) = 0;
     virtual void setFillColor(const Color& color) = 0;
     virtual void setPathWinding(PathWinding winding) = 0;
+    virtual void setFillStyle(const FillStyle& style) = 0;
 
 
     // ============================================================================
@@ -334,12 +331,53 @@ public:
     // ============================================================================
 
     /**
-     * Draw a path to the screen using current fill and/or stroke styles
+     * Draw a path to the screen using current fill and stroke styles
      * @param path The path to draw
-     * @param fill Whether to fill the path (default: true)
-     * @param stroke Whether to stroke the path (default: false)
      */
-    virtual void drawPath(const Path& path, bool fill = true, bool stroke = false) = 0;
+    virtual void drawPath(const Path& path) = 0;
+
+    // ============================================================================
+    // DIRECT SHAPE DRAWING (using current styles)
+    // ============================================================================
+
+    /**
+     * Draw a circle using current fill and stroke styles
+     * @param center Center point of the circle
+     * @param radius Radius of the circle
+     */
+    virtual void drawCircle(const Point& center, float radius) = 0;
+
+    /**
+     * Draw a line using current stroke style (no fill applied)
+     * @param start Start point of the line
+     * @param end End point of the line
+     */
+    virtual void drawLine(const Point& start, const Point& end) = 0;
+
+    /**
+     * Draw a rectangle using current fill and stroke styles
+     * @param rect Rectangle bounds
+     * @param cornerRadius Corner radius for rounded rectangles (default: no rounding)
+     */
+    virtual void drawRect(const Rect& rect, const CornerRadius& cornerRadius = CornerRadius()) = 0;
+
+    /**
+     * Draw an ellipse using current fill and stroke styles
+     * @param center Center point of the ellipse
+     * @param radiusX Horizontal radius
+     * @param radiusY Vertical radius
+     */
+    virtual void drawEllipse(const Point& center, float radiusX, float radiusY) = 0;
+
+    /**
+     * Draw an arc using current fill and stroke styles
+     * @param center Center point of the arc
+     * @param radius Radius of the arc
+     * @param startAngle Start angle in radians
+     * @param endAngle End angle in radians
+     * @param clockwise On whether to draw clockwise (default: false)
+     */
+    virtual void drawArc(const Point& center, float radius, float startAngle, float endAngle, bool clockwise = false) = 0;
 
     // ============================================================================
     // TEXT RENDERING
@@ -350,17 +388,10 @@ public:
     virtual void setFontBlur(float blur) = 0;
     virtual void setLetterSpacing(float spacing) = 0;
     virtual void setLineHeight(float height) = 0;
-    virtual void setTextAlign(HorizontalAlignment hAlign, VerticalAlignment vAlign = VerticalAlignment::center) = 0;
     virtual void setTextStyle(const TextStyle& style) = 0;
 
-    virtual void drawText(const std::string& text, const Point& position, const TextStyle& style) = 0;
-    virtual void drawText(const std::string& text, const Point& position, float fontSize, const Color& color,
-                         FontWeight weight = FontWeight::regular,
-                         HorizontalAlignment hAlign = HorizontalAlignment::leading,
-                         VerticalAlignment vAlign = VerticalAlignment::center) = 0;
-    virtual void drawTextBox(const std::string& text, const Point& position, float breakWidth, const TextStyle& style) = 0;
+    virtual void drawText(const std::string& text, const Point& position, HorizontalAlignment hAlign, VerticalAlignment vAlign) = 0;
     virtual Size measureText(const std::string& text, const TextStyle& style) = 0;
-    virtual Size measureText(const std::string& text, float fontSize, FontWeight weight = FontWeight::regular) = 0;
     virtual Rect getTextBounds(const std::string& text, const Point& position, const TextStyle& style) = 0;
 
     // ============================================================================

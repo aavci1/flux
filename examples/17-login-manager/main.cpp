@@ -25,20 +25,20 @@ struct UserAvatar {
         Path path;
         path.circle(bounds.center(), radius);
         ctx.setFillStyle(FillStyle::solid(bgColor));
-        ctx.drawPath(path, true, false);
+        ctx.drawPath(path);
 
         // Draw border
         Path borderPath;
         borderPath.arc(bounds.center(), radius, 0, 2 * M_PI);
         ctx.setStrokeStyle(StrokeStyle::solid(static_cast<Color>(avatarBorderColor), static_cast<float>(avatarBorderWidth)));
-        ctx.drawPath(borderPath, false, true);
+        ctx.drawPath(borderPath);
 
         // Draw user initial
         std::string initial = static_cast<std::string>(username).substr(0, 1);
-        TextStyle textStyle = TextStyle::bold("Arial", 48, Colors::white);
-        textStyle.hAlign = HorizontalAlignment::center;
-        textStyle.vAlign = VerticalAlignment::center;
-        ctx.drawText(initial, bounds.center(), textStyle);
+        TextStyle textStyle = TextStyle::bold("Arial", 48);
+        ctx.setTextStyle(textStyle);
+        ctx.setFillStyle(FillStyle{.type = FillStyle::Type::Solid, .color = Colors::white});
+        ctx.drawText(initial, bounds.center(), HorizontalAlignment::center, VerticalAlignment::center);
     }
 
     Size preferredSize(TextMeasurement& /* textMeasurer */) const {
@@ -69,14 +69,14 @@ struct PasswordField {
         Path path;
         path.rect(bounds, radius);
         ctx.setFillStyle(FillStyle::solid(darkBase));
-        ctx.drawPath(path, true, false);
+        ctx.drawPath(path);
 
         // Layer 2: Main glass background
         Color bgColor = static_cast<Color>(fieldBackgroundColor);
         Path path2;
         path2.rect(bounds, radius);
         ctx.setFillStyle(FillStyle::solid(bgColor));
-        ctx.drawPath(path2, true, false);
+        ctx.drawPath(path2);
 
         // Layer 3: Subtle highlight at top
         Color highlight = Color(1.0f, 1.0f, 1.0f, 0.1f);
@@ -84,25 +84,23 @@ struct PasswordField {
         Path path3;
         path3.rect(highlightRect, radius);
         ctx.setFillStyle(FillStyle::solid(highlight));
-        ctx.drawPath(path3, true, false);
+        ctx.drawPath(path3);
 
         // Draw border
         Path path4;
         path4.rect(bounds, radius);
         ctx.setStrokeStyle(StrokeStyle::solid(static_cast<Color>(fieldBorderColor), static_cast<float>(fieldBorderWidth)));
-        ctx.drawPath(path4, false, true);
+        ctx.drawPath(path4);
 
         // Draw placeholder or password dots
         std::string displayText = static_cast<std::string>(value).empty() ?
                                  static_cast<std::string>(placeholder) :
                                  std::string(static_cast<std::string>(value).length(), '*');
 
-        TextStyle textStyle = TextStyle::regular("Arial", 16, Colors::white);
-        textStyle.hAlign = HorizontalAlignment::leading;
-        textStyle.vAlign = VerticalAlignment::center;
-        ctx.drawText(displayText,
-                    {bounds.x + 20, bounds.center().y},
-                    textStyle);
+        TextStyle textStyle = TextStyle::regular("Arial", 16);
+        ctx.setTextStyle(textStyle);
+        ctx.setFillStyle(FillStyle{.type = FillStyle::Type::Solid, .color = Colors::white});
+        ctx.drawText(displayText, {bounds.x + 20, bounds.center().y}, HorizontalAlignment::leading, VerticalAlignment::center);
     }
 
     Size preferredSize(TextMeasurement& /* textMeasurer */) const {
@@ -126,7 +124,7 @@ struct SubmitButton {
         Path path;
         path.rect(bounds, static_cast<float>(buttonCornerRadius));
         ctx.setFillStyle(FillStyle::solid(bgColor));
-        ctx.drawPath(path, true, false);
+        ctx.drawPath(path);
 
         // Draw arrow icon (simple triangle)
         Point center = bounds.center();
@@ -138,7 +136,7 @@ struct SubmitButton {
         path2.lineTo({center.x + arrowSize/2, center.y});
         path2.lineTo({center.x - arrowSize/2, center.y + arrowSize/2});
         ctx.setStrokeStyle(StrokeStyle::solid(Color::hex(0x333333), 3.0f));
-        ctx.drawPath(path2, false, true);
+        ctx.drawPath(path2);
     }
 
     Size preferredSize(TextMeasurement& /* textMeasurer */) const {
@@ -163,7 +161,7 @@ struct ActionButton {
         Path path;
         path.arc(bounds.center(), bounds.width / 2, 0, 2 * M_PI);
         ctx.setStrokeStyle(StrokeStyle::solid(static_cast<Color>(buttonBorderColor), static_cast<float>(buttonBorderWidth)));
-        ctx.drawPath(path, false, true);
+        ctx.drawPath(path);
 
         // Draw icon based on action type
         std::string actionType = static_cast<std::string>(action);
@@ -171,36 +169,36 @@ struct ActionButton {
 
         if (actionType == "emergency") {
             // Draw "E" symbol
-            TextStyle textStyle = TextStyle::bold("Arial", 20, Colors::white);
-            textStyle.hAlign = HorizontalAlignment::center;
-            textStyle.vAlign = VerticalAlignment::center;
-            ctx.drawText("E", center, textStyle);
+            TextStyle textStyle = TextStyle::bold("Arial", 20);
+            ctx.setTextStyle(textStyle);
+            ctx.setFillStyle(FillStyle{.type = FillStyle::Type::Solid, .color = Colors::white});
+            ctx.drawText("E", center, HorizontalAlignment::center, VerticalAlignment::center);
         } else if (actionType == "restart") {
             // Draw circular arrow
             float radius = 15.0f;
             Path path;
             path.arc(center, radius, 0, 2 * M_PI);
             ctx.setStrokeStyle(StrokeStyle::solid(Colors::white, 2.0f));
-            ctx.drawPath(path, false, true);
+            ctx.drawPath(path);
             // Draw arrow head
             Path path2;
             path2.moveTo({center.x + radius - 5, center.y});
             path2.lineTo({center.x + radius + 5, center.y});
             ctx.setStrokeStyle(StrokeStyle::solid(Colors::white, 3.0f));
-            ctx.drawPath(path2, false, true);
+            ctx.drawPath(path2);
         } else if (actionType == "shutdown") {
             // Draw power symbol
             float radius = 15.0f;
             Path path;
             path.arc(center, radius, 0, 2 * M_PI);
             ctx.setStrokeStyle(StrokeStyle::solid(Colors::white, 2.0f));
-            ctx.drawPath(path, false, true);
+            ctx.drawPath(path);
             // Draw vertical line
             Path path2;
             path2.moveTo({center.x, center.y - radius + 5});
             path2.lineTo({center.x, center.y + radius - 5});
             ctx.setStrokeStyle(StrokeStyle::solid(Colors::white, 3.0f));
-            ctx.drawPath(path2, false, true);
+            ctx.drawPath(path2);
         } else if (actionType == "switch") {
             // Draw double arrow
             float arrowSize = 8.0f;
@@ -208,12 +206,12 @@ struct ActionButton {
             path.moveTo({center.x - arrowSize, center.y});
             path.lineTo({center.x + arrowSize, center.y});
             ctx.setStrokeStyle(StrokeStyle::solid(Colors::white, 3.0f));
-            ctx.drawPath(path, false, true);
+            ctx.drawPath(path);
             Path path2;
             path2.moveTo({center.x - arrowSize, center.y - 5});
             path2.lineTo({center.x + arrowSize, center.y - 5});
             ctx.setStrokeStyle(StrokeStyle::solid(Colors::white, 3.0f));
-            ctx.drawPath(path2, false, true);
+            ctx.drawPath(path2);
         }
     }
 

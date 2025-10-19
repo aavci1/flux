@@ -26,6 +26,10 @@ private:
     // Image cache
     std::unordered_map<std::string, int> imageCache_;
 
+    // Current styles
+    FillStyle currentFillStyle_;
+    StrokeStyle currentStrokeStyle_;
+
 public:
     NanoVGRenderContext(NVGcontext* nvgContext, int width, int height, float dpiScaleX = 1.0f, float dpiScaleY = 1.0f);
     ~NanoVGRenderContext() override = default;
@@ -79,14 +83,23 @@ public:
     // ============================================================================
     // FILL STYLING
     // ============================================================================
-    void setFillStyle(const FillStyle& style) override;
     void setFillColor(const Color& color) override;
     void setPathWinding(PathWinding winding) override;
+    void setFillStyle(const FillStyle& style) override;
 
     // ============================================================================
     // PATH RENDERING
     // ============================================================================
-    void drawPath(const Path& path, bool fill = true, bool stroke = false) override;
+    void drawPath(const Path& path) override;
+
+    // ============================================================================
+    // DIRECT SHAPE DRAWING
+    // ============================================================================
+    void drawCircle(const Point& center, float radius) override;
+    void drawLine(const Point& start, const Point& end) override;
+    void drawRect(const Rect& rect, const CornerRadius& cornerRadius = CornerRadius()) override;
+    void drawEllipse(const Point& center, float radiusX, float radiusY) override;
+    void drawArc(const Point& center, float radius, float startAngle, float endAngle, bool clockwise = false) override;
 
     // ============================================================================
     // TEXT RENDERING
@@ -96,17 +109,10 @@ public:
     void setFontBlur(float blur) override;
     void setLetterSpacing(float spacing) override;
     void setLineHeight(float height) override;
-    void setTextAlign(HorizontalAlignment hAlign, VerticalAlignment vAlign = VerticalAlignment::center) override;
     void setTextStyle(const TextStyle& style) override;
 
-    void drawText(const std::string& text, const Point& position, const TextStyle& style) override;
-    void drawText(const std::string& text, const Point& position, float fontSize, const Color& color,
-                 FontWeight weight = FontWeight::regular,
-                 HorizontalAlignment hAlign = HorizontalAlignment::leading,
-                 VerticalAlignment vAlign = VerticalAlignment::center) override;
-    void drawTextBox(const std::string& text, const Point& position, float breakWidth, const TextStyle& style) override;
+    void drawText(const std::string& text, const Point& position, HorizontalAlignment hAlign, VerticalAlignment vAlign) override;
     Size measureText(const std::string& text, const TextStyle& style) override;
-    Size measureText(const std::string& text, float fontSize, FontWeight weight = FontWeight::regular) override;
     Rect getTextBounds(const std::string& text, const Point& position, const TextStyle& style) override;
 
     // ============================================================================

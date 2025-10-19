@@ -5,6 +5,11 @@
 #include <algorithm>
 #include <string>
 
+// Forward declarations
+namespace flux {
+    struct TextStyle;
+}
+
 namespace flux {
 
 // Basic geometry types
@@ -239,7 +244,7 @@ public:
     virtual ~TextMeasurement() = default;
 
     // Measure text dimensions using the current renderer's font system
-    virtual Size measureText(const std::string& text, float fontSize, FontWeight weight = FontWeight::regular) = 0;
+    virtual Size measureText(const std::string& text, const TextStyle& style) = 0;
 };
 
 } // namespace flux

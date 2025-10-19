@@ -107,14 +107,14 @@ void SVG::renderShape(RenderContext& ctx, NSVGshape* shape, const Rect& bounds, 
         // Fill this individual path
         if (fillColor.a > 0.0f) {
             ctx.setFillColor(fillColor);
-            ctx.drawPath(renderPath, true, false);
+            ctx.drawPath(renderPath);
         }
         
         // Stroke this individual path
         if (strokeColor.a > 0.0f && strokeWidth > 0.0f) {
-            ctx.setStrokeColor(strokeColor);
-            ctx.setStrokeWidth(strokeWidth);
-            ctx.drawPath(renderPath, false, true);
+            ctx.setFillStyle(FillStyle::none());
+            ctx.setStrokeStyle(StrokeStyle::solid(strokeColor, strokeWidth));
+            ctx.drawPath(renderPath);
         }
     }
 }
@@ -304,7 +304,7 @@ void SVG::drawCheckerboardBackground(RenderContext& ctx, const Rect& bounds) con
             Path path;
             path.rect({static_cast<float>(x) + bounds.x, static_cast<float>(y) + bounds.y, static_cast<float>(squareSize), static_cast<float>(squareSize)});
             ctx.setFillColor(color);
-            ctx.drawPath(path, true, false);
+            ctx.drawPath(path);
         }
     }
 }

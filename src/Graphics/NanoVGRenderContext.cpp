@@ -7,7 +7,8 @@
 namespace flux {
 
 NanoVGRenderContext::NanoVGRenderContext(NVGcontext* nvgContext, int width, int height, float dpiScaleX, float dpiScaleY)
-    : nvgContext_(nvgContext), width_(width), height_(height), dpiScaleX_(dpiScaleX), dpiScaleY_(dpiScaleY) {
+    : nvgContext_(nvgContext), width_(width), height_(height), dpiScaleX_(dpiScaleX), dpiScaleY_(dpiScaleY),
+      currentFillStyle_(FillStyle::none()), currentStrokeStyle_(StrokeStyle::none()) {
 
     if (!nvgContext_) {
         throw std::runtime_error("NanoVG context is null");
@@ -172,6 +173,7 @@ void NanoVGRenderContext::setDashPattern(const std::vector<float>& pattern, floa
 }
 
 void NanoVGRenderContext::setStrokeStyle(const StrokeStyle& style) {
+    currentStrokeStyle_ = style;
     setStrokeColor(style.color);
     setStrokeWidth(style.width);
     setLineCap(style.cap);
@@ -184,20 +186,20 @@ void NanoVGRenderContext::setStrokeStyle(const StrokeStyle& style) {
 // FILL STYLING
 // ============================================================================
 
-void NanoVGRenderContext::setFillStyle(const FillStyle& style) {
-    nvgFillPaint(nvgContext_, toNVGFillStyle(style));
-    nvgPathWinding(nvgContext_, getNVGPathWinding(style.winding));
-}
-
 void NanoVGRenderContext::setFillColor(const Color& color) {
-    FillStyle style;
-    style.type = FillType::Solid;
-    style.color = color;
-    setFillStyle(style);
+    currentFillStyle_.color = color;
+    nvgFillPaint(nvgContext_, toNVGFillStyle(currentFillStyle_));
 }
 
 void NanoVGRenderContext::setPathWinding(PathWinding winding) {
+    currentFillStyle_.winding = winding;
     nvgPathWinding(nvgContext_, getNVGPathWinding(winding));
+}
+
+void NanoVGRenderContext::setFillStyle(const FillStyle& style) {
+    currentFillStyle_ = style;
+    nvgFillPaint(nvgContext_, toNVGFillStyle(style));
+    nvgPathWinding(nvgContext_, getNVGPathWinding(style.winding));
 }
 
 // ============================================================================
@@ -208,7 +210,7 @@ void NanoVGRenderContext::setPathWinding(PathWinding winding) {
 // PATH RENDERING
 // ============================================================================
 
-void NanoVGRenderContext::drawPath(const Path& path, bool fillPath, bool strokePath) {
+void NanoVGRenderContext::drawPath(const Path& path) {
     if (path.isEmpty()) {
         return;
     }
@@ -294,11 +296,87 @@ void NanoVGRenderContext::drawPath(const Path& path, bool fillPath, bool strokeP
         }
     }
     
-    // Render the path
-    if (fillPath) {
+    // Apply current fill and stroke styles based on their types
+    if (currentFillStyle_.type != FillStyle::Type::None) {
         nvgFill(nvgContext_);
     }
-    if (strokePath) {
+    if (currentStrokeStyle_.type != StrokeStyle::Type::None) {
+        nvgStroke(nvgContext_);
+    }
+}
+
+// ============================================================================
+// DIRECT SHAPE DRAWING
+// ============================================================================
+
+void NanoVGRenderContext::drawCircle(const Point& center, float radius) {
+    nvgBeginPath(nvgContext_);
+    nvgCircle(nvgContext_, center.x, center.y, radius);
+    
+    // Apply current fill and stroke styles based on their types
+    if (currentFillStyle_.type != FillStyle::Type::None) {
+        nvgFill(nvgContext_);
+    }
+    if (currentStrokeStyle_.type != StrokeStyle::Type::None) {
+        nvgStroke(nvgContext_);
+    }
+}
+
+void NanoVGRenderContext::drawLine(const Point& start, const Point& end) {
+    nvgBeginPath(nvgContext_);
+    nvgMoveTo(nvgContext_, start.x, start.y);
+    nvgLineTo(nvgContext_, end.x, end.y);
+    
+    // Lines only use stroke style (no fill applied)
+    if (currentStrokeStyle_.type != StrokeStyle::Type::None) {
+        nvgStroke(nvgContext_);
+    }
+}
+
+void NanoVGRenderContext::drawRect(const Rect& rect, const CornerRadius& cornerRadius) {
+    nvgBeginPath(nvgContext_);
+
+    if (cornerRadius.isZero()) {
+        nvgRect(nvgContext_, rect.x, rect.y, rect.width, rect.height);
+    } else if (cornerRadius.isUniform()) {
+        nvgRoundedRect(nvgContext_, rect.x, rect.y, rect.width, rect.height, cornerRadius.topLeft);
+    } else {
+        nvgRoundedRectVarying(nvgContext_, rect.x, rect.y, rect.width, rect.height,
+                              cornerRadius.topLeft, cornerRadius.topRight, 
+                              cornerRadius.bottomRight, cornerRadius.bottomLeft);
+    }
+    
+    // Apply current fill and stroke styles based on their types
+    if (currentFillStyle_.type != FillStyle::Type::None) {
+        nvgFill(nvgContext_);
+    }
+    if (currentStrokeStyle_.type != StrokeStyle::Type::None) {
+        nvgStroke(nvgContext_);
+    }
+}
+
+void NanoVGRenderContext::drawEllipse(const Point& center, float radiusX, float radiusY) {
+    nvgBeginPath(nvgContext_);
+    nvgEllipse(nvgContext_, center.x, center.y, radiusX, radiusY);
+    
+    // Apply current fill and stroke styles based on their types
+    if (currentFillStyle_.type != FillStyle::Type::None) {
+        nvgFill(nvgContext_);
+    }
+    if (currentStrokeStyle_.type != StrokeStyle::Type::None) {
+        nvgStroke(nvgContext_);
+    }
+}
+
+void NanoVGRenderContext::drawArc(const Point& center, float radius, float startAngle, float endAngle, bool clockwise) {
+    nvgBeginPath(nvgContext_);
+    nvgArc(nvgContext_, center.x, center.y, radius, startAngle, endAngle, clockwise ? NVG_CW : NVG_CCW);
+    
+    // Apply current fill and stroke styles based on their types
+    if (currentFillStyle_.type != FillStyle::Type::None) {
+        nvgFill(nvgContext_);
+    }
+    if (currentStrokeStyle_.type != StrokeStyle::Type::None) {
         nvgStroke(nvgContext_);
     }
 }
@@ -328,59 +406,41 @@ void NanoVGRenderContext::setLineHeight(float height) {
     nvgTextLineHeight(nvgContext_, height);
 }
 
-void NanoVGRenderContext::setTextAlign(HorizontalAlignment hAlign, VerticalAlignment vAlign) {
-    nvgTextAlign(nvgContext_, getNVGTextAlign(hAlign, vAlign));
-}
-
 void NanoVGRenderContext::setTextStyle(const TextStyle& style) {
     setFont(style.fontName, style.weight);
     setFontSize(style.size);
-    setFontBlur(style.blur);
     setLetterSpacing(style.letterSpacing);
     setLineHeight(style.lineHeight);
-    setTextAlign(style.hAlign, style.vAlign);
 }
 
-void NanoVGRenderContext::drawText(const std::string& text, const Point& position, const TextStyle& style) {
-    setTextStyle(style);
-    nvgFillColor(nvgContext_, toNVGColor(style.color));
-    nvgText(nvgContext_, position.x, position.y, text.c_str(), nullptr);
-}
-
-void NanoVGRenderContext::drawText(const std::string& text, const Point& position, float fontSize, const Color& color,
-                                   FontWeight weight, HorizontalAlignment hAlign, VerticalAlignment vAlign) {
-    int font = getFont("default", weight);
-    nvgFontSize(nvgContext_, fontSize);
-    nvgFontFaceId(nvgContext_, font);
-    nvgFillColor(nvgContext_, toNVGColor(color));
+void NanoVGRenderContext::drawText(const std::string& text, const Point& position, HorizontalAlignment hAlign, VerticalAlignment vAlign) {
     nvgTextAlign(nvgContext_, getNVGTextAlign(hAlign, vAlign));
+    // // Apply current fill style for text rendering
+    // if (currentFillStyle_.type != FillStyle::Type::None) {
+    //     nvgFill(nvgContext_);
+    // }
     nvgText(nvgContext_, position.x, position.y, text.c_str(), nullptr);
-}
-
-void NanoVGRenderContext::drawTextBox(const std::string& text, const Point& position, float breakWidth, const TextStyle& style) {
-    setTextStyle(style);
-    nvgFillColor(nvgContext_, toNVGColor(style.color));
-    nvgTextBox(nvgContext_, position.x, position.y, breakWidth, text.c_str(), nullptr);
 }
 
 Size NanoVGRenderContext::measureText(const std::string& text, const TextStyle& style) {
-    setTextStyle(style);
-    float bounds[4];
-    nvgTextBounds(nvgContext_, 0, 0, text.c_str(), nullptr, bounds);
-    return Size{bounds[2] - bounds[0], bounds[3] - bounds[1]};
-}
-
-Size NanoVGRenderContext::measureText(const std::string& text, float fontSize, FontWeight weight) {
-    int font = getFont("default", weight);
-    nvgFontSize(nvgContext_, fontSize);
-    nvgFontFaceId(nvgContext_, font);
+    // Apply the text style temporarily for measurement
+    nvgFontFaceId(nvgContext_, getFont(style.fontName, style.weight));
+    nvgFontSize(nvgContext_, style.size);
+    nvgTextLetterSpacing(nvgContext_, style.letterSpacing);
+    nvgTextLineHeight(nvgContext_, style.lineHeight);
+    
     float bounds[4];
     nvgTextBounds(nvgContext_, 0, 0, text.c_str(), nullptr, bounds);
     return Size{bounds[2] - bounds[0], bounds[3] - bounds[1]};
 }
 
 Rect NanoVGRenderContext::getTextBounds(const std::string& text, const Point& position, const TextStyle& style) {
-    setTextStyle(style);
+    // Apply the text style temporarily for bounds calculation
+    nvgFontFaceId(nvgContext_, getFont(style.fontName, style.weight));
+    nvgFontSize(nvgContext_, style.size);
+    nvgTextLetterSpacing(nvgContext_, style.letterSpacing);
+    nvgTextLineHeight(nvgContext_, style.lineHeight);
+    
     float bounds[4];
     nvgTextBounds(nvgContext_, position.x, position.y, text.c_str(), nullptr, bounds);
     return Rect{bounds[0], bounds[1], bounds[2] - bounds[0], bounds[3] - bounds[1]};
@@ -499,7 +559,7 @@ void NanoVGRenderContext::drawImage(int imageId, const Rect& rect, ImageFit fit,
 
     // Create fill style with image pattern
     FillStyle fillStyle;
-    fillStyle.type = FillType::ImagePattern;
+    fillStyle.type = FillStyle::Type::ImagePattern;
     fillStyle.imageId = imageId;
     fillStyle.imageOrigin = imageRect.origin();
     fillStyle.imageSize = imageRect.size();
@@ -651,26 +711,31 @@ NVGcolor NanoVGRenderContext::toNVGColor(const Color& color) const {
 
 NVGpaint NanoVGRenderContext::toNVGFillStyle(const FillStyle& fillStyle) const {
     switch (fillStyle.type) {
-        case FillType::Solid:
-            return nvgLinearGradient(nvgContext_, 0, 0, 0, 0, toNVGColor(fillStyle.color), toNVGColor(fillStyle.color));
+        case FillStyle::Type::None:
+            return nvgLinearGradient(nvgContext_, 0, 0, 0, 0, 
+                                   toNVGColor(Colors::transparent), toNVGColor(Colors::transparent));
 
-        case FillType::LinearGradient:
+        case FillStyle::Type::Solid:
+            return nvgLinearGradient(nvgContext_, 0, 0, 0, 0, 
+                                   toNVGColor(fillStyle.color), toNVGColor(fillStyle.color));
+
+        case FillStyle::Type::LinearGradient:
             return nvgLinearGradient(nvgContext_, fillStyle.startPoint.x, fillStyle.startPoint.y,
                                      fillStyle.endPoint.x, fillStyle.endPoint.y,
                                      toNVGColor(fillStyle.startColor), toNVGColor(fillStyle.endColor));
 
-        case FillType::RadialGradient:
+        case FillStyle::Type::RadialGradient:
             return nvgRadialGradient(nvgContext_, fillStyle.center.x, fillStyle.center.y,
                                      fillStyle.innerRadius, fillStyle.outerRadius,
                                      toNVGColor(fillStyle.startColor), toNVGColor(fillStyle.endColor));
 
-        case FillType::BoxGradient:
+        case FillStyle::Type::BoxGradient:
             return nvgBoxGradient(nvgContext_, fillStyle.bounds.x, fillStyle.bounds.y,
                                   fillStyle.bounds.width, fillStyle.bounds.height,
                                   fillStyle.cornerRadius, fillStyle.feather,
                                   toNVGColor(fillStyle.startColor), toNVGColor(fillStyle.endColor));
 
-        case FillType::ImagePattern:
+        case FillStyle::Type::ImagePattern:
             return nvgImagePattern(nvgContext_, fillStyle.imageOrigin.x, fillStyle.imageOrigin.y,
                                    fillStyle.imageSize.width, fillStyle.imageSize.height,
                                    fillStyle.imageAngle, fillStyle.imageId, fillStyle.imageAlpha);
