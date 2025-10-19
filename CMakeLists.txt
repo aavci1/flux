@@ -83,8 +83,17 @@ set_target_properties(nanovg PROPERTIES
     C_STANDARD_REQUIRED ON
 )
 
-# Define OpenGL version for NanoVG
-target_compile_definitions(nanovg PRIVATE NANOVG_GL2)
+# Define OpenGL version for NanoVG based on platform
+if(APPLE)
+    # macOS: Use OpenGL 2 (OpenGL ES 2 headers not readily available)
+    target_compile_definitions(nanovg PRIVATE NANOVG_GL2 GL_SILENCE_DEPRECATION)
+elseif(UNIX)
+    # Linux: Use OpenGL ES 2
+    target_compile_definitions(nanovg PRIVATE NANOVG_GLES2)
+elseif(WIN32)
+    # Windows: Use OpenGL 2
+    target_compile_definitions(nanovg PRIVATE NANOVG_GL2)
+endif()
 
 # Link OpenGL to NanoVG
 if(UNIX AND NOT APPLE)
