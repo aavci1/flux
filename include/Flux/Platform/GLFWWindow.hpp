@@ -16,6 +16,7 @@ private:
     std::unique_ptr<PlatformRenderer> renderer_;
     Size currentSize_;
     bool isFullscreen_;
+    bool shouldClose_;
     float dpiScaleX_;
     float dpiScaleY_;
     Window* fluxWindow_; // Reference to the Flux Window instance
@@ -41,15 +42,18 @@ public:
 
     void swapBuffers() override;
 
-    // Method to get the Flux Window instance
-    Window* fluxWindow() const { return fluxWindow_; }
-    void setFluxWindow(Window* window) { fluxWindow_ = window; }
-
     float dpiScaleX() const override { return dpiScaleX_; }
     float dpiScaleY() const override { return dpiScaleY_; }
 
     Size currentSize() const override { return currentSize_; }
     bool isFullscreen() const override { return isFullscreen_; }
+
+    void processEvents() override;
+    bool shouldClose() const override;
+    void setFluxWindow(Window* window) override { fluxWindow_ = window; }
+
+    // Method to get the Flux Window instance
+    Window* fluxWindow() const { return fluxWindow_; }
 
     // GLFW-specific accessor
     GLFWwindow* glfwWindow() const { return window_; }

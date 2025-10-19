@@ -75,6 +75,7 @@ private:
     Size currentSize_;
     bool isFullscreen_;
     bool configured_;
+    bool shouldClose_;
     float dpiScaleX_;
     float dpiScaleY_;
     Window* fluxWindow_;
@@ -106,9 +107,12 @@ public:
     Size currentSize() const override { return currentSize_; }
     bool isFullscreen() const override { return isFullscreen_; }
 
+    void processEvents() override;
+    bool shouldClose() const override;
+    void setFluxWindow(Window* window) override { fluxWindow_ = window; }
+
     // Method to get the Flux Window instance
     Window* fluxWindow() const { return fluxWindow_; }
-    void setFluxWindow(Window* window) { fluxWindow_ = window; }
 
     // Wayland-specific accessors
     wl_display* display() const { return display_; }

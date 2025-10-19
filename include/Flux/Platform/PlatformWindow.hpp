@@ -7,6 +7,9 @@
 
 namespace flux {
 
+// Forward declaration
+class Window;
+
 /**
  * Abstract base class for platform-specific window implementations.
  * This allows the Window class to work with any windowing system
@@ -35,6 +38,13 @@ public:
     // Current window state
     virtual Size currentSize() const = 0;
     virtual bool isFullscreen() const = 0;
+
+    // Event processing
+    virtual void processEvents() = 0;
+    virtual bool shouldClose() const = 0;
+
+    // Flux window reference
+    virtual void setFluxWindow(Window* window) = 0;
 };
 
 } // namespace flux

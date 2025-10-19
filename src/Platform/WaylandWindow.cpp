@@ -194,6 +194,7 @@ WaylandWindow::WaylandWindow(const std::string& title, const Size& size, bool re
     , currentSize_(size)
     , isFullscreen_(fullscreen)
     , configured_(false)
+    , shouldClose_(false)
     , dpiScaleX_(1.0f)
     , dpiScaleY_(1.0f)
     , fluxWindow_(nullptr) {
@@ -538,7 +539,7 @@ void WaylandWindow::handleWaylandResize(int32_t width, int32_t height) {
 
 void WaylandWindow::handleClose() {
     // Window close requested by compositor
-    // The application will handle this in processEvents
+    shouldClose_ = true;
 }
 
 void WaylandWindow::setFullscreen(bool fullscreen) {
@@ -617,6 +618,22 @@ void WaylandWindow::updateScale(int32_t scale) {
     
     std::cout << "[WaylandWindow] Updated to scale " << scale 
               << " buffer size: " << bufferWidth << "x" << bufferHeight << "\n";
+}
+
+void WaylandWindow::processEvents() {
+    if (display_) {
+        // Process pending events without blocking
+        while (wl_display_prepare_read(display_) != 0) {
+            wl_display_dispatch_pending(display_);
+        }
+        wl_display_flush(display_);
+        wl_display_read_events(display_);
+        wl_display_dispatch_pending(display_);
+    }
+}
+
+bool WaylandWindow::shouldClose() const {
+    return shouldClose_;
 }
 
 } // namespace flux

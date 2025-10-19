@@ -22,18 +22,16 @@ void GLFWWindow::resizeCallback(GLFWwindow* window, int width, int height) {
 void GLFWWindow::closeCallback(GLFWwindow* window) {
     GLFWWindow* glfwWin = static_cast<GLFWWindow*>(glfwGetWindowUserPointer(window));
     if (glfwWin) {
-        Window* fluxWindow = glfwWin->fluxWindow();
-        if (fluxWindow) {
-            // Set the window to close
-            glfwSetWindowShouldClose(window, GLFW_TRUE);
-        }
+        // Set the window to close
+        glfwWin->shouldClose_ = true;
+        glfwSetWindowShouldClose(window, GLFW_TRUE);
     }
 }
 
 int GLFWWindow::windowCount_ = 0;
 
 GLFWWindow::GLFWWindow(const std::string& title, const Size& size, bool resizable, bool fullscreen)
-    : window_(nullptr), currentSize_(size), isFullscreen_(fullscreen), dpiScaleX_(1.0f), dpiScaleY_(1.0f), fluxWindow_(nullptr) {
+    : window_(nullptr), currentSize_(size), isFullscreen_(fullscreen), shouldClose_(false), dpiScaleX_(1.0f), dpiScaleY_(1.0f), fluxWindow_(nullptr) {
 
     // Initialize GLFW if this is the first window
     if (windowCount_ == 0) {
@@ -197,6 +195,14 @@ void GLFWWindow::swapBuffers() {
     if (window_) {
         glfwSwapBuffers(window_);
     }
+}
+
+void GLFWWindow::processEvents() {
+    glfwPollEvents();
+}
+
+bool GLFWWindow::shouldClose() const {
+    return shouldClose_;
 }
 
 } // namespace flux

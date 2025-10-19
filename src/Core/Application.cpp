@@ -1,19 +1,10 @@
 #include <Flux/Core/Application.hpp>
 #include <Flux/Core/Window.hpp>
 #include <Flux/Core/WindowBackend.hpp>
+#include <Flux/Platform/PlatformWindow.hpp>
 #include <chrono>
 #include <thread>
 #include <algorithm>
-
-#include <Flux/Platform/PlatformWindow.hpp>
-
-#if defined(__linux__) && !defined(__ANDROID__)
-    #include <Flux/Platform/WaylandWindow.hpp>
-    #include <wayland-client.h>
-#else
-    #include <Flux/Platform/GLFWWindow.hpp>
-    #include <GLFW/glfw3.h> // Include GLFW header for event polling
-#endif
 
 namespace flux {
 
@@ -67,37 +58,18 @@ void Application::unregisterWindow(Window* window) {
 }
 
 void Application::processEvents() {
-#if defined(__linux__) && !defined(__ANDROID__)
-    // Process Wayland events
+    // Process platform-specific events for all windows
     for (auto* window : windows_) {
-        if (window->backend() == WindowBackend::Default) {
-            auto* waylandWin = dynamic_cast<WaylandWindow*>(window->platformWindow());
-            if (waylandWin && waylandWin->display()) {
-                // Process pending events without blocking
-                while (wl_display_prepare_read(waylandWin->display()) != 0) {
-                    wl_display_dispatch_pending(waylandWin->display());
-                }
-                wl_display_flush(waylandWin->display());
-                wl_display_read_events(waylandWin->display());
-                wl_display_dispatch_pending(waylandWin->display());
-            }
-        }
-    }
-#else
-    // Process GLFW events
-    glfwPollEvents();
-
-    // Check if any window should close
-    for (auto* window : windows_) {
-        if (window->backend() == WindowBackend::Default) {
-            auto* glfwWin = dynamic_cast<GLFWWindow*>(window->platformWindow());
-            if (glfwWin && glfwWindowShouldClose(glfwWin->glfwWindow())) {
+        if (auto* platformWindow = window->platformWindow()) {
+            platformWindow->processEvents();
+            
+            // Check if window should close
+            if (platformWindow->shouldClose()) {
                 quit();
                 break;
             }
         }
     }
-#endif
 }
 
 void Application::waitForNextFrame() {
