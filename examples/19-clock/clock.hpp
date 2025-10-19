@@ -77,7 +77,7 @@ struct Clock {
             auto angle = i * 30 * M_PI / 180 - M_PI / 2;
             float x = bounds.center().x + (radius * 0.7f) * static_cast<float>(cos(angle));
             float y = bounds.center().y + (radius * 0.7f) * static_cast<float>(sin(angle));
-            ctx.drawText(std::to_string(i), { x, y }, TextStyle::centered("bold", 72.0f, Colors::black));
+            ctx.drawText(std::to_string(i), { x, y }, TextStyle::centered("sans", 72.0f, Colors::black));
         }
 
         drawHand(ctx, bounds.center(), radius * 0.4f, 12.0f, (hours * 30) + (minutes * 0.5f), Colors::black);

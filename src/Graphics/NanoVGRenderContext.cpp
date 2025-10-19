@@ -789,12 +789,21 @@ int NanoVGRenderContext::getFont(const std::string& fontName, FontWeight weight)
     // Try to create a font with a fallback approach
     int font = -1;
 
-    // Try common system fonts on macOS
+    // Try common system fonts on different platforms
     const char* fontPaths[] = {
+        // Linux fonts
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+        "/usr/share/fonts/TTF/DejaVuSans.ttf",
+        "/usr/share/fonts/liberation/LiberationSans-Regular.ttf",
+        // macOS fonts
         "/System/Library/Fonts/Arial.ttf",
         "/System/Library/Fonts/Helvetica.ttc",
         "/System/Library/Fonts/SF-Pro-Display-Regular.otf",
         "/System/Library/Fonts/HelveticaNeue.ttc",
+        // Windows fonts (if running on Wine or WSL)
+        "C:\\Windows\\Fonts\\arial.ttf",
         nullptr
     };
 

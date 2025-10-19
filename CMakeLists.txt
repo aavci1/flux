@@ -140,6 +140,11 @@ target_include_directories(nanovg PUBLIC
     ${STB_SOURCE_DIR}
 )
 
+# Link Freetype for font rendering
+target_link_libraries(nanovg PUBLIC
+    Freetype::Freetype
+)
+
 # Set C standard for NanoVG
 set_target_properties(nanovg PROPERTIES
     C_STANDARD 99
@@ -149,13 +154,13 @@ set_target_properties(nanovg PROPERTIES
 # Define OpenGL version for NanoVG based on platform
 if(APPLE)
     # macOS: Use OpenGL 2 (OpenGL ES 2 headers not readily available)
-    target_compile_definitions(nanovg PRIVATE NANOVG_GL2 GL_SILENCE_DEPRECATION)
+    target_compile_definitions(nanovg PRIVATE NANOVG_GL2 GL_SILENCE_DEPRECATION FONS_USE_FREETYPE)
 elseif(UNIX)
     # Linux: Use OpenGL ES 2
-    target_compile_definitions(nanovg PRIVATE NANOVG_GLES2)
+    target_compile_definitions(nanovg PRIVATE NANOVG_GLES2 FONS_USE_FREETYPE)
 elseif(WIN32)
     # Windows: Use OpenGL 2
-    target_compile_definitions(nanovg PRIVATE NANOVG_GL2)
+    target_compile_definitions(nanovg PRIVATE NANOVG_GL2 FONS_USE_FREETYPE)
 endif()
 
 # Link OpenGL to NanoVG
