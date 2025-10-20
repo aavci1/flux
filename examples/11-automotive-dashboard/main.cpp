@@ -356,112 +356,34 @@ int main(int argc, char* argv[]) {
                         }
                     }
                 },
-                HStack {
+                Grid {
+                    .columns = 4,
+                    .rows = 3,
                     .compressionBias = 0,
                     .expansionBias = 1,
                     .spacing = 24,
                     .children = {
-                        VStack {
+                        MediaPlayer {
                             .expansionBias = 1,
-                            .spacing = 24,
-                            .children = {
-                                MediaPlayer {
-                                    .expansionBias = 1,
-                                    .backgroundColor = Color::hex(0xffffff),
-                                    .borderWidth = 1,
-                                    .borderColor = Colors::lightGray,
-                                    .cornerRadius = 16,
-                                    .padding = 24,
-                                    .trackTitle = trackTitle,
-                                    .trackArtist = trackArtist,
-                                    .trackAlbum = trackAlbum,
-                                    .trackAlbumCover = trackAlbumCover,
-                                    .trackCurrentTimeInSeconds = trackCurrentTimeInSeconds,
-                                    .trackDurationInSeconds = trackDurationInSeconds
-                                },
-                                VStack {
-                                    .expansionBias = 2,
-                                    .backgroundColor = Color::hex(0xffffff),
-                                    .borderWidth = 1,
-                                    .borderColor = Colors::lightGray,
-                                    .cornerRadius = 16,
-                                    .padding = 24,
-                                    .spacing = 24,
-                                    .children = {
-                                        HStack {
-                                            .expansionBias = 1,
-                                            .spacing = 24,
-                                            .children = {
-                                                Text {
-                                                    .backgroundColor = Color::hex(0xf8f9fa),
-                                                    .borderWidth = 1,
-                                                    .borderColor = Colors::lightGray,
-                                                    .cornerRadius = 8,
-                                                    .expansionBias = 1,
-                                                    .value = "Phone"
-                                                },
-                                                Text {
-                                                    .backgroundColor = Color::hex(0xf8f9fa),
-                                                    .borderWidth = 1,
-                                                    .borderColor = Colors::lightGray,
-                                                    .cornerRadius = 8,
-                                                    .expansionBias = 1,
-                                                    .value = "Music"
-                                                }
-                                            }
-                                        },
-                                        HStack {
-                                            .expansionBias = 1,
-                                            .spacing = 24,
-                                            .children = {
-                                                Text {
-                                                    .backgroundColor = Color::hex(0xf8f9fa),
-                                                    .borderWidth = 1,
-                                                    .borderColor = Colors::lightGray,
-                                                    .cornerRadius = 8,
-                                                    .expansionBias = 1,
-                                                    .value = "Bluetooth"
-                                                },
-                                                Text {
-                                                    .backgroundColor = Color::hex(0xf8f9fa),
-                                                    .borderWidth = 1,
-                                                    .borderColor = Colors::lightGray,
-                                                    .cornerRadius = 8,
-                                                    .expansionBias = 1,
-                                                    .value = "Settings"
-                                                }
-                                            }
-                                        },
-                                        HStack {
-                                            .expansionBias = 1,
-                                            .spacing = 24,
-                                            .children = {
-                                                Text {
-                                                    .backgroundColor = Color::hex(0xf8f9fa),
-                                                    .borderWidth = 1,
-                                                    .borderColor = Colors::lightGray,
-                                                    .cornerRadius = 8,
-                                                    .expansionBias = 1,
-                                                    .value = "Wind"
-                                                },
-                                                Text {
-                                                    .backgroundColor = Color::hex(0x297AFE),
-                                                    .color = Colors::white,
-                                                    .cornerRadius = 8,
-                                                    .expansionBias = 1,
-                                                    .value = "Maps"
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                            .backgroundColor = Color::hex(0xffffff),
+                            .borderWidth = 1,
+                            .borderColor = Colors::lightGray,
+                            .cornerRadius = 16,
+                            .padding = 24,
+                            .trackTitle = trackTitle,
+                            .trackArtist = trackArtist,
+                            .trackAlbum = trackAlbum,
+                            .trackAlbumCover = trackAlbumCover,
+                            .trackCurrentTimeInSeconds = trackCurrentTimeInSeconds,
+                            .trackDurationInSeconds = trackDurationInSeconds
                         },
                         VStack {
                             .expansionBias = 2,
                             .backgroundColor = Color::hex(0xffffff),
                             .borderWidth = 1,
                             .borderColor = Colors::lightGray,
+                            .rowspan = 3,
+                            .colspan = 2,
                             .cornerRadius = 16,
                             .padding = 24,
                             .spacing = 24,
@@ -521,27 +443,84 @@ int main(int argc, char* argv[]) {
                                 }
                             }
                         },
-                        VStack {
-                            .expansionBias = 1,
+                        Text {
+                            .expansionBias = 2,
+                            .backgroundColor = Color::hex(0xffffff),
+                            .borderWidth = 1,
+                            .borderColor = Colors::lightGray,
+                            .cornerRadius = 16,
+                            .rowspan = 2,
+                            .value = "Vehicle Status"
+                        },
+                        Grid {
+                            .columns = 2,
+                            .rows = 3,
+                            .rowspan = 2,
+                            .expansionBias = 2,
+                            .backgroundColor = Color::hex(0xffffff),
+                            .borderWidth = 1,
+                            .borderColor = Colors::lightGray,
+                            .cornerRadius = 16,
+                            .padding = 24,
                             .spacing = 24,
                             .children = {
                                 Text {
-                                    .expansionBias = 2,
-                                    .backgroundColor = Color::hex(0xffffff),
+                                    .backgroundColor = Color::hex(0xf8f9fa),
                                     .borderWidth = 1,
                                     .borderColor = Colors::lightGray,
-                                    .cornerRadius = 16,
-                                    .value = "Vehicle Status"
+                                    .cornerRadius = 8,
+                                    .expansionBias = 1,
+                                    .value = "Phone"
                                 },
                                 Text {
-                                    .expansionBias = 1,
-                                    .backgroundColor = Color::hex(0xffffff),
+                                    .backgroundColor = Color::hex(0xf8f9fa),
                                     .borderWidth = 1,
                                     .borderColor = Colors::lightGray,
-                                    .cornerRadius = 16,
-                                    .value = "Climate Control"
+                                    .cornerRadius = 8,
+                                    .expansionBias = 1,
+                                    .value = "Music"
+                                },
+                                Text {
+                                    .backgroundColor = Color::hex(0xf8f9fa),
+                                    .borderWidth = 1,
+                                    .borderColor = Colors::lightGray,
+                                    .cornerRadius = 8,
+                                    .expansionBias = 1,
+                                    .value = "Bluetooth"
+                                },
+                                Text {
+                                    .backgroundColor = Color::hex(0xf8f9fa),
+                                    .borderWidth = 1,
+                                    .borderColor = Colors::lightGray,
+                                    .cornerRadius = 8,
+                                    .expansionBias = 1,
+                                    .value = "Settings"
+                                },
+                                Text {
+                                    .backgroundColor = Color::hex(0xf8f9fa),
+                                    .borderWidth = 1,
+                                    .borderColor = Colors::lightGray,
+                                    .cornerRadius = 8,
+                                    .expansionBias = 1,
+                                    .value = "Wind"
+                                },
+                                Text {
+                                    .backgroundColor = Color::hex(0x297AFE),
+                                    .color = Colors::white,
+                                    .cornerRadius = 8,
+                                    .expansionBias = 1,
+                                    .value = "Maps"
                                 }
                             }
+                        },
+
+                        Text {
+                            .expansionBias = 1,
+                            .backgroundColor = Color::hex(0xffffff),
+                            .borderWidth = 1,
+                            .borderColor = Colors::lightGray,
+                            .cornerRadius = 16,
+                            .value = "Climate Control"
                         }
                     }
                 }

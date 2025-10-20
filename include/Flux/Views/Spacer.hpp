@@ -23,6 +23,8 @@ struct Spacer {
     Property<Point> offset = Point{0, 0};
     Property<float> expansionBias = 1.0f;
     Property<float> compressionBias = 1.0f;
+    Property<int> colspan = 1;
+    Property<int> rowspan = 1;
 
     Size preferredSize(TextMeasurement& textMeasurer) const {
         return {0, 0};

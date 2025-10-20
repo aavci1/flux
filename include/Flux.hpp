@@ -23,6 +23,7 @@
 #include <Flux/Views/SVG.hpp>
 #include <Flux/Views/Text.hpp>
 #include <Flux/Views/VStack.hpp>
+#include <Flux/Views/Grid.hpp>
 
 #include <Flux/Graphics/RenderContext.hpp>
 #include <Flux/Graphics/Renderer.hpp>

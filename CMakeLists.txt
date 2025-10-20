@@ -293,6 +293,12 @@ if(BUILD_EXAMPLES)
     add_executable(clock examples/19-clock/main.cpp)
     target_link_libraries(clock PRIVATE flux)
 
+add_executable(grid_demo examples/22-grid-demo/main.cpp)
+target_link_libraries(grid_demo PRIVATE flux)
+
+add_executable(spacer_grid_demo examples/23-spacer-grid-demo/main.cpp)
+target_link_libraries(spacer_grid_demo PRIVATE flux)
+
 endif()
 
 # Installation rules

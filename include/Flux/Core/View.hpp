@@ -56,7 +56,9 @@ inline std::string demangleTypeName(const char* mangledName) {
     Property<float> scaleY = 1.0; \
     Property<Point> offset = Point{0, 0}; \
     Property<float> expansionBias = 0.0f; \
-    Property<float> compressionBias = 1.0f
+    Property<float> compressionBias = 1.0f; \
+    Property<int> colspan = 1; \
+    Property<int> rowspan = 1
 
 // Concept for what makes a View component
 // All methods are now optional - if not defined, default implementations will be used
@@ -84,6 +86,8 @@ public:
     virtual bool shouldClip() const = 0;
     virtual float getExpansionBias() const = 0;
     virtual float getCompressionBias() const = 0;
+    virtual int getColspan() const = 0;
+    virtual int getRowspan() const = 0;
 
     // Get the type name of the underlying component (demangled)
     virtual std::string getTypeName() const = 0;
@@ -161,6 +165,8 @@ public:
     bool shouldClip() const override;
     float getExpansionBias() const override;
     float getCompressionBias() const override;
+    int getColspan() const override;
+    int getRowspan() const override;
 
     std::string getTypeName() const override {
         return demangleTypeName(typeid(T).name());
@@ -220,6 +226,14 @@ public:
 
     float getCompressionBias() const {
         return component_ ? component_->getCompressionBias() : 1.0f;
+    }
+
+    int getColspan() const {
+        return component_ ? component_->getColspan() : 1;
+    }
+
+    int getRowspan() const {
+        return component_ ? component_->getRowspan() : 1;
     }
 
     std::string getTypeName() const {
@@ -424,6 +438,40 @@ inline float ViewAdapter<T>::getCompressionBias() const {
         }
     }
     return component.compressionBias;
+}
+
+template<ViewComponent T>
+inline int ViewAdapter<T>::getColspan() const {
+    // If component has body(), inherit colspan from body unless explicitly overridden
+    if constexpr (has_body<T>::value) {
+        View bodyView = component.body();
+        if (bodyView.isValid()) {
+            // If component's colspan is not the default (1), use component's value
+            if (static_cast<int>(component.colspan) != 1) {
+                return component.colspan;
+            }
+            // Otherwise, use body's colspan property
+            return bodyView->getColspan();
+        }
+    }
+    return component.colspan;
+}
+
+template<ViewComponent T>
+inline int ViewAdapter<T>::getRowspan() const {
+    // If component has body(), inherit rowspan from body unless explicitly overridden
+    if constexpr (has_body<T>::value) {
+        View bodyView = component.body();
+        if (bodyView.isValid()) {
+            // If component's rowspan is not the default (1), use component's value
+            if (static_cast<int>(component.rowspan) != 1) {
+                return component.rowspan;
+            }
+            // Otherwise, use body's rowspan property
+            return bodyView->getRowspan();
+        }
+    }
+    return component.rowspan;
 }
 
 template<ViewComponent T>
