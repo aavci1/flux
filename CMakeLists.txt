@@ -248,6 +248,13 @@ target_compile_options(flux PRIVATE
     $<$<CONFIG:Debug>:-g -O0>
 )
 
+# Handle optimization for production builds
+if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "MinSizeRel")
+    # Add additional optimization flags for production builds
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -mtune=native")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native -mtune=native")
+endif()
+
 # Export compile commands for IDE support
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
