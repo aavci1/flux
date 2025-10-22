@@ -178,7 +178,9 @@ void NanoVGRenderContext::setStrokeStyle(const StrokeStyle& style) {
     setLineCap(style.cap);
     setLineJoin(style.join);
     setMiterLimit(style.miterLimit);
-    setDashPattern(style.dashPattern, style.dashOffset);
+    if (style.type == StrokeStyle::Type::Dashed) {
+        setDashPattern(style.dashPattern, style.dashOffset);
+    }
 }
 
 // ============================================================================
