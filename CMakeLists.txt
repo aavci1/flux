@@ -306,6 +306,9 @@ target_link_libraries(grid_demo PRIVATE flux)
 add_executable(spacer_grid_demo examples/23-spacer-grid-demo/main.cpp)
 target_link_libraries(spacer_grid_demo PRIVATE flux)
 
+add_executable(calculator examples/24-calculator/main.cpp)
+target_link_libraries(calculator PRIVATE flux)
+
 endif()
 
 # Installation rules

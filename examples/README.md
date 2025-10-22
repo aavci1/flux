@@ -1,6 +1,6 @@
 # Flux Examples
 
-This directory contains 8 examples demonstrating core Flux concepts.
+This directory contains examples demonstrating core Flux concepts.
 
 ## Examples Overview
 
@@ -97,6 +97,19 @@ A macOS Big Sur-inspired login manager featuring:
 - Custom rendering with NanoVG graphics
 - Modern UI design patterns
 
+### 24. Calculator (~240 lines)
+**Concepts:** Complex state management, arithmetic operations, Grid layout with colspan/rowspan, reactive UI updates
+
+A fully functional calculator application featuring:
+- Complete arithmetic operations (+, -, ×, ÷)
+- Special functions (clear, plus/minus toggle, percentage)
+- Decimal number support
+- Error handling (division by zero)
+- Grid layout with 4×5 button arrangement
+- Colspan support for the "0" button spanning 2 columns
+- Real-time display updates using lambda properties
+- Professional calculator UI design with color-coded buttons
+
 ## Building Examples
 
 Each example is a standalone application. To build an example:
@@ -130,6 +143,7 @@ Follow the examples in order:
 8. **09-flexbox-demo**: Flexible layouts and space distribution
 9. **10-justify-content-demo**: Content justification and alignment modes
 10. **17-login-manager**: Custom components and macOS Big Sur theme
+11. **24-calculator**: Complex state management and calculator UI
 
 ## Example Structure
 
