@@ -1,8 +1,6 @@
 #include <Flux/Graphics/RenderContext.hpp>
 #include <nanovg.h>
 
-// Forward declaration
-struct NSVGpath;
 #include <iostream>
 #include <stack>
 #include <unordered_map>
@@ -148,12 +146,6 @@ public:
     Rect transformRect(const Rect& rect) override;
     float degToRad(float degrees) override;
     float radToDeg(float radians) override;
-
-    // ============================================================================
-    // SVG SUPPORT
-    // ============================================================================
-    void renderNanoVGPath(NSVGpath* path, const Color& fillColor, const Color& strokeColor, float strokeWidth);
-
 private:
     // Helper functions
     NVGcolor toNVGColor(const Color& color) const;

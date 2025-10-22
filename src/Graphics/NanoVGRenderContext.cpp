@@ -2,7 +2,6 @@
 #include <iostream>
 #include <cmath>
 #include <sstream>
-#include <nanosvg.h>
 
 namespace flux {
 
@@ -657,48 +656,6 @@ float NanoVGRenderContext::degToRad(float degrees) {
 
 float NanoVGRenderContext::radToDeg(float radians) {
     return nvgRadToDeg(radians);
-}
-
-// ============================================================================
-// SVG SUPPORT
-// ============================================================================
-
-void NanoVGRenderContext::renderNanoVGPath(NSVGpath* path, const Color& fillColor, const Color& strokeColor, float strokeWidth) {
-    if (!path || path->npts < 2) return;
-
-    nvgBeginPath(nvgContext_);
-
-    // Convert NanoSVG path to NanoVG path
-    float* pts = path->pts;
-    int npts = path->npts;
-
-    // Move to first point
-    nvgMoveTo(nvgContext_, pts[0], pts[1]);
-
-    // Draw cubic bezier curves
-    for (int i = 1; i < npts - 1; i += 3) {
-        if (i + 5 < npts * 2) {
-            nvgBezierTo(nvgContext_, pts[i*2], pts[i*2+1], pts[(i+1)*2], pts[(i+1)*2+1], pts[(i+2)*2], pts[(i+2)*2+1]);
-        }
-    }
-
-    // Close path if it's closed
-    if (path->closed) {
-        nvgClosePath(nvgContext_);
-    }
-
-    // Fill the path if fill color is specified
-    if (fillColor.a > 0.0f) {
-        nvgFillColor(nvgContext_, toNVGColor(fillColor));
-        nvgFill(nvgContext_);
-    }
-
-    // Stroke the path if stroke color is specified
-    if (strokeColor.a > 0.0f && strokeWidth > 0.0f) {
-        nvgStrokeColor(nvgContext_, toNVGColor(strokeColor));
-        nvgStrokeWidth(nvgContext_, strokeWidth);
-        nvgStroke(nvgContext_);
-    }
 }
 
 // ============================================================================
