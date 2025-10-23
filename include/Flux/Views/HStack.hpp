@@ -58,6 +58,25 @@ struct HStack {
         float baseSpacing = static_cast<float>(spacing);
         float totalSpacing = baseSpacing * (visibleCount - 1);
         float availableContentWidth = availableWidth - totalSpacing;
+        
+        // Calculate dynamic spacing for space distribution modes
+        float dynamicSpacing = baseSpacing;
+        if (visibleCount > 1) {
+            float totalUsedWidth = std::accumulate(visibleChildren.begin(), visibleChildren.end(), 0.0f, 
+                [](float sum, const ChildInfo& info) { return sum + info.baseWidth; });
+            float availableSpace = availableWidth - totalUsedWidth;
+            
+            if (justifyContent == JustifyContent::spaceBetween) {
+                dynamicSpacing = availableSpace / (visibleCount - 1);
+            } else if (justifyContent == JustifyContent::spaceAround) {
+                // spaceAround: x/2 at edges, x between items
+                // Total spacing = 2 * (x/2) + (visibleCount-1) * x = x + (visibleCount-1) * x = visibleCount * x
+                // So: visibleCount * x = availableSpace, therefore x = availableSpace / visibleCount
+                dynamicSpacing = availableSpace / visibleCount;
+            } else if (justifyContent == JustifyContent::spaceEvenly) {
+                dynamicSpacing = availableSpace / (visibleCount + 1);
+            }
+        }
 
         // Distribute space using flexbox algorithm
         std::vector<float> finalWidths(visibleCount);
@@ -109,20 +128,32 @@ struct HStack {
 
         // Apply justifyContent
         float startX = bounds.x + paddingVal.left;
+        float totalUsedWidth = std::accumulate(finalWidths.begin(), finalWidths.end(), 0.0f);
+        float totalAvailableSpace = availableWidth - totalUsedWidth;
+        
         if (justifyContent == JustifyContent::center) {
-            float totalUsedWidth = std::accumulate(finalWidths.begin(), finalWidths.end(), 0.0f);
-            totalUsedWidth += totalSpacing;
-            startX += (availableWidth - totalUsedWidth) / 2.0f;
+            startX += totalAvailableSpace / 2.0f;
         } else if (justifyContent == JustifyContent::end) {
-            float totalUsedWidth = std::accumulate(finalWidths.begin(), finalWidths.end(), 0.0f);
-            totalUsedWidth += totalSpacing;
-            startX += availableWidth - totalUsedWidth;
+            startX += totalAvailableSpace;
+        } else if (justifyContent == JustifyContent::spaceBetween) {
+            // No additional offset needed - children will be positioned with calculated spacing
+        } else if (justifyContent == JustifyContent::spaceAround) {
+            // No additional offset needed - children will be positioned with calculated spacing
+        } else if (justifyContent == JustifyContent::spaceEvenly) {
+            // No additional offset needed - children will be positioned with calculated spacing
         }
 
         // Layout children
         std::vector<LayoutNode> childLayouts;
         float x = startX;
         int childIndex = 0;
+
+        // Add initial spacing for spaceAround and spaceEvenly
+        if (justifyContent == JustifyContent::spaceAround) {
+            x += dynamicSpacing / 2.0f;  // x/2 space at the beginning
+        } else if (justifyContent == JustifyContent::spaceEvenly) {
+            x += dynamicSpacing;  // x space at the beginning
+        }
 
         for (const auto& info : visibleChildren) {
             float childWidth = finalWidths[childIndex];
@@ -152,7 +183,14 @@ struct HStack {
             // Move to next position
             x += childWidth;
             if (childIndex < visibleCount - 1) {
-                x += baseSpacing;
+                // Use dynamic spacing for space distribution modes, otherwise use base spacing
+                if (justifyContent == JustifyContent::spaceBetween || 
+                    justifyContent == JustifyContent::spaceAround || 
+                    justifyContent == JustifyContent::spaceEvenly) {
+                    x += dynamicSpacing;
+                } else {
+                    x += baseSpacing;
+                }
             }
             childIndex++;
         }
