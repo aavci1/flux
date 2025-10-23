@@ -33,7 +33,7 @@ When `counter` changes, the lambda is re-evaluated on the next frame, showing th
 **Concepts:** Dynamic lists, complex state, lambda closures, CRUD operations, nested layouts
 
 A fully functional todo list app showcasing:
-- `State<std::vector<T>>` for dynamic collections
+- `Property<std::vector<T>>` for dynamic collections
 - Adding/removing items from lists
 - Lambda capture with mixed reference/value semantics
 - Programmatic child generation in loops

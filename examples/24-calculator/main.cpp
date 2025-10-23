@@ -8,11 +8,11 @@ int main(int argc, char* argv[]) {
     Application app(argc, argv);
 
     // Calculator state
-    State<std::string> display = std::string("0");
-    State<std::string> operation = std::string("");
-    State<double> firstNumber = 0.0;
-    State<bool> waitingForOperand = false;
-    State<bool> shouldResetDisplay = false;
+    Property<std::string> display = std::string("0");
+    Property<std::string> operation = std::string("");
+    Property<double> firstNumber = 0.0;
+    Property<bool> waitingForOperand = false;
+    Property<bool> shouldResetDisplay = false;
 
     // Helper function to update display
     auto updateDisplay = [&](const std::string& value) {

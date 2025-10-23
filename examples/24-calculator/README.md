@@ -29,14 +29,14 @@ A simple calculator application built with the Flux UI framework, demonstrating 
 ## Technical Implementation
 
 ### State Management
-The calculator uses Flux's `State` system for reactive updates:
+The calculator uses Flux's `Property` system for reactive updates:
 
 ```cpp
-State<std::string> display = "0";           // Current display value
-State<std::string> operation = "";           // Current operation (+, -, ×, ÷)
-State<double> firstNumber = 0.0;             // First operand
-State<bool> waitingForOperand = false;       // Whether waiting for second operand
-State<bool> shouldResetDisplay = false;      // Whether to reset display on next input
+Property<std::string> display = "0";           // Current display value
+Property<std::string> operation = "";           // Current operation (+, -, ×, ÷)
+Property<double> firstNumber = 0.0;             // First operand
+Property<bool> waitingForOperand = false;       // Whether waiting for second operand
+Property<bool> shouldResetDisplay = false;      // Whether to reset display on next input
 ```
 
 ### Key Concepts Demonstrated

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <Flux/Core/Types.hpp>
-#include <Flux/Core/State.hpp>
 #include <Flux/Core/Property.hpp>
 #include <Flux/Core/ViewHelpers.hpp>
 #include <Flux/Graphics/RenderContext.hpp>

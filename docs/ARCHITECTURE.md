@@ -11,10 +11,9 @@ flux/
 ├── include/
 │   ├── Flux.hpp                    Main header
 │   └── Flux/
-│       ├── Core/                   Core system (10 headers)
+│       ├── Core/                   Core system (9 headers)
 │       │   ├── Types.hpp          Geometry, colors, enums
-│       │   ├── State.hpp          Reactive state
-│       │   ├── Property.hpp       Flexible properties
+│       │   ├── Property.hpp       Reactive properties & state
 │       │   ├── View.hpp           Base view class
 │       │   ├── ViewHelpers.hpp    View rendering helpers
 │       │   ├── Application.hpp    App lifecycle
@@ -87,37 +86,40 @@ class View {
 };
 ```
 
-### State System
-
-```cpp
-template<typename T>
-class State {
-    T value;
-    std::shared_mutex mutex;
-
-    void notifyChange() {
-        Application::instance().requestRedraw();
-    }
-};
-```
-
 ### Property System
+
+`Property<T>` is a unified system that handles both stateful reactive values and component configuration:
 
 ```cpp
 template<typename T>
 class Property {
-    std::variant<T, ref<State<T>>, function<T()>> storage;
+    struct StatefulValue {
+        T value;
+        std::shared_mutex mutex;
+        void notifyChange() { requestApplicationRedraw(); }
+    };
+    
+    std::variant<
+        std::shared_ptr<StatefulValue>,  // Stateful mode (default)
+        T,                                // Direct value mode
+        std::function<T()>                // Lambda mode
+    > storage;
 
     T get() const;  // Evaluates current value
 };
 ```
+
+**Three modes:**
+1. **Stateful** (default): Thread-safe reactive values that trigger redraws
+2. **Direct value**: Static values for configuration
+3. **Lambda**: Computed values evaluated each frame
 
 ## Rendering Pipeline
 
 ### Frame Cycle
 
 ```
-1. State Change
+1. Property Change (Stateful Mode)
    counter++ → notifyChange() → requestRedraw()
 
 2. Application Event Loop
@@ -137,15 +139,15 @@ class Property {
 
 5. View Rendering
    Each view evaluates its properties:
-   - Lambda properties → execute (gets current state!)
-   - State refs → read current value
+   - Lambda properties → execute (gets current values!)
+   - Stateful properties → read current value
    - Direct values → use as-is
 ```
 
 ### Immediate Mode Flow
 
 ```
-State Change
+Property Change
     ↓
 requestRedraw()
     ↓
@@ -230,15 +232,15 @@ struct VStack {  // Plain struct, no inheritance
 
 ## Threading Model
 
-- **State<T>**: Thread-safe with read-write locks
+- **Property<T>** (stateful mode): Thread-safe with read-write locks
 - **Rendering**: Single-threaded (main thread)
-- **State modifications**: Can happen from any thread
-- **Redraws**: Batched per frame (multiple state changes = one redraw)
+- **Property modifications**: Can happen from any thread
+- **Redraws**: Batched per frame (multiple property changes = one redraw)
 
 ## Memory Model
 
 - **View tree**: Created fresh each frame, destroyed after render
-- **State**: Lives across frames
+- **Properties** (stateful): Live across frames
 - **View**: Type-erased container using unique_ptr<ViewInterface> for polymorphism
 - **Properties**: Small variant (value, ref, or function)
 - **ViewAdapter**: One per concrete type, stores component and forwards calls
@@ -289,15 +291,14 @@ struct VStack {  // Plain struct, no inheritance
 
 // Selective
 #include <Flux/Views/VStack.hpp>
-#include <Flux/Core/State.hpp>
+#include <Flux/Core/Property.hpp>
 ```
 
 ## Implementation Status
 
 ✅ Complete:
 - Core type system
-- State management
-- Property system
+- Unified Property system (stateful + configuration)
 - View system
 - View builder pattern
 - 5 view components (Text, Button, VStack, HStack, Spacer)
@@ -321,7 +322,7 @@ struct VStack {  // Plain struct, no inheritance
 
 Flux achieves automatic reactivity through:
 1. **Lambda properties** - Evaluate fresh each frame
-2. **State triggers** - Request redraws on changes
+2. **Stateful properties** - Request redraws on changes
 3. **Frame batching** - Efficient updates
 4. **Immediate evaluation** - Properties read current state
 

@@ -17,7 +17,7 @@ Demonstrates:
 
 ### Dynamic Lists
 ```cpp
-State<std::vector<TodoItem>> todos = {...};
+Property<std::vector<TodoItem>> todos = {...};
 ```
 
 ### Lambda Closures

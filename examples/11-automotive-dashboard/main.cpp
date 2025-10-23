@@ -280,17 +280,17 @@ int main(int argc, char* argv[]) {
         .title = "Automotive Dashboard"
     });
 
-    State date = std::string("");
-    State time = std::string("");
-    State name = std::string("Abdurrahman Avcı");
-    State chargeLevel = 80;
+    Property date = std::string("");
+    Property time = std::string("");
+    Property name = std::string("Abdurrahman Avcı");
+    Property chargeLevel = 80;
 
-    State trackTitle = std::string("Born of God");
-    State trackArtist = std::string("@Daft Punk");
-    State trackAlbum = std::string("Random Access Memories");
-    State trackAlbumCover = std::string("album_cover.jpg");
-    State trackCurrentTimeInSeconds = 0;
-    State trackDurationInSeconds = 335;
+    Property trackTitle = std::string("Born of God");
+    Property trackArtist = std::string("@Daft Punk");
+    Property trackAlbum = std::string("Random Access Memories");
+    Property trackAlbumCover = std::string("album_cover.jpg");
+    Property trackCurrentTimeInSeconds = 0;
+    Property trackDurationInSeconds = 335;
 
     window.setRootView(
         VStack {

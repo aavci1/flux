@@ -21,8 +21,9 @@ struct Grid {
 
     LayoutNode layout(RenderContext& ctx, const Rect& bounds) {
         EdgeInsets paddingVal = padding;
-        float availableWidth = bounds.width - paddingVal.horizontal() - spacing * (columns - 1);
-        float availableHeight = bounds.height - paddingVal.vertical() - spacing * (rows - 1);
+        float spacingVal = spacing;
+        float availableWidth = bounds.width - paddingVal.horizontal() - spacingVal * (columns - 1);
+        float availableHeight = bounds.height - paddingVal.vertical() - spacingVal * (rows - 1);
 
         std::vector<View> childrenVec = children;
         

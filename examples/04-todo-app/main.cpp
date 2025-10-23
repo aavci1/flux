@@ -183,7 +183,7 @@ int main(int argc, char* argv[]) {
     Application app(argc, argv);
 
     // Sample tasks matching the design
-    State<std::vector<TodoItem>> todos = std::vector<TodoItem>{
+    Property<std::vector<TodoItem>> todos = std::vector<TodoItem>{
         {1, "Creating Website", "Creating Website", "Jun", 14, 86, TaskStatus::ongoing},
         {2, "Meeting with mas client", "10.00 AM - 12.00 AM", "Jun", 19, -1, TaskStatus::todo},
         {3, "User Testing", "25 user in one day", "Jun", 22, 57, TaskStatus::review},

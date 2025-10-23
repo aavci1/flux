@@ -229,10 +229,10 @@ int main(int argc, char* argv[]) {
     });
 
     // State for time display
-    State currentTime = std::string("18:24");
-    State currentDate = std::string("Monday, December 16");
-    State username = std::string("User");
-    State password = std::string("");
+    Property currentTime = std::string("18:24");
+    Property currentDate = std::string("Monday, December 16");
+    Property username = std::string("User");
+    Property password = std::string("");
 
     window.setRootView(
         VStack {

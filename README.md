@@ -6,7 +6,7 @@ A minimal, declarative UI framework for Linux built with pure C++23.
 
 - Pure C++23 with designated initializers
 - Automatic reactive state management
-- Flexible properties (values, State refs, or lambdas)
+- Flexible properties (stateful values, direct values, or lambdas)
 - Immediate mode rendering
 - Type-safe with compile-time checking
 - **NEW**: SDL2 backend for cross-platform windowing and hardware-accelerated rendering
@@ -20,7 +20,7 @@ using namespace flux;
 int main(int argc, char* argv[]) {
     Application app(argc, argv);
 
-    State counter = 0;
+    Property counter = 0;
 
     Window window({.size = {400, 300}, .title = "Counter"});
 
@@ -61,10 +61,9 @@ int main(int argc, char* argv[]) {
 include/
 ├── Flux.hpp                    // Main header - includes everything
 └── Flux/
-    ├── Core/                   // Core types and system (10 headers)
+    ├── Core/                   // Core types and system (9 headers)
     │   ├── Types.hpp          // Point, Rect, Color, etc.
-    │   ├── State.hpp          // Reactive state
-    │   ├── Property.hpp       // Flexible properties
+    │   ├── Property.hpp       // Reactive properties & state
     │   ├── View.hpp           // Base view class
     │   ├── ViewHelpers.hpp    // View rendering helpers
     │   ├── Application.hpp    // App lifecycle
@@ -91,18 +90,19 @@ include/
 **UI Components (2):**
 - Text, Button
 
-## State Management
+## Property System
 
-State changes automatically trigger UI updates:
+Properties are flexible and support three modes:
 
+**1. Stateful Mode (Default)** - Changes automatically trigger UI updates:
 ```cpp
-State counter = 0;        // Automatic type deduction
-State name = "Alice";
+Property counter = 0;        // Stateful by default
+Property name = "Alice";
 
-counter++;                // Triggers automatic redraw
-name = "Bob";             // Triggers automatic redraw
+counter++;                   // Triggers automatic redraw
+name = "Bob";               // Triggers automatic redraw
 
-// Lambda properties capture state
+// Lambda properties capture values
 window.setRootView(
     Text {
         .value = [&]() {
@@ -110,6 +110,18 @@ window.setRootView(
         }
     }
 );
+```
+
+**2. Direct Value Mode** - Static values for configuration:
+```cpp
+Property<std::string> text = "Static";
+```
+
+**3. Lambda Mode** - Computed values evaluated each frame:
+```cpp
+Property<std::string> text = [&]() {
+    return std::format("Count: {}", counter);
+};
 ```
 
 **How it works:**
@@ -130,7 +142,7 @@ window.setRootView(
 See `examples/` directory:
 - **01-hello-world** - Basic setup
 - **02-stack-alignment-demo** - Text alignment and custom components
-- **03-counter** - State + reactivity
+- **03-counter** - Property system + reactivity
 - **04-todo-app** - Dynamic lists and CRUD operations
 - **05-colors-and-theming** - Color system and theming
 - **07-custom-drawing** - Custom graphics rendering
@@ -159,7 +171,7 @@ make
 
 // Selective includes
 #include <Flux/Views/VStack.hpp>
-#include <Flux/Core/State.hpp>
+#include <Flux/Core/Property.hpp>
 ```
 
 ## Project Status

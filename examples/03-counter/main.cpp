@@ -5,7 +5,7 @@ using namespace flux;
 int main(int argc, char* argv[]) {
     Application app(argc, argv);
 
-    State counter = 0;
+    Property counter = 0;
 
     Window window({
         .size = {400, 300},

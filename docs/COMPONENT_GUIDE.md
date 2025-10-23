@@ -296,7 +296,7 @@ ctx.drawLine(start, end, width, color);
 ctx.drawText(text, position, fontSize, color, weight);
 Size size = ctx.measureText(text, fontSize, weight);
 
-// State management
+// Property management
 ctx.save();     // Save transform state
 ctx.restore();  // Restore transform state
 ctx.translate(x, y);
@@ -360,7 +360,7 @@ Users can set properties with values, state references, or lambdas:
 ```cpp
 MyView {
     .title = "Static Text",              // Direct value
-    .title = username,                   // State reference
+    .title = username,                   // Stateful Property reference
     .title = [&]() { return name; }     // Lambda (computed)
 }
 ```

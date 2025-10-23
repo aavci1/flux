@@ -79,9 +79,12 @@ struct Clock {
             ctx.drawText(std::to_string(i), { x, y }, HorizontalAlignment::center, VerticalAlignment::center);
         }
 
-        drawHand(ctx, bounds.center(), radius * 0.4f, 12.0f, (hours * 30) + (minutes * 0.5f), Colors::black);
-        drawHand(ctx, bounds.center(), radius * 0.55f, 8.0f, (minutes * 6) + (seconds * 0.1f), Colors::black);
-        drawHand(ctx, bounds.center(), radius * 0.7f, 4.0f, seconds * 6, Colors::red);
+        int hoursVal = hours;
+        int minutesVal = minutes;
+        int secondsVal = seconds;
+        drawHand(ctx, bounds.center(), radius * 0.4f, 12.0f, (hoursVal * 30) + (minutesVal * 0.5f), Colors::black);
+        drawHand(ctx, bounds.center(), radius * 0.55f, 8.0f, (minutesVal * 6) + (secondsVal * 0.1f), Colors::black);
+        drawHand(ctx, bounds.center(), radius * 0.7f, 4.0f, secondsVal * 6, Colors::red);
 
         ctx.setFillStyle(FillStyle::solid(Colors::white));
         ctx.setStrokeStyle(StrokeStyle::solid(Colors::red, 6));

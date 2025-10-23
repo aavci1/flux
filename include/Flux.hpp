@@ -4,7 +4,6 @@
 // Main header - includes everything
 
 #include <Flux/Core/Types.hpp>
-#include <Flux/Core/State.hpp>
 #include <Flux/Core/Property.hpp>
 #include <Flux/Core/View.hpp>
 #include <Flux/Core/ViewHelpers.hpp>

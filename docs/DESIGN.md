@@ -27,7 +27,7 @@ VStack {
 Properties can be lambdas that capture state:
 
 ```cpp
-State counter = 0;
+Property counter = 0;
 
 window.setRootView(
     VStack {
@@ -43,7 +43,7 @@ window.setRootView(
 ```
 
 **How reactivity works:**
-1. State change (e.g., `counter++`) triggers `requestRedraw()`
+1. Property change (e.g., `counter++`) triggers `requestRedraw()`
 2. On next frame, renderer evaluates lambda properties
 3. Lambda properties read current state values
 4. UI renders with fresh data
@@ -57,7 +57,7 @@ Properties accept three forms:
 ```cpp
 Text {
     .value = "Static",                    // Direct value
-    .value = username,                    // State reference
+    .value = username,                    // Stateful Property reference
     .value = [&]() { return name; }      // Lambda (evaluated fresh)
 }
 ```
@@ -75,7 +75,7 @@ Text {
 
 UI is re-rendered every frame with fresh property evaluations:
 
-1. State changes trigger redraw
+1. Property changes trigger redraw
 2. On next frame: all lambda properties evaluated
 3. Layout calculated
 4. Tree rendered with current values
@@ -134,31 +134,38 @@ VStack {
 }
 ```
 
-## State vs Property
+## Property<T> - Flexible State and Configuration
 
-### State<T> - Application State
+`Property<T>` is a unified system that handles both stateful reactive values and component configuration. It can operate in three modes:
 
-Mutable state that triggers updates:
+### 1. Stateful Mode (Default)
+
+Mutable state that triggers automatic updates:
 
 ```cpp
-State counter = 0;
-State name = "Alice";
+Property counter = 0;      // Stateful by default
+Property name = "Alice";
 
 counter++;         // Triggers requestRedraw()
 name = "Bob";     // Triggers requestRedraw()
 ```
 
-### Property<T> - Component Properties
+### 2. Direct Value Mode
 
-Component configuration that accepts three forms:
+Static values for component configuration:
 
 ```cpp
-Property<std::string> value;
+Property<std::string> value = "Static";  // Direct value
+```
 
-// Can be assigned:
-.value = "Static"              // Direct value
-.value = username              // State reference
-.value = [&]() { return ...; }  // Lambda
+### 3. Lambda Mode
+
+Computed properties evaluated each frame:
+
+```cpp
+Property<std::string> value = [&]() {
+    return std::format("Count: {}", counter);
+};
 ```
 
 ### Components Have Both
@@ -193,14 +200,14 @@ struct Button {
 ```
 ┌─────────────────────────────────┐
 │      User Code (main.cpp)       │
-│  • State declarations           │
+│  • Property declarations        │
 │  • View builder function        │
 │  • Event handlers               │
 ├─────────────────────────────────┤
 │      Flux Core Framework        │
 │  • View system                  │
-│  • State management             │
 │  • Property system              │
+│  • Reactivity system            │
 │  • Layout engine                │
 ├─────────────────────────────────┤
 │      Renderer                   │
@@ -222,7 +229,7 @@ using namespace flux;
 int main(int argc, char* argv[]) {
     Application app(argc, argv);
 
-    State counter = 0;
+    Property counter = 0;
 
     Window window({.size = {400, 300}, .title = "Counter"});
 
@@ -266,7 +273,7 @@ int main(int argc, char* argv[]) {
 ## What Makes Flux Unique
 
 - Lambda properties for automatic reactivity (no builder functions needed)
-- Three property forms (value, State ref, lambda)
+- Three property modes (stateful, direct value, lambda)
 - Concept-based View system (no inheritance required)
 - Plain structs with designated initializers
 - Flexible layout system (expansionBias, compressionBias)

@@ -29,9 +29,9 @@ int main(int argc, char* argv[]) {
         .title = "Clock"
     });
 
-    State hours = 10;
-    State minutes = 30;
-    State seconds = 0;
+    Property hours = 10;
+    Property minutes = 30;
+    Property seconds = 0;
 
     window.setRootView(
         Clock {

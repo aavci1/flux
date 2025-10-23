@@ -293,7 +293,7 @@ struct RenderContextDemo {
 int main(int argc, char* argv[]) {
     Application app(argc, argv);
 
-    State animationTime = 0.0f;
+    Property animationTime = 0.0f;
 
     Window window({
         .size = {800, 600},

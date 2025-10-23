@@ -41,10 +41,10 @@ flux/
 
 ```cpp
 // Headers and sources: TitleCase
-Types.hpp, State.hpp, Application.cpp
+Types.hpp, Property.hpp, Application.cpp
 
 // Classes: TitleCase
-class View, class State, class VStack
+class View, class Property, class VStack
 
 // Variables: camelCase
 int counter, std::string userName
@@ -214,8 +214,7 @@ void render(...) {
 
 ### Phase 1: Framework Core ✅
 - View system
-- State management
-- Property system
+- Property system (unified stateful + configuration)
 - Example code
 
 ### Phase 2: Render Backend ✅
@@ -244,16 +243,16 @@ void render(...) {
 - Avoid heavy computation in builders
 - Use lambdas only when needed
 
-### State Changes
+### Property Changes
 
-- Multiple state changes batched per frame
+- Multiple property changes batched per frame
 - requestRedraw() is cheap (sets atomic flag)
 - Only one render per frame regardless of changes
 
 ### Property Evaluation
 
 - Direct values: zero overhead
-- State references: one indirection
+- Stateful properties: shared_ptr + mutex overhead
 - Lambdas: function call overhead
 
 Use the simplest form that works!
@@ -263,8 +262,7 @@ Use the simplest form that works!
 Flux development is straightforward:
 - Follow TitleCase convention for files
 - Use plain structs with FLUX_VIEW_PROPERTIES
-- Use Properties for configuration
-- Use State for reactivity
+- Use Properties for both configuration and reactivity
 - Implement the three-method pattern (layout, body, render)
 - Use ViewHelpers::renderView() for unified rendering
 
