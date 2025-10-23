@@ -76,7 +76,7 @@ endif()
 # Platform-specific dependencies
 if(UNIX AND NOT APPLE)
     find_package(OpenGL REQUIRED)
-    message(STATUS "Building for Linux with GLFW + NanoVG + OpenGL")
+    message(STATUS "Building for Linux with Wayland + NanoVG + OpenGL")
 elseif(APPLE)
     find_library(OPENGL_LIBRARY OpenGL REQUIRED)
     message(STATUS "Building for macOS with GLFW + NanoVG + OpenGL")
