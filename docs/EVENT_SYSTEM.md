@@ -95,6 +95,27 @@ std::function<void()> onDoubleClick = nullptr;
 ```
 Triggered when the view is double-clicked with the primary mouse button.
 
+#### onScroll
+```cpp
+std::function<void(float x, float y, float deltaX, float deltaY)> onScroll = nullptr;
+```
+Triggered when the mouse wheel or touchpad scroll is used over the view. Provides the mouse position and scroll deltas.
+
+**Parameters:**
+- `x`, `y`: Mouse position relative to the view when scrolling
+- `deltaX`: Horizontal scroll delta (positive = right, negative = left)
+- `deltaY`: Vertical scroll delta (positive = down, negative = up)
+
+**Example:**
+```cpp
+VStack {
+    .onScroll = [](float x, float y, float deltaX, float deltaY) {
+        std::cout << "Scrolled at (" << x << ", " << y << ") "
+                  << "deltaX=" << deltaX << " deltaY=" << deltaY << std::endl;
+    }
+}
+```
+
 ### Keyboard Events
 
 #### onKeyDown
@@ -216,6 +237,7 @@ A view is considered interactive (and will receive mouse events) if any of these
 - `onMouseEnter`
 - `onMouseLeave`
 - `onDoubleClick`
+- `onScroll`
 
 ## Best Practices
 

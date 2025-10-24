@@ -203,6 +203,11 @@ void Window::handleMouseUp(int button, float x, float y) {
     impl_->mouseHandler.handleMouseUp(button, x, y, windowBounds, impl_->renderer.get());
 }
 
+void Window::handleMouseScroll(float x, float y, float deltaX, float deltaY) {
+    Rect windowBounds = {0, 0, impl_->currentSize.width, impl_->currentSize.height};
+    impl_->mouseHandler.handleMouseScroll(x, y, deltaX, deltaY, windowBounds, impl_->renderer.get());
+}
+
 void Window::handleKeyDown(int key) {
     impl_->keyboardHandler.handleKeyDown(key);
     

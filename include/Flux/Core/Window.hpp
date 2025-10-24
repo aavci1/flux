@@ -104,6 +104,11 @@ public:
     void handleMouseUp(int button, float x, float y);
     
     /**
+     * @brief Handle mouse scroll/wheel events
+     */
+    void handleMouseScroll(float x, float y, float deltaX, float deltaY);
+    
+    /**
      * @brief Handle key down
      */
     void handleKeyDown(int key);

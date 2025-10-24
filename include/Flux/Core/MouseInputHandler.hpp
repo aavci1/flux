@@ -31,6 +31,11 @@ public:
      * @brief Handle mouse button up
      */
     void handleMouseUp(int button, float x, float y, const Rect& windowBounds, ImmediateModeRenderer* renderer);
+    
+    /**
+     * @brief Handle mouse scroll/wheel events
+     */
+    void handleMouseScroll(float x, float y, float deltaX, float deltaY, const Rect& windowBounds, ImmediateModeRenderer* renderer);
 
 private:
     void dispatchEvent(const Event& event, const Rect& windowBounds, ImmediateModeRenderer* renderer);

@@ -29,6 +29,16 @@ void MouseInputHandler::handleMouseUp(int button, float x, float y, const Rect& 
     dispatchEvent(event, windowBounds, renderer);
 }
 
+void MouseInputHandler::handleMouseScroll(float x, float y, float deltaX, float deltaY, const Rect& windowBounds, ImmediateModeRenderer* renderer) {
+    Event event;
+    event.type = Event::MouseScroll;
+    event.mouseScroll.x = x;
+    event.mouseScroll.y = y;
+    event.mouseScroll.deltaX = deltaX;
+    event.mouseScroll.deltaY = deltaY;
+    dispatchEvent(event, windowBounds, renderer);
+}
+
 void MouseInputHandler::dispatchEvent(const Event& event, const Rect& windowBounds, ImmediateModeRenderer* renderer) {
     if (renderer) {
         renderer->handleEvent(event, windowBounds);

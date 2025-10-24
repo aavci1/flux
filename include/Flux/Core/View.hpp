@@ -79,7 +79,8 @@ inline std::string demangleTypeName(const char* mangledName) {
     std::function<void(float, float)> onDragStart = nullptr; \
     std::function<void(float, float)> onDrag = nullptr; \
     std::function<void(float, float)> onDragEnd = nullptr; \
-    std::function<void(float, float)> onDrop = nullptr
+    std::function<void(float, float)> onDrop = nullptr; \
+    std::function<void(float, float, float, float)> onScroll = nullptr
 
 // Concept for what makes a View component
 // All methods are now optional - if not defined, default implementations will be used
@@ -121,6 +122,7 @@ public:
     virtual bool handleMouseDown(float x, float y, int button) { (void)x; (void)y; (void)button; return false; }
     virtual bool handleMouseUp(float x, float y, int button) { (void)x; (void)y; (void)button; return false; }
     virtual bool handleMouseMove(float x, float y) { (void)x; (void)y; return false; }
+    virtual bool handleMouseScroll(float x, float y, float deltaX, float deltaY) { (void)x; (void)y; (void)deltaX; (void)deltaY; return false; }
     virtual bool isInteractive() const { return false; }
     
     // Keyboard event handling methods
@@ -265,6 +267,7 @@ public:
     bool handleMouseDown(float x, float y, int button) override;
     bool handleMouseUp(float x, float y, int button) override;
     bool handleMouseMove(float x, float y) override;
+    bool handleMouseScroll(float x, float y, float deltaX, float deltaY) override;
     bool isInteractive() const override;
     
     // Keyboard event handling methods
@@ -364,6 +367,10 @@ public:
 
     bool handleMouseMove(float x, float y) {
         return component_ ? component_->handleMouseMove(x, y) : false;
+    }
+
+    bool handleMouseScroll(float x, float y, float deltaX, float deltaY) {
+        return component_ ? component_->handleMouseScroll(x, y, deltaX, deltaY) : false;
     }
 
     bool isInteractive() const {
@@ -681,6 +688,15 @@ inline bool ViewAdapter<T>::handleMouseMove(float x, float y) {
 }
 
 template<ViewComponent T>
+inline bool ViewAdapter<T>::handleMouseScroll(float x, float y, float deltaX, float deltaY) {
+    if (component.onScroll) {
+        component.onScroll(x, y, deltaX, deltaY);
+        return true;
+    }
+    return false;
+}
+
+template<ViewComponent T>
 inline bool ViewAdapter<T>::isInteractive() const {
     return component.onClick != nullptr || 
            component.onMouseDown != nullptr ||
@@ -688,7 +704,8 @@ inline bool ViewAdapter<T>::isInteractive() const {
            component.onMouseMove != nullptr ||
            component.onMouseEnter != nullptr ||
            component.onMouseLeave != nullptr ||
-           component.onDoubleClick != nullptr;
+           component.onDoubleClick != nullptr ||
+           component.onScroll != nullptr;
 }
 
 template<ViewComponent T>

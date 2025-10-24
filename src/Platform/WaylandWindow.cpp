@@ -211,12 +211,9 @@ static void pointer_button(void* data, wl_pointer* pointer,
 
 static void pointer_axis(void* data, wl_pointer* pointer,
                         uint32_t time, uint32_t axis, wl_fixed_t value) {
-    (void)data;
     (void)pointer;
-    (void)time;
-    (void)axis;
-    (void)value;
-    // TODO: Implement axis (scroll) events
+    WaylandWindow* window = static_cast<WaylandWindow*>(data);
+    window->handlePointerAxis(time, axis, wl_fixed_to_double(value));
 }
 
 static void pointer_frame(void* data, wl_pointer* pointer) {
@@ -1005,6 +1002,37 @@ void WaylandWindow::handlePointerButton(uint32_t serial, uint32_t time,
         std::cout << "[WaylandWindow] Button " << fluxButton << " released at ("
                   << pointerX_ << ", " << pointerY_ << ")\n";
     }
+}
+
+void WaylandWindow::handlePointerAxis(uint32_t time, uint32_t axis, double value) {
+    (void)time;
+    
+    // Wayland axis values are in scroll units (typically pixels or lines)
+    // axis: 0 = vertical, 1 = horizontal
+    // value: positive = down/right, negative = up/left
+    
+    // Convert Wayland scroll value to delta
+    // Note: Wayland gives us continuous scroll values, we'll normalize them
+    float deltaX = 0.0f;
+    float deltaY = 0.0f;
+    
+    if (axis == 0) { // WL_POINTER_AXIS_VERTICAL_SCROLL
+        deltaY = static_cast<float>(value);
+    } else if (axis == 1) { // WL_POINTER_AXIS_HORIZONTAL_SCROLL
+        deltaX = static_cast<float>(value);
+    }
+    
+    if (fluxWindow_) {
+        fluxWindow_->handleMouseScroll(
+            static_cast<float>(pointerX_),
+            static_cast<float>(pointerY_),
+            deltaX,
+            deltaY
+        );
+    }
+    
+    std::cout << "[WaylandWindow] Scroll event: axis=" << axis 
+              << " deltaX=" << deltaX << " deltaY=" << deltaY << "\n";
 }
 
 void WaylandWindow::handleKeyboardKeymap(uint32_t format, int32_t fd, uint32_t size) {

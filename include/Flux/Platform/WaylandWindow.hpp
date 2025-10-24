@@ -169,6 +169,7 @@ public:
     void handlePointerLeave(uint32_t serial);
     void handlePointerMotion(uint32_t time, double x, double y);
     void handlePointerButton(uint32_t serial, uint32_t time, uint32_t button, uint32_t state);
+    void handlePointerAxis(uint32_t time, uint32_t axis, double value);
     void handleKeyboardKeymap(uint32_t format, int32_t fd, uint32_t size);
     void handleKeyboardEnter(uint32_t serial, const wl_array* keys);
     void handleKeyboardLeave(uint32_t serial);

@@ -119,6 +119,23 @@ private:
                 }
                 break;
                 
+            case Event::MouseScroll:
+                {
+                    View mutableView = view;
+                    handled = mutableView.handleMouseScroll(
+                        localPoint.x, 
+                        localPoint.y, 
+                        event.mouseScroll.deltaX,
+                        event.mouseScroll.deltaY
+                    );
+                    if (handled) {
+                        std::cout << "[Renderer] MouseScroll handled by " << view.getTypeName() 
+                                  << " deltaX=" << event.mouseScroll.deltaX 
+                                  << " deltaY=" << event.mouseScroll.deltaY << "\n";
+                    }
+                }
+                break;
+                
             default:
                 break;
         }

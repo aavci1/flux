@@ -280,6 +280,9 @@ target_link_libraries(event_system_demo PRIVATE flux)
 add_executable(color_picker examples/29-color-picker/main.cpp)
 target_link_libraries(color_picker PRIVATE flux)
 
+add_executable(scroll_demo examples/30-scroll-demo/main.cpp)
+target_link_libraries(scroll_demo PRIVATE flux)
+
 endif()
 
 # Installation rules
