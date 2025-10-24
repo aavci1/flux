@@ -43,6 +43,10 @@ public:
     virtual void processEvents() = 0;
     virtual bool shouldClose() const = 0;
 
+    // Cursor management
+    virtual void setCursor(CursorType cursor) = 0;
+    virtual CursorType currentCursor() const = 0;
+
     // Flux window reference
     virtual void setFluxWindow(Window* window) = 0;
 };

@@ -237,6 +237,34 @@ struct BackgroundImage {
 };
 
 
+// Cursor types for mouse pointer
+enum class CursorType {
+    Default,        // Default arrow cursor
+    Pointer,        // Hand pointer for clickable items
+    Text,           // I-beam for text selection
+    Crosshair,      // Crosshair for precise selection
+    Move,           // Four-way arrow for moving
+    ResizeNS,       // North-South resize arrow
+    ResizeEW,       // East-West resize arrow
+    ResizeNESW,     // Northeast-Southwest resize arrow
+    ResizeNWSE,     // Northwest-Southeast resize arrow
+    NotAllowed,     // Not allowed / forbidden
+    Wait,           // Wait / busy cursor
+    Progress,       // Progress / working in background
+    Help,           // Help cursor with question mark
+    ContextMenu,    // Context menu cursor
+    Cell,           // Cell selection cursor
+    VerticalText,   // Vertical text selection
+    Alias,          // Alias / shortcut cursor
+    Copy,           // Copy cursor
+    NoDrop,         // No drop cursor
+    Grab,           // Open hand for grabbing
+    Grabbing,       // Closed hand for grabbing
+    AllScroll,      // All-direction scroll
+    ZoomIn,         // Zoom in cursor
+    ZoomOut         // Zoom out cursor
+};
+
 // Text measurement interface - provides only text measurement capabilities
 // This is a minimal interface that custom view developers can safely use
 class TextMeasurement {

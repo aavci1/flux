@@ -58,6 +58,10 @@ Window::Window(const WindowConfig& config)
 
         renderContext_.reset(); // PlatformWindow owns the render context
         renderer_ = std::make_unique<ImmediateModeRenderer>(platformWindow_->renderContext());
+        
+        // Set window reference in renderer for cursor management
+        auto* immediateRenderer = static_cast<ImmediateModeRenderer*>(renderer_.get());
+        immediateRenderer->setWindow(this);
     } else {
         throw std::runtime_error("Unsupported backend. Please use WindowBackend::Default or WindowBackend::Auto.");
     }
@@ -135,16 +139,29 @@ unsigned int Window::windowID() const {
 }
 
 void Window::handleMouseMove(float x, float y) {
-    std::cout << "[INPUT] Mouse moved to (" << x << ", " << y << ")\n";
-    // In real implementation, would propagate to views
+    Event event;
+    event.type = Event::MouseMove;
+    event.mouseMove.x = x;
+    event.mouseMove.y = y;
+    dispatchEvent(event);
 }
 
 void Window::handleMouseDown(int button, float x, float y) {
-    std::cout << "[INPUT] Mouse button " << button << " down at (" << x << ", " << y << ")\n";
+    Event event;
+    event.type = Event::MouseDown;
+    event.mouseButton.x = x;
+    event.mouseButton.y = y;
+    event.mouseButton.button = button;
+    dispatchEvent(event);
 }
 
 void Window::handleMouseUp(int button, float x, float y) {
-    std::cout << "[INPUT] Mouse button " << button << " up at (" << x << ", " << y << ")\n";
+    Event event;
+    event.type = Event::MouseUp;
+    event.mouseButton.x = x;
+    event.mouseButton.y = y;
+    event.mouseButton.button = button;
+    dispatchEvent(event);
 }
 
 void Window::handleKeyDown(int key) {
@@ -175,6 +192,30 @@ void Window::handleResize(const Size& newSize) {
 
     // Render immediately with this exact size
     render();
+}
+
+void Window::dispatchEvent(const Event& event) {
+    // Create window bounds for hit testing
+    Rect windowBounds = {0, 0, currentSize_.width, currentSize_.height};
+
+    // Dispatch event to renderer for hit testing and view targeting
+    if (renderer_) {
+        auto* immediateRenderer = static_cast<ImmediateModeRenderer*>(renderer_.get());
+        immediateRenderer->handleEvent(event, windowBounds);
+    }
+}
+
+void Window::setCursor(CursorType cursor) {
+    if (platformWindow_) {
+        platformWindow_->setCursor(cursor);
+    }
+}
+
+CursorType Window::currentCursor() const {
+    if (platformWindow_) {
+        return platformWindow_->currentCursor();
+    }
+    return CursorType::Default;
 }
 
 } // namespace flux

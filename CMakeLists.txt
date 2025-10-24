@@ -28,6 +28,7 @@ if(UNIX AND NOT APPLE)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(WAYLAND_CLIENT REQUIRED wayland-client)
     pkg_check_modules(WAYLAND_EGL REQUIRED wayland-egl)
+    pkg_check_modules(WAYLAND_CURSOR REQUIRED wayland-cursor)
     pkg_check_modules(EGL REQUIRED egl)
     pkg_check_modules(GLES2 REQUIRED glesv2)
     
@@ -130,6 +131,7 @@ set(FLUX_SOURCES
     src/Core/Application.cpp
     src/Core/Window.cpp
     src/Graphics/Path.cpp
+    src/Graphics/Renderer.cpp
     src/Graphics/NanoVGRenderer.cpp
     src/Graphics/NanoVGRenderContext.cpp
     src/Views/SVG.cpp
@@ -226,6 +228,7 @@ if(UNIX AND NOT APPLE)
     target_link_libraries(flux PUBLIC
         ${WAYLAND_CLIENT_LIBRARIES}
         ${WAYLAND_EGL_LIBRARIES}
+        ${WAYLAND_CURSOR_LIBRARIES}
         ${EGL_LIBRARIES}
         ${GLES2_LIBRARIES}
     )
@@ -308,6 +311,12 @@ target_link_libraries(spacer_grid_demo PRIVATE flux)
 
 add_executable(calculator examples/24-calculator/main.cpp)
 target_link_libraries(calculator PRIVATE flux)
+
+add_executable(cursor_demo examples/25-cursor-demo/main.cpp)
+target_link_libraries(cursor_demo PRIVATE flux)
+
+add_executable(declarative_cursor examples/26-declarative-cursor/main.cpp)
+target_link_libraries(declarative_cursor PRIVATE flux)
 
 endif()
 

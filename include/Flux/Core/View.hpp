@@ -57,7 +57,8 @@ inline std::string demangleTypeName(const char* mangledName) {
     Property<float> expansionBias = 0.0f; \
     Property<float> compressionBias = 1.0f; \
     Property<int> colspan = 1; \
-    Property<int> rowspan = 1
+    Property<int> rowspan = 1; \
+    Property<CursorType> cursor = CursorType::Default
 
 // Concept for what makes a View component
 // All methods are now optional - if not defined, default implementations will be used
@@ -94,6 +95,15 @@ public:
     // New methods for children property handling
     virtual bool hasChildrenProperty() const = 0;
     virtual std::vector<View> getChildren() const = 0;
+
+    // Event handling methods
+    virtual bool handleMouseDown(float x, float y, int button) { (void)x; (void)y; (void)button; return false; }
+    virtual bool handleMouseUp(float x, float y, int button) { (void)x; (void)y; (void)button; return false; }
+    virtual bool handleMouseMove(float x, float y) { (void)x; (void)y; return false; }
+    virtual bool isInteractive() const { return false; }
+    
+    // Cursor management
+    virtual CursorType getCursor() const = 0;
 };
 
 // SFINAE helpers to detect if methods exist
@@ -137,6 +147,14 @@ struct has_children_property {
     static constexpr bool value = decltype(test(std::declval<const T&>()))::value;
 };
 
+template<typename T>
+struct has_onClick {
+    template<typename U>
+    static auto test(const U& u) -> decltype(u.onClick, std::true_type{});
+    static std::false_type test(...);
+    static constexpr bool value = decltype(test(std::declval<const T&>()))::value;
+};
+
 // Template wrapper that adapts ViewComponent to ViewInterface
 template<ViewComponent T>
 class ViewAdapter : public ViewInterface {
@@ -170,6 +188,15 @@ public:
     std::string getTypeName() const override {
         return demangleTypeName(typeid(T).name());
     }
+
+    // Event handling methods
+    bool handleMouseDown(float x, float y, int button) override;
+    bool handleMouseUp(float x, float y, int button) override;
+    bool handleMouseMove(float x, float y) override;
+    bool isInteractive() const override;
+    
+    // Cursor management
+    CursorType getCursor() const override;
 };
 
 // Type-erased view container that supports any component type
@@ -241,6 +268,27 @@ public:
 
     bool isValid() const {
         return component_ != nullptr;
+    }
+
+    // Event handling delegation
+    bool handleMouseDown(float x, float y, int button) {
+        return component_ ? component_->handleMouseDown(x, y, button) : false;
+    }
+
+    bool handleMouseUp(float x, float y, int button) {
+        return component_ ? component_->handleMouseUp(x, y, button) : false;
+    }
+
+    bool handleMouseMove(float x, float y) {
+        return component_ ? component_->handleMouseMove(x, y) : false;
+    }
+
+    bool isInteractive() const {
+        return component_ ? component_->isInteractive() : false;
+    }
+
+    CursorType getCursor() const {
+        return component_ ? component_->getCursor() : CursorType::Default;
     }
 
     ViewInterface* operator->() { return component_.get(); }
@@ -480,6 +528,45 @@ inline std::vector<View> ViewAdapter<T>::getChildren() const {
         return component.children;
     }
     return {};
+}
+
+template<ViewComponent T>
+inline bool ViewAdapter<T>::handleMouseDown(float x, float y, int button) {
+    if constexpr (has_onClick<T>::value) {
+        if (component.onClick) {
+            component.onClick();
+            return true;  // Event handled
+        }
+    }
+    (void)x; (void)y; (void)button;
+    return false;
+}
+
+template<ViewComponent T>
+inline bool ViewAdapter<T>::handleMouseUp(float x, float y, int button) {
+    (void)x; (void)y; (void)button;
+    // Most components don't need mouseUp, but can be extended
+    return false;
+}
+
+template<ViewComponent T>
+inline bool ViewAdapter<T>::handleMouseMove(float x, float y) {
+    (void)x; (void)y;
+    // Can be extended for hover effects
+    return false;
+}
+
+template<ViewComponent T>
+inline bool ViewAdapter<T>::isInteractive() const {
+    if constexpr (has_onClick<T>::value) {
+        return component.onClick != nullptr;
+    }
+    return false;
+}
+
+template<ViewComponent T>
+inline CursorType ViewAdapter<T>::getCursor() const {
+    return component.cursor;
 }
 
 } // namespace flux

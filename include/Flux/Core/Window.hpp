@@ -4,6 +4,7 @@
 #include <Flux/Core/View.hpp>
 #include <Flux/Core/WindowBackend.hpp>
 #include <Flux/Graphics/Renderer.hpp>
+#include <Flux/Graphics/RenderContext.hpp>
 #include <string>
 #include <memory>
 
@@ -51,8 +52,15 @@ public:
     void handleTextInput(const std::string& text);
     void handleResize(const Size& newSize);
 
+    // Event dispatch to renderer
+    void dispatchEvent(const Event& event);
+
     // Backend info
     WindowBackend backend() const { return activeBackend_; }
+
+    // Cursor management
+    void setCursor(CursorType cursor);
+    CursorType currentCursor() const;
 
     // Platform-specific accessors (for Application event handling)
     PlatformWindow* platformWindow() { return platformWindow_.get(); }

@@ -25,6 +25,7 @@ struct Spacer {
     Property<float> compressionBias = 1.0f;
     Property<int> colspan = 1;
     Property<int> rowspan = 1;
+    Property<CursorType> cursor = CursorType::Default;
 
     Size preferredSize(TextMeasurement& textMeasurer) const {
         return {0, 0};
