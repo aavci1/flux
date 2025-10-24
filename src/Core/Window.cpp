@@ -294,6 +294,11 @@ void Window::removeObserver(WindowEventObserver* observer) {
 }
 
 void Window::requestRedraw() {
+    // Invalidate layout cache when redraw is requested due to state changes
+    if (impl_->renderer) {
+        impl_->renderer->invalidateLayoutCache();
+    }
+    
     impl_->notifyObservers(
         [](WindowEventObserver* obs, Window* win) {
             obs->onRedrawRequested(win);

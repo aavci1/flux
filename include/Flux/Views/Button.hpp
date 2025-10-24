@@ -18,6 +18,7 @@ struct Button {
     
     // Initialize default properties
     void init() {
+        backgroundColor = Colors::blue;
         focusable = true;  // Buttons are focusable by default
         
         // Set up focus callbacks to track focus state
@@ -46,11 +47,11 @@ struct Button {
                 bgColor.a
             );
             ctx.setFillStyle(FillStyle::solid(focusColor));
-            ctx.drawRect(bounds, CornerRadius(static_cast<float>(cornerRadius)));
+            ctx.drawRect(bounds, cornerRadius);
             
             // Draw focus ring
             Path focusRing;
-            focusRing.rect(bounds, CornerRadius(static_cast<float>(cornerRadius)));
+            focusRing.rect(bounds, cornerRadius);
             ctx.setStrokeStyle(StrokeStyle::solid(Colors::white, 3.0f));
             ctx.drawPath(focusRing);
         } else {

@@ -277,6 +277,9 @@ target_link_libraries(focus_keyboard_demo PRIVATE flux)
 add_executable(event_system_demo examples/28-event-system-demo/main.cpp)
 target_link_libraries(event_system_demo PRIVATE flux)
 
+add_executable(color_picker examples/29-color-picker/main.cpp)
+target_link_libraries(color_picker PRIVATE flux)
+
 endif()
 
 # Installation rules

@@ -14,7 +14,7 @@ struct Spacer {
         compressionBias = 1.0f;
     }
 
-    Size preferredSize(TextMeasurement& textMeasurer) const {
+    Size preferredSize(TextMeasurement& /*textMeasurer*/) const {
         return {0, 0};
     }
 };

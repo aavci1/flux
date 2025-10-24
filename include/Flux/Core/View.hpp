@@ -47,7 +47,7 @@ inline std::string demangleTypeName(const char* mangledName) {
     Property<BackgroundImage> backgroundImage = BackgroundImage{}; \
     Property<Color> borderColor = Colors::transparent; \
     Property<float> borderWidth = 0; \
-    Property<float> cornerRadius = 0; \
+    Property<CornerRadius> cornerRadius = CornerRadius{0, 0, 0, 0}; \
     Property<float> opacity = 1.0; \
     Property<bool> visible = true; \
     Property<bool> clip = false; \

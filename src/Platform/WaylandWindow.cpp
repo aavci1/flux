@@ -947,7 +947,15 @@ void WaylandWindow::handlePointerLeave(uint32_t serial) {
 }
 
 void WaylandWindow::handlePointerMotion(uint32_t time, double x, double y) {
-    (void)time;
+    static uint32_t lastTime = 0;
+    static constexpr uint32_t THROTTLE_MS = 8;  // ~120 fps max
+    
+    // Throttle mouse motion events to reduce layout rebuilds
+    if (time - lastTime < THROTTLE_MS) {
+        return;
+    }
+    lastTime = time;
+    
     pointerX_ = x;
     pointerY_ = y;
 
@@ -955,7 +963,8 @@ void WaylandWindow::handlePointerMotion(uint32_t time, double x, double y) {
         fluxWindow_->handleMouseMove(static_cast<float>(x), static_cast<float>(y));
     }
 
-    std::cout << "[WaylandWindow] Pointer moved to (" << x << ", " << y << ")\n";
+    // Debug print removed - printing to console is very expensive
+    // std::cout << "[WaylandWindow] Pointer moved to (" << x << ", " << y << ")\n";
 }
 
 void WaylandWindow::handlePointerButton(uint32_t serial, uint32_t time,

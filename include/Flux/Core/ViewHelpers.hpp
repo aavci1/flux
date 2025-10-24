@@ -49,29 +49,14 @@ inline void renderView(const ViewType& view, RenderContext& ctx, const Rect& bou
     if (bgColor.a > 0) {
         ctx.setFillStyle(FillStyle::solid(bgColor));
         ctx.setStrokeStyle(StrokeStyle::none());
-        ctx.drawRect(bounds, CornerRadius(static_cast<float>(view.cornerRadius)));
+        ctx.drawRect(bounds, view.cornerRadius);
     }
 
     // // Draw background image if present
     BackgroundImage bgImage = view.backgroundImage;
     if (bgImage.isValid()) {
-        // Simple background image rendering for now
-        ctx.save();
-        if (bgImage.opacity < 1.0f) {
-            ctx.setOpacity(bgImage.opacity);
-        }
-
-        // Create clipping path for rounded corners if needed
-        if (static_cast<float>(view.cornerRadius) > 0) {
-            Path clipPath;
-            clipPath.rect(bounds, static_cast<float>(view.cornerRadius));
-            ctx.clipPath(clipPath);
-        }
-
         // Draw the background image with proper sizing
         drawBackgroundImageWithSizing(ctx, bgImage, bounds);
-
-        ctx.restore();
     }
 
     // Draw border
@@ -80,7 +65,7 @@ inline void renderView(const ViewType& view, RenderContext& ctx, const Rect& bou
     if (borderWidth > 0 && borderColor.a > 0) {
         ctx.setFillStyle(FillStyle::none());
         ctx.setStrokeStyle(StrokeStyle::solid(borderColor, borderWidth));
-        ctx.drawRect(bounds, CornerRadius(static_cast<float>(view.cornerRadius)));
+        ctx.drawRect(bounds, view.cornerRadius);
     }
 
     ctx.restore();

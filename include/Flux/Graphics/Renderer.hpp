@@ -50,6 +50,11 @@ private:
     RenderContext* renderContext_;
     View rootView_;
     Window* window_;  // Reference to window for cursor changes
+    
+    // Layout cache to avoid rebuilding on every mouse event
+    mutable LayoutNode cachedLayoutTree_;
+    mutable Rect cachedBounds_ = {0, 0, 0, 0};
+    mutable bool layoutCacheValid_ = false;
 
 public:
     Renderer(RenderContext* ctx)
@@ -61,6 +66,11 @@ public:
     void setWindow(Window* window) { window_ = window; }
 
     void renderFrame(const Rect& bounds);
+    
+    // Invalidate layout cache (called when UI state changes)
+    void invalidateLayoutCache() {
+        layoutCacheValid_ = false;
+    }
 
     void handleEvent(const struct Event& event, const Rect& windowBounds) {
         // Handle input events by finding the target view and dispatching to it
@@ -91,13 +101,21 @@ public:
             return;  // Event is outside the window
         }
 
-        // Build layout tree and find + dispatch to the target view in one pass
-        LayoutNode layoutTree = rootView_.layout(*renderContext_, windowBounds);
-        findAndDispatchEvent(layoutTree, event, eventPoint);
+        // Use cached layout tree if valid and bounds match, otherwise rebuild
+        if (!layoutCacheValid_ || 
+            cachedBounds_.x != windowBounds.x || cachedBounds_.y != windowBounds.y ||
+            cachedBounds_.width != windowBounds.width || cachedBounds_.height != windowBounds.height) {
+            cachedLayoutTree_ = rootView_.layout(*renderContext_, windowBounds);
+            cachedBounds_ = windowBounds;
+            layoutCacheValid_ = true;
+        }
+        
+        findAndDispatchEvent(cachedLayoutTree_, event, eventPoint);
     }
 
     void setRootView(View component) {
         rootView_ = std::move(component);
+        layoutCacheValid_ = false;  // Invalidate cache when root view changes
     }
 
 private:

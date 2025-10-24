@@ -25,11 +25,16 @@ void Renderer::renderFrame(const Rect& bounds) {
 
         // Layout the root view with RenderContext for accurate measurements
         LayoutNode layoutTree = rootView_->layout(*renderContext_, bounds);
+        
+        // Update layout cache for mouse event handling
+        cachedLayoutTree_ = layoutTree;
+        cachedBounds_ = bounds;
+        layoutCacheValid_ = true;
 
-        // Debug: Print layout tree before rendering
-        std::cout << "\n=== Layout Tree ===" << std::endl;
-        printLayoutTree(layoutTree);
-        std::cout << "==================\n" << std::endl;
+        // Debug printing removed - extremely expensive with many views
+        // std::cout << "\n=== Layout Tree ===" << std::endl;
+        // printLayoutTree(layoutTree);
+        // std::cout << "==================\n" << std::endl;
 
         // Set the global focused key in the render context for this frame
         // This allows views to check if they have focus during rendering
