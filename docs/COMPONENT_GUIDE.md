@@ -390,6 +390,200 @@ struct Button {
 };
 ```
 
+## Event Handling
+
+All views have access to comprehensive event handling through the `FLUX_VIEW_PROPERTIES` macro. This provides 17 event callbacks that can be used on any component.
+
+### Available Events
+
+#### Mouse Events
+```cpp
+VStack {
+    .onClick = []() {
+        std::cout << "Clicked!" << std::endl;
+    },
+    .onMouseDown = [](float x, float y, int button) {
+        std::cout << "Mouse down at " << x << ", " << y << std::endl;
+    },
+    .onMouseEnter = []() {
+        std::cout << "Mouse entered!" << std::endl;
+    },
+    .onMouseLeave = []() {
+        std::cout << "Mouse left!" << std::endl;
+    }
+}
+```
+
+#### Keyboard Events
+```cpp
+VStack {
+    .focusable = true,  // Required for keyboard events
+    .onKeyDown = [](const KeyEvent& e) {
+        if (e.key == Key::Enter) {
+            std::cout << "Enter pressed!" << std::endl;
+            return true;  // Event handled, stop propagation
+        }
+        return false;  // Not handled, continue propagation
+    },
+    .onTextInput = [](const std::string& text) {
+        std::cout << "Text input: " << text << std::endl;
+    }
+}
+```
+
+#### Focus Events
+```cpp
+Button {
+    .text = "Click me",
+    .focusable = true,
+    .onFocus = []() {
+        std::cout << "Gained focus" << std::endl;
+    },
+    .onBlur = []() {
+        std::cout << "Lost focus" << std::endl;
+    }
+}
+```
+
+### Event Handling Priority
+
+For components that define both custom event handlers (methods) and event callbacks (properties):
+
+1. **Custom method checked first** (e.g., `Button::handleKeyDown`)
+2. **If method returns false or doesn't exist**, callback is invoked (e.g., `onKeyDown`)
+
+Example:
+```cpp
+struct Button {
+    FLUX_VIEW_PROPERTIES;  // Includes onClick and onKeyDown
+    
+    // Custom handler has priority
+    bool handleKeyDown(const KeyEvent& event) const {
+        if (event.key == Key::Enter && onClick) {
+            onClick();
+            return true;  // Handled
+        }
+        return false;  // Not handled, will call onKeyDown callback
+    }
+};
+```
+
+### Creating Interactive Components
+
+To make a component interactive:
+
+```cpp
+struct CustomButton {
+    FLUX_VIEW_PROPERTIES;
+    
+    Property<std::string> label;
+    
+    void init() {
+        focusable = true;  // Enable keyboard focus
+    }
+    
+    void render(RenderContext& ctx, const Rect& bounds) const {
+        bool hasFocus = ctx.isCurrentViewFocused();
+        
+        // Render with focus indicator
+        if (hasFocus) {
+            // Draw focus ring
+        }
+        
+        ViewHelpers::renderView(*this, ctx, bounds);
+        ctx.drawText(label, bounds.center());
+    }
+    
+    // Optional: Custom keyboard handling
+    bool handleKeyDown(const KeyEvent& e) const {
+        if ((e.key == Key::Enter || e.key == Key::Space) && onClick) {
+            onClick();
+            return true;
+        }
+        return false;
+    }
+};
+```
+
+### Common Event Patterns
+
+**Hover Effects:**
+```cpp
+Property<bool> isHovered = false;
+
+VStack {
+    .backgroundColor = [&isHovered]() {
+        return isHovered ? Colors::lightGray : Colors::white;
+    },
+    .onMouseEnter = [&isHovered]() { isHovered = true; },
+    .onMouseLeave = [&isHovered]() { isHovered = false; }
+}
+```
+
+**Click Counter:**
+```cpp
+Property<int> clickCount = 0;
+
+Button {
+    .text = [&clickCount]() {
+        return std::format("Clicked {} times", static_cast<int>(clickCount));
+    },
+    .onClick = [&clickCount]() {
+        clickCount++;
+    }
+}
+```
+
+**Keyboard Navigation:**
+```cpp
+Property<int> selectedIndex = 0;
+
+VStack {
+    .focusable = true,
+    .onKeyDown = [&selectedIndex](const KeyEvent& e) {
+        if (e.key == Key::Up) {
+            selectedIndex = std::max(0, selectedIndex - 1);
+            return true;
+        } else if (e.key == Key::Down) {
+            selectedIndex++;
+            return true;
+        }
+        return false;
+    }
+}
+```
+
+**Text Input:**
+```cpp
+Property<std::string> text = "";
+
+VStack {
+    .focusable = true,
+    .cursor = CursorType::Text,
+    .onTextInput = [&text](const std::string& input) {
+        text = static_cast<std::string>(text) + input;
+    },
+    .onKeyDown = [&text](const KeyEvent& e) {
+        if (e.key == Key::Backspace) {
+            std::string current = text;
+            if (!current.empty()) {
+                text = current.substr(0, current.length() - 1);
+            }
+            return true;
+        }
+        return false;
+    }
+}
+```
+
+### Complete Event Reference
+
+See `docs/EVENT_SYSTEM.md` for complete event documentation including:
+- All 17 event signatures
+- Detailed usage examples
+- Best practices
+- Event propagation rules
+
 ## Best Practices
 
 ### ✓ DO: Follow the Standard Pattern

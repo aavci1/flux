@@ -270,6 +270,9 @@ target_link_libraries(declarative_cursor PRIVATE flux)
 add_executable(focus_keyboard_demo examples/27-focus-keyboard-demo/main.cpp)
 target_link_libraries(focus_keyboard_demo PRIVATE flux)
 
+add_executable(event_system_demo examples/28-event-system-demo/main.cpp)
+target_link_libraries(event_system_demo PRIVATE flux)
+
 endif()
 
 # Installation rules

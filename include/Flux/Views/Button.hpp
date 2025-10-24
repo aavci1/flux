@@ -13,7 +13,6 @@ struct Button {
     FLUX_VIEW_PROPERTIES;
 
     Property<std::string> text;
-    std::function<void()> onClick;
     
     // Focus state is now tracked by FocusManager, no need for local state
     
