@@ -965,13 +965,14 @@ void WaylandWindow::handlePointerButton(uint32_t serial, uint32_t time,
 
     // Convert Wayland button codes to Flux button codes
     // Wayland uses Linux input event codes: BTN_LEFT = 0x110, BTN_RIGHT = 0x111, etc.
+    // Flux uses 0=left, 1=middle, 2=right
     int fluxButton = 0;
     if (button == 0x110) { // BTN_LEFT
-        fluxButton = 1;
+        fluxButton = 0;
     } else if (button == 0x111) { // BTN_RIGHT
         fluxButton = 2;
     } else if (button == 0x112) { // BTN_MIDDLE
-        fluxButton = 3;
+        fluxButton = 1;
     } else {
         fluxButton = static_cast<int>(button);
     }
