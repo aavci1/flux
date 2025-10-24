@@ -66,31 +66,23 @@ struct PasswordField {
         
         // Layer 1: Darker base
         Color darkBase = Color(0.0f, 0.0f, 0.0f, 0.1f);
-        Path path;
-        path.rect(bounds, radius);
         ctx.setFillStyle(FillStyle::solid(darkBase));
-        ctx.drawPath(path);
+        ctx.drawRect(bounds, radius);
 
         // Layer 2: Main glass background
         Color bgColor = static_cast<Color>(fieldBackgroundColor);
-        Path path2;
-        path2.rect(bounds, radius);
         ctx.setFillStyle(FillStyle::solid(bgColor));
-        ctx.drawPath(path2);
+        ctx.drawRect(bounds, radius);
 
         // Layer 3: Subtle highlight at top
         Color highlight = Color(1.0f, 1.0f, 1.0f, 0.1f);
-        Rect highlightRect = {bounds.x, bounds.y, bounds.width, bounds.height * 0.4f};
-        Path path3;
-        path3.rect(highlightRect, radius);
         ctx.setFillStyle(FillStyle::solid(highlight));
-        ctx.drawPath(path3);
+        ctx.setStrokeStyle(StrokeStyle::none());
+        ctx.drawRect({bounds.x, bounds.y, bounds.width, bounds.height * 0.4f}, radius);
 
         // Draw border
-        Path path4;
-        path4.rect(bounds, radius);
         ctx.setStrokeStyle(StrokeStyle::solid(static_cast<Color>(fieldBorderColor), static_cast<float>(fieldBorderWidth)));
-        ctx.drawPath(path4);
+        ctx.drawRect(bounds, radius);
 
         // Draw placeholder or password dots
         std::string displayText = static_cast<std::string>(value).empty() ?
@@ -121,10 +113,9 @@ struct SubmitButton {
 
         // Draw circular button
         Color bgColor = static_cast<Color>(buttonBackgroundColor);
-        Path path;
-        path.rect(bounds, static_cast<float>(buttonCornerRadius));
         ctx.setFillStyle(FillStyle::solid(bgColor));
-        ctx.drawPath(path);
+        ctx.setStrokeStyle(StrokeStyle::none());
+        ctx.drawRect(bounds, static_cast<float>(buttonCornerRadius));
 
         // Draw arrow icon (simple triangle)
         Point center = bounds.center();
@@ -135,7 +126,7 @@ struct SubmitButton {
         path2.moveTo({center.x - arrowSize/2, center.y - arrowSize/2});
         path2.lineTo({center.x + arrowSize/2, center.y});
         path2.lineTo({center.x - arrowSize/2, center.y + arrowSize/2});
-        ctx.setStrokeStyle(StrokeStyle::solid(Color::hex(0x333333), 3.0f));
+        ctx.setStrokeStyle(StrokeStyle::rounded(Color::hex(0x333333), 3.0f));
         ctx.drawPath(path2);
     }
 
@@ -158,10 +149,9 @@ struct ActionButton {
         ViewHelpers::renderView(*this, ctx, bounds);
 
         // Draw circular border
-        Path path;
-        path.arc(bounds.center(), bounds.width / 2, 0, 2 * M_PI);
-        ctx.setStrokeStyle(StrokeStyle::solid(static_cast<Color>(buttonBorderColor), static_cast<float>(buttonBorderWidth)));
-        ctx.drawPath(path);
+        ctx.setFillStyle(FillStyle::none());
+        ctx.setStrokeStyle(StrokeStyle::rounded(static_cast<Color>(buttonBorderColor), static_cast<float>(buttonBorderWidth)));
+        ctx.drawArc(bounds.center(), bounds.width / 2, 0, 2 * M_PI);
 
         // Draw icon based on action type
         std::string actionType = static_cast<std::string>(action);
@@ -241,8 +231,7 @@ int main(int argc, char* argv[]) {
                 .size = BackgroundSize::Cover,
                 .position = BackgroundPosition::Center,
             },
-            .padding = 120,
-            .justifyContent = JustifyContent::spaceBetween,
+            .justifyContent = JustifyContent::spaceAround,
             .alignItems = AlignItems::center,
             .children = {
                 Text {
@@ -258,12 +247,10 @@ int main(int argc, char* argv[]) {
                     .color = Colors::white,
                     .horizontalAlignment = HorizontalAlignment::center
                 },
-                Spacer {},
                 UserAvatar {
                     .username = username,
                     .size = Size{120, 120}
                 },
-                Spacer {},
                 HStack {
                     .spacing = 20,
                     .alignItems = AlignItems::center,
@@ -279,7 +266,6 @@ int main(int argc, char* argv[]) {
                         }
                     }
                 },
-                Spacer {},
                 HStack {
                     .compressionBias = 0,
                     .expansionBias = 0,

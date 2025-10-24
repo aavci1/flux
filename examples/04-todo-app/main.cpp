@@ -81,11 +81,13 @@ struct ProgressIcon {
         // Draw background circle
         Color bgColor = iconBackgroundColor;
         ctx.setFillStyle(FillStyle::solid(bgColor));
+        ctx.setStrokeStyle(StrokeStyle::none());
         ctx.drawCircle({centerX, centerY}, iconSize/2);
 
         // Draw progress track (background ring)
         float trackRadius = radius;
         Color trackCol = trackColor;
+        ctx.setFillStyle(FillStyle::none());
         ctx.setStrokeStyle(StrokeStyle::solid(trackCol, strokeWidth));
         ctx.drawArc({centerX, centerY}, trackRadius, 0, 2 * M_PI);
 
@@ -100,8 +102,9 @@ struct ProgressIcon {
         // Draw progress arc starting from top (-π/2) and going clockwise
         float startAngle = -M_PI / 2; // Start at top
         float endAngle = startAngle + progressAngle;
+        ctx.setFillStyle(FillStyle::none());
         ctx.setStrokeStyle(StrokeStyle::solid(progressCol, strokeWidth));
-        ctx.drawArc({centerX, centerY}, progressRadius, startAngle, endAngle);
+        ctx.drawArc({centerX, centerY}, progressRadius, startAngle, endAngle, true);
 
         // Set text style for progress text
         ctx.setTextStyle(TextStyle::regular("default", 18));
