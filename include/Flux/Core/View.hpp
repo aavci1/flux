@@ -8,6 +8,7 @@
 #include <memory>
 #include <vector>
 #include <functional>
+#include <optional>
 #include <concepts>
 #include <typeinfo>
 #include <iostream>
@@ -59,7 +60,7 @@ inline std::string demangleTypeName(const char* mangledName) {
     Property<float> compressionBias = 1.0f; \
     Property<int> colspan = 1; \
     Property<int> rowspan = 1; \
-    Property<CursorType> cursor = CursorType::Default; \
+    Property<std::optional<CursorType>> cursor = std::nullopt; \
     Property<bool> focusable = false; \
     Property<std::string> focusKey = ""; \
     std::function<void()> onClick = nullptr; \
@@ -134,7 +135,7 @@ public:
     virtual void notifyFocusLost() {}
     
     // Cursor management
-    virtual CursorType getCursor() const = 0;
+    virtual std::optional<CursorType> getCursor() const = 0;
 };
 
 // SFINAE helpers to detect if methods exist
@@ -278,7 +279,7 @@ public:
     void notifyFocusLost() override;
     
     // Cursor management
-    CursorType getCursor() const override;
+    std::optional<CursorType> getCursor() const override;
 };
 
 // Type-erased view container that supports any component type
@@ -399,8 +400,8 @@ public:
         if (component_) component_->notifyFocusLost();
     }
 
-    CursorType getCursor() const {
-        return component_ ? component_->getCursor() : CursorType::Default;
+    std::optional<CursorType> getCursor() const {
+        return component_ ? component_->getCursor() : std::nullopt;
     }
 
     ViewInterface* operator->() { return component_.get(); }
@@ -691,7 +692,7 @@ inline bool ViewAdapter<T>::isInteractive() const {
 }
 
 template<ViewComponent T>
-inline CursorType ViewAdapter<T>::getCursor() const {
+inline std::optional<CursorType> ViewAdapter<T>::getCursor() const {
     return component.cursor;
 }
 

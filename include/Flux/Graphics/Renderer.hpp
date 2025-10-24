@@ -72,46 +72,7 @@ public:
         layoutCacheValid_ = false;
     }
 
-    void handleEvent(const struct Event& event, const Rect& windowBounds) {
-        // Handle input events by finding the target view and dispatching to it
-        if (!rootView_.isValid()) {
-            return;
-        }
-
-        Point eventPoint;
-        
-        // Extract coordinates based on event type
-        switch (event.type) {
-            case Event::MouseMove:
-                eventPoint = {event.mouseMove.x, event.mouseMove.y};
-                break;
-            case Event::MouseDown:
-            case Event::MouseUp:
-                eventPoint = {event.mouseButton.x, event.mouseButton.y};
-                break;
-            case Event::MouseScroll:
-                eventPoint = {event.mouseScroll.x, event.mouseScroll.y};
-                break;
-            default:
-                return;  // Don't process events without coordinates
-        }
-
-        // Check if the event point is within window bounds
-        if (!windowBounds.contains(eventPoint)) {
-            return;  // Event is outside the window
-        }
-
-        // Use cached layout tree if valid and bounds match, otherwise rebuild
-        if (!layoutCacheValid_ || 
-            cachedBounds_.x != windowBounds.x || cachedBounds_.y != windowBounds.y ||
-            cachedBounds_.width != windowBounds.width || cachedBounds_.height != windowBounds.height) {
-            cachedLayoutTree_ = rootView_.layout(*renderContext_, windowBounds);
-            cachedBounds_ = windowBounds;
-            layoutCacheValid_ = true;
-        }
-        
-        findAndDispatchEvent(cachedLayoutTree_, event, eventPoint);
-    }
+    void handleEvent(const struct Event& event, const Rect& windowBounds);
 
     void setRootView(View component) {
         rootView_ = std::move(component);
@@ -124,8 +85,8 @@ private:
     // Find and dispatch event to the deepest interactive view in the layout tree
     bool findAndDispatchEvent(const LayoutNode& node, const Event& event, const Point& point);
     
-    // Helper to update cursor based on view
-    void updateCursorForView(const View& view, const Event& event);
+    // Collect cursor by traversing view hierarchy
+    std::optional<CursorType> collectCursor(const LayoutNode& node, const Point& point, std::optional<CursorType> inheritedCursor);
 
     // Dispatch event to a specific view
     bool dispatchEventToView(const View& view, const Event& event, const Point& localPoint) {

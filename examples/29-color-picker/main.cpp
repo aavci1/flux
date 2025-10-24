@@ -195,8 +195,7 @@ int main(int argc, char* argv[]) {
     window.setRootView(
         Grid {
             .padding = 16,
-            .spacing = 32,
-            .cursor = CursorType::Default,
+            .spacing = 16,
             .rows = 8,
             .columns = 10,
             .children = colorCells
