@@ -283,6 +283,9 @@ target_link_libraries(color_picker PRIVATE flux)
 add_executable(scroll_demo examples/30-scroll-demo/main.cpp)
 target_link_libraries(scroll_demo PRIVATE flux)
 
+add_executable(component_showcase examples/31-component-showcase/main.cpp)
+target_link_libraries(component_showcase PRIVATE flux)
+
 endif()
 
 # Installation rules
