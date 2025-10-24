@@ -2,20 +2,23 @@
 
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/View.hpp>
-#include <Flux/Core/KeyEvent.hpp>
-#include <Flux/Graphics/Renderer.hpp>
-#include <Flux/Graphics/RenderContext.hpp>
 #include <string>
 #include <memory>
-#include <vector>
-#include <functional>
 
 namespace flux {
 
-class RenderContext;
-class PlatformWindow; // Forward declaration
+// Forward declarations
+class WindowEventObserver;
+class KeyboardInputHandler;
+class MouseInputHandler;
+class FocusState;
+class ShortcutManager;
+class PlatformWindowFactory;
 struct LayoutNode;
 
+/**
+ * @brief Window configuration
+ */
 struct WindowConfig {
     Size size = {1280, 720};
     std::string title = "Flux Application";
@@ -23,96 +26,176 @@ struct WindowConfig {
     bool resizable = true;
 };
 
+/**
+ * @brief Main window class using pImpl idiom
+ * 
+ * Provides a clean public interface while hiding all implementation details.
+ * Manages window lifecycle, rendering, and coordinates input subsystems.
+ */
 class Window {
-private:
-    std::unique_ptr<ImmediateModeRenderer> renderer_;
-    std::unique_ptr<RenderContext> renderContext_; // Owned by PlatformWindow now
-    View rootView_;
-    WindowConfig config_;
-    Size currentSize_;
-
-    std::unique_ptr<PlatformWindow> platformWindow_; // Wayland window implementation
-
-    // Keyboard state tracking
-    KeyModifier currentModifiers_;
-    
-    // Pending keyboard events (to be dispatched during render frame)
-    std::vector<KeyEvent> pendingKeyDownEvents_;
-    std::vector<KeyEvent> pendingKeyUpEvents_;
-    std::vector<TextInputEvent> pendingTextInputEvents_;
-
-    // Focus management state (previously in FocusManager)
-    struct FocusableViewInfo {
-        View* view;
-        Rect bounds;
-        std::string key;  // Unique key for this view (explicit or auto-generated)
-    };
-    std::string focusedKey_;  // Track focus by key for stability across frames
-    std::vector<FocusableViewInfo> focusableViews_;
-
 public:
+    /**
+     * @brief Create a window with given configuration
+     */
     explicit Window(const WindowConfig& config);
+    
+    /**
+     * @brief Create a window with custom platform factory
+     */
+    Window(const WindowConfig& config, PlatformWindowFactory* factory);
+    
+    /**
+     * @brief Destructor
+     */
     ~Window();
 
-    void setRootView(View component);
-    void render();
-    void resize(const Size& newSize);
-    void setFullscreen(bool fullscreen);
-    void setTitle(const std::string& title);
-    unsigned int windowID() const; // Returns the platform-specific window ID
-
-    // Event handlers
-    void handleMouseMove(float x, float y);
-    void handleMouseDown(int button, float x, float y);
-    void handleMouseUp(int button, float x, float y);
-    void handleKeyDown(int key);
-    void handleKeyUp(int key);
-    void handleTextInput(const std::string& text);
-    void handleResize(const Size& newSize);
+    // Window management
     
-    // Keyboard event dispatch
-    void dispatchKeyDown(const KeyEvent& event);
-    void dispatchKeyUp(const KeyEvent& event);
-    void dispatchTextInput(const TextInputEvent& event);
+    /**
+     * @brief Set the root view to display
+     */
+    void setRootView(View component);
+    
+    /**
+     * @brief Render the current frame
+     */
+    void render();
+    
+    /**
+     * @brief Resize the window
+     */
+    void resize(const Size& newSize);
+    
+    /**
+     * @brief Set fullscreen mode
+     */
+    void setFullscreen(bool fullscreen);
+    
+    /**
+     * @brief Set window title
+     */
+    void setTitle(const std::string& title);
+    
+    /**
+     * @brief Get window ID
+     */
+    unsigned int windowID() const;
+    
+    /**
+     * @brief Get current window size
+     */
+    Size getSize() const;
 
-    // Event dispatch to renderer
-    void dispatchEvent(const Event& event);
+    // Event handling (called by platform layer)
+    
+    /**
+     * @brief Handle mouse movement
+     */
+    void handleMouseMove(float x, float y);
+    
+    /**
+     * @brief Handle mouse button down
+     */
+    void handleMouseDown(int button, float x, float y);
+    
+    /**
+     * @brief Handle mouse button up
+     */
+    void handleMouseUp(int button, float x, float y);
+    
+    /**
+     * @brief Handle key down
+     */
+    void handleKeyDown(int key);
+    
+    /**
+     * @brief Handle key up
+     */
+    void handleKeyUp(int key);
+    
+    /**
+     * @brief Handle text input
+     */
+    void handleTextInput(const std::string& text);
+    
+    /**
+     * @brief Handle window resize from platform
+     */
+    void handleResize(const Size& newSize);
 
     // Cursor management
+    
+    /**
+     * @brief Set cursor type
+     */
     void setCursor(CursorType cursor);
+    
+    /**
+     * @brief Get current cursor type
+     */
     CursorType currentCursor() const;
 
-    // Platform-specific accessors (for Application event handling)
-    PlatformWindow* platformWindow() { return platformWindow_.get(); }
+    // Observer pattern
     
-    // Focus management (formerly in FocusManager)
-    void registerFocusableView(View* view, const Rect& bounds);
-    void clearFocusableViews();
-    void focusNext();
-    void focusPrevious();
-    View* getFocusedView() const;
-    void clearFocus();
-    bool focusViewAtPoint(const Point& point);
-    size_t getFocusableViewCount() const { return focusableViews_.size(); }
-    std::string getFocusedKey() const { return focusedKey_; }
-    static View* findViewByKey(LayoutNode& root, const std::string& key);
-    bool dispatchKeyDownToFocused(LayoutNode& root, const KeyEvent& event);
-    bool dispatchKeyUpToFocused(LayoutNode& root, const KeyEvent& event);
-    bool dispatchTextInputToFocused(LayoutNode& root, const TextInputEvent& event);
+    /**
+     * @brief Add an observer for window events
+     */
+    void addObserver(WindowEventObserver* observer);
     
-    // Process pending keyboard events (called during render frame with layout tree)
-    void processPendingEvents(LayoutNode& layoutTree);
+    /**
+     * @brief Remove an observer
+     */
+    void removeObserver(WindowEventObserver* observer);
     
-private:
-    // Global keyboard shortcut handlers
-    bool handleGlobalShortcut(const KeyEvent& event);
-    
-    // Update keyboard modifier state
-    void updateModifiers(int key, bool pressed);
+    /**
+     * @brief Notify observers that redraw is requested
+     */
+    void requestRedraw();
 
-    // Focus management helpers (formerly in FocusManager)
-    int findViewIndexByKey(const std::string& key) const;
-    std::string generateAutoKey(const View* view, int registrationIndex) const;
+    // Subsystem access
+    
+    /**
+     * @brief Access keyboard input subsystem
+     */
+    KeyboardInputHandler& keyboard();
+    
+    /**
+     * @brief Access mouse input subsystem
+     */
+    MouseInputHandler& mouse();
+    
+    /**
+     * @brief Access focus management subsystem
+     */
+    FocusState& focus();
+    
+    /**
+     * @brief Access shortcut manager subsystem
+     */
+    ShortcutManager& shortcuts();
+
+    // Internal (used by subsystems)
+    
+    /**
+     * @brief Get platform window (for platform-specific operations)
+     * @internal
+     */
+    void* platformWindow();
+    
+    /**
+     * @brief Process pending keyboard events (called during render)
+     * @internal
+     */
+    void processPendingEvents(LayoutNode& layoutTree);
+
+private:
+    // pImpl idiom - hide all implementation details
+    struct WindowImpl;
+    std::unique_ptr<WindowImpl> impl_;
+    
+    // Non-copyable
+    Window(const Window&) = delete;
+    Window& operator=(const Window&) = delete;
 };
 
 } // namespace flux

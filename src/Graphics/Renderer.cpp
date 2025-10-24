@@ -1,6 +1,7 @@
 #include <Flux/Graphics/Renderer.hpp>
 #include <Flux/Graphics/NanoVGRenderContext.hpp>
 #include <Flux/Core/Window.hpp>
+#include <Flux/Core/FocusState.hpp>
 #include <Flux/Core/LayoutTree.hpp>
 #include <iostream>
 
@@ -19,7 +20,7 @@ void Renderer::renderFrame(const Rect& bounds) {
     if (rootView_.operator->()) {
         // Clear focusable views from previous frame
         if (window_) {
-            window_->clearFocusableViews();
+            window_->focus().clearFocusableViews();
         }
 
         // Layout the root view with RenderContext for accurate measurements
@@ -34,7 +35,7 @@ void Renderer::renderFrame(const Rect& bounds) {
         // This allows views to check if they have focus during rendering
         if (window_) {
             auto* nvgContext = static_cast<NanoVGRenderContext*>(renderContext_);
-            nvgContext->globalFocusedKey_ = window_->getFocusedKey();
+            nvgContext->globalFocusedKey_ = window_->focus().getFocusedKey();
         }
 
         // Process pending keyboard events now that we have the layout tree
@@ -91,9 +92,9 @@ void Renderer::updateCursorForView(const View& view, const Event& event) {
 }
 
 void Renderer::renderTree(const LayoutNode& node, Point parentOrigin) {
-    // Register focusable views with Window
+    // Register focusable views with FocusState
     if (window_ && node.view.canBeFocused()) {
-        window_->registerFocusableView(
+        window_->focus().registerFocusableView(
             const_cast<View*>(&node.view), 
             node.bounds
         );

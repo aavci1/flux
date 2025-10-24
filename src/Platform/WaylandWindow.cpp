@@ -1032,31 +1032,13 @@ void WaylandWindow::handleKeyboardKey(uint32_t serial, uint32_t time,
     }
     
     // Convert Wayland key code to our Key enum
-    Key fluxKey = keyFromRawCode(key);
     bool pressed = (state == WL_KEYBOARD_KEY_STATE_PRESSED);
     
-    // Update modifier state
-    updateModifiers(key, pressed);
-    
-    // Create KeyEvent
-    KeyEvent event(fluxKey, currentModifiers_, key, false);
-    
-    // Log keyboard event (matching mouse event pattern)
+    // Dispatch to Window (which handles modifier tracking and KeyEvent creation)
     if (pressed) {
-        std::cout << "[WaylandWindow] Key " << static_cast<int>(fluxKey) 
-                  << " (" << keyName(fluxKey) << ") pressed"
-                  << " (raw: " << key << ")\n";
+        fluxWindow_->handleKeyDown(key);
     } else {
-        std::cout << "[WaylandWindow] Key " << static_cast<int>(fluxKey)
-                  << " (" << keyName(fluxKey) << ") released"
-                  << " (raw: " << key << ")\n";
-    }
-    
-    // Dispatch to Window
-    if (pressed) {
-        fluxWindow_->dispatchKeyDown(event);
-    } else {
-        fluxWindow_->dispatchKeyUp(event);
+        fluxWindow_->handleKeyUp(key);
     }
 }
 

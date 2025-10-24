@@ -114,6 +114,11 @@ set(FLUX_SOURCES
     # Core
     src/Core/Application.cpp
     src/Core/Window.cpp
+    src/Core/KeyboardInputHandler.cpp
+    src/Core/MouseInputHandler.cpp
+    src/Core/FocusState.cpp
+    src/Core/ShortcutManager.cpp
+    src/Core/PlatformWindowFactory.cpp
     
     # Graphics
     src/Graphics/Path.cpp

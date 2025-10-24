@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Flux/Core/WindowEventObserver.hpp>
 #include <atomic>
 #include <vector>
 #include <memory>
@@ -13,7 +14,7 @@ class Window;
 // Forward declaration
 void requestApplicationRedraw();
 
-class Application {
+class Application : public WindowEventObserver {
 private:
     std::atomic<bool> needsRedraw{false};
     bool running{true};
@@ -59,6 +60,10 @@ public:
     // Internal: Access windows for event handling
     const std::vector<Window*>& windows() const { return windows_; }
     std::vector<Window*>& windows() { return windows_; }
+
+    // WindowEventObserver implementation
+    void onRedrawRequested(Window* window) override;
+    void onWindowClosing(Window* window) override;
 
 private:
     void processEvents();

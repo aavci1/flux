@@ -4,6 +4,7 @@
 #include <chrono>
 #include <thread>
 #include <algorithm>
+#include <iostream>
 
 namespace flux {
 
@@ -50,16 +51,28 @@ int Application::exec() {
 
 void Application::registerWindow(Window* window) {
     windows_.push_back(window);
+    window->addObserver(this);
 }
 
 void Application::unregisterWindow(Window* window) {
+    window->removeObserver(this);
     windows_.erase(std::remove(windows_.begin(), windows_.end(), window), windows_.end());
+}
+
+void Application::onRedrawRequested(Window* window) {
+    (void)window;
+    needsRedraw.store(true, std::memory_order_relaxed);
+}
+
+void Application::onWindowClosing(Window* window) {
+    (void)window;
+    // Could handle cleanup here if needed
 }
 
 void Application::processEvents() {
     // Process platform-specific events for all windows
     for (auto* window : windows_) {
-        if (auto* platformWindow = window->platformWindow()) {
+        if (auto* platformWindow = static_cast<PlatformWindow*>(window->platformWindow())) {
             platformWindow->processEvents();
             
             // Check if window should close
