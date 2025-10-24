@@ -1,7 +1,6 @@
 #include <Flux/Graphics/Renderer.hpp>
 #include <Flux/Graphics/NanoVGRenderContext.hpp>
 #include <Flux/Core/Window.hpp>
-#include <Flux/Core/FocusManager.hpp>
 #include <Flux/Core/LayoutTree.hpp>
 #include <iostream>
 
@@ -19,8 +18,8 @@ void Renderer::renderFrame(const Rect& bounds) {
     // Build layout tree and render using framework approach
     if (rootView_.operator->()) {
         // Clear focusable views from previous frame
-        if (window_ && window_->focusManager()) {
-            window_->focusManager()->clearFocusableViews();
+        if (window_) {
+            window_->clearFocusableViews();
         }
 
         // Layout the root view with RenderContext for accurate measurements
@@ -33,9 +32,9 @@ void Renderer::renderFrame(const Rect& bounds) {
 
         // Set the global focused key in the render context for this frame
         // This allows views to check if they have focus during rendering
-        if (window_ && window_->focusManager()) {
+        if (window_) {
             auto* nvgContext = static_cast<NanoVGRenderContext*>(renderContext_);
-            nvgContext->globalFocusedKey_ = window_->focusManager()->getFocusedKey();
+            nvgContext->globalFocusedKey_ = window_->getFocusedKey();
         }
 
         // Process pending keyboard events now that we have the layout tree
@@ -92,9 +91,9 @@ void Renderer::updateCursorForView(const View& view, const Event& event) {
 }
 
 void Renderer::renderTree(const LayoutNode& node, Point parentOrigin) {
-    // Register focusable views with FocusManager
-    if (window_ && window_->focusManager() && node.view.canBeFocused()) {
-        window_->focusManager()->registerFocusableView(
+    // Register focusable views with Window
+    if (window_ && node.view.canBeFocused()) {
+        window_->registerFocusableView(
             const_cast<View*>(&node.view), 
             node.bounds
         );

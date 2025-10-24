@@ -2,18 +2,18 @@
 
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/View.hpp>
-#include <Flux/Core/FocusManager.hpp>
 #include <Flux/Core/KeyEvent.hpp>
 #include <Flux/Graphics/Renderer.hpp>
 #include <Flux/Graphics/RenderContext.hpp>
 #include <string>
 #include <memory>
+#include <vector>
+#include <functional>
 
 namespace flux {
 
 class RenderContext;
 class PlatformWindow; // Forward declaration
-class FocusManager;
 struct LayoutNode;
 
 struct WindowConfig {
@@ -32,7 +32,6 @@ private:
     Size currentSize_;
 
     std::unique_ptr<PlatformWindow> platformWindow_; // Wayland window implementation
-    std::unique_ptr<FocusManager> focusManager_;
 
     // Keyboard state tracking
     KeyModifier currentModifiers_;
@@ -41,6 +40,15 @@ private:
     std::vector<KeyEvent> pendingKeyDownEvents_;
     std::vector<KeyEvent> pendingKeyUpEvents_;
     std::vector<TextInputEvent> pendingTextInputEvents_;
+
+    // Focus management state (previously in FocusManager)
+    struct FocusableViewInfo {
+        View* view;
+        Rect bounds;
+        std::string key;  // Unique key for this view (explicit or auto-generated)
+    };
+    std::string focusedKey_;  // Track focus by key for stability across frames
+    std::vector<FocusableViewInfo> focusableViews_;
 
 public:
     explicit Window(const WindowConfig& config);
@@ -77,8 +85,20 @@ public:
     // Platform-specific accessors (for Application event handling)
     PlatformWindow* platformWindow() { return platformWindow_.get(); }
     
-    // Focus management
-    FocusManager* focusManager() { return focusManager_.get(); }
+    // Focus management (formerly in FocusManager)
+    void registerFocusableView(View* view, const Rect& bounds);
+    void clearFocusableViews();
+    void focusNext();
+    void focusPrevious();
+    View* getFocusedView() const;
+    void clearFocus();
+    bool focusViewAtPoint(const Point& point);
+    size_t getFocusableViewCount() const { return focusableViews_.size(); }
+    std::string getFocusedKey() const { return focusedKey_; }
+    static View* findViewByKey(LayoutNode& root, const std::string& key);
+    bool dispatchKeyDownToFocused(LayoutNode& root, const KeyEvent& event);
+    bool dispatchKeyUpToFocused(LayoutNode& root, const KeyEvent& event);
+    bool dispatchTextInputToFocused(LayoutNode& root, const TextInputEvent& event);
     
     // Process pending keyboard events (called during render frame with layout tree)
     void processPendingEvents(LayoutNode& layoutTree);
@@ -89,6 +109,10 @@ private:
     
     // Update keyboard modifier state
     void updateModifiers(int key, bool pressed);
+
+    // Focus management helpers (formerly in FocusManager)
+    int findViewIndexByKey(const std::string& key) const;
+    std::string generateAutoKey(const View* view, int registrationIndex) const;
 };
 
 } // namespace flux

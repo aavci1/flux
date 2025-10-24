@@ -14,7 +14,7 @@ struct Button {
 
     Property<std::string> text;
     
-    // Focus state is now tracked by FocusManager, no need for local state
+    // Focus state is now tracked by Window, no need for local state
     
     // Initialize default properties
     void init() {
@@ -23,11 +23,11 @@ struct Button {
         // Set up focus callbacks to track focus state
         onFocus = [this]() {
             // Use a safer approach - don't modify member variables in callbacks
-            // The focus state will be tracked by the FocusManager
+            // The focus state will be tracked by the Window
         };
         onBlur = [this]() {
             // Use a safer approach - don't modify member variables in callbacks
-            // The focus state will be tracked by the FocusManager
+            // The focus state will be tracked by the Window
         };
     }
 

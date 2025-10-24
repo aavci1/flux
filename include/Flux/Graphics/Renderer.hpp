@@ -9,7 +9,6 @@ namespace flux {
 
 // Forward declarations
 class Window;
-class FocusManager;
 
 struct Event {
     enum Type {

@@ -114,7 +114,6 @@ set(FLUX_SOURCES
     # Core
     src/Core/Application.cpp
     src/Core/Window.cpp
-    src/Core/FocusManager.cpp
     
     # Graphics
     src/Graphics/Path.cpp

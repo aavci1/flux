@@ -17,9 +17,8 @@ flux/
 │       │   ├── View.hpp           Base view class & event system
 │       │   ├── ViewHelpers.hpp    View rendering helpers
 │       │   ├── Application.hpp    App lifecycle
-│       │   ├── Window.hpp         Window management
+│       │   ├── Window.hpp         Window & focus management
 │       │   ├── LayoutTree.hpp     Layout management
-│       │   ├── FocusManager.hpp   Focus & keyboard management
 │       │   ├── KeyEvent.hpp       Keyboard event types
 │       │   └── Utilities.hpp      Common utilities
 │       ├── Views/                  Components + Layouts (10 headers)
@@ -46,8 +45,7 @@ flux/
 ├── src/
 │   ├── Core/
 │   │   ├── Application.cpp        Event loop, window management
-│   │   ├── Window.cpp             Window implementation
-│   │   └── FocusManager.cpp       Focus management
+│   │   └── Window.cpp             Window & focus management
 │   ├── Graphics/
 │   │   ├── NanoVGRenderContext.cpp  NanoVG rendering implementation
 │   │   ├── NanoVGRenderer.cpp       Renderer implementation
@@ -226,7 +224,7 @@ See `docs/EVENT_SYSTEM.md` for complete event documentation.
 
 ## Focus Management
 
-The `FocusManager` handles keyboard focus and navigation:
+The `Window` class handles keyboard focus and navigation:
 
 ### Features
 - **Tab Navigation**: Cycle through focusable views with Tab/Shift+Tab
@@ -237,13 +235,13 @@ The `FocusManager` handles keyboard focus and navigation:
 ### Focus Flow
 ```
 Layout Phase:
-  → FocusManager clears previous registrations
-  → Each focusable view registers itself
+  → Window clears previous focus registrations
+  → Each focusable view registers itself with Window
   → Focus restored to previous focused view (if still present)
 
 Keyboard Event:
   → Window receives key event
-  → FocusManager dispatches to focused view
+  → Window dispatches to focused view
   → View's onKeyDown/onKeyUp/onTextInput called
   → Event propagates if not handled
 ```
@@ -271,7 +269,7 @@ Keyboard Event:
 4. Layout Phase
    - Evaluate lambda properties (fresh state!)
    - Calculate bounds for all views
-   - Register focusable views with FocusManager
+   - Register focusable views with Window
    - Cache layout information
 
 5. Render Phase
@@ -294,7 +292,7 @@ Evaluate Lambda Properties (fresh state!)
     ↓
 Build Layout Tree
     ↓
-Register Focus (FocusManager)
+Register Focus (Window)
     ↓
 Render Tree (RenderContext)
     ↓
