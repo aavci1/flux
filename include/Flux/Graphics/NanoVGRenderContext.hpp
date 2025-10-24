@@ -146,6 +146,18 @@ public:
     Rect transformRect(const Rect& rect) override;
     float degToRad(float degrees) override;
     float radToDeg(float radians) override;
+    
+    // ============================================================================
+    // FOCUS STATE
+    // ============================================================================
+    void setCurrentFocusKey(const std::string& focusKey) override;
+    std::string getFocusedKey() const override;
+    bool isCurrentViewFocused() const override;
+    
+    // Focus state members (public for renderer access)
+    std::string globalFocusedKey_;  // Which view globally has focus
+    std::string currentViewFocusKey_;  // Focus key of the view currently being rendered
+    
 private:
     // Helper functions
     NVGcolor toNVGColor(const Color& color) const;

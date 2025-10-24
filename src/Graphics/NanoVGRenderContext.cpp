@@ -834,4 +834,22 @@ int NanoVGRenderContext::getNVGTextAlign(HorizontalAlignment hAlign, VerticalAli
     return align;
 }
 
+// ============================================================================
+// FOCUS STATE
+// ============================================================================
+
+void NanoVGRenderContext::setCurrentFocusKey(const std::string& focusKey) {
+    currentViewFocusKey_ = focusKey;
+}
+
+std::string NanoVGRenderContext::getFocusedKey() const {
+    return globalFocusedKey_;
+}
+
+bool NanoVGRenderContext::isCurrentViewFocused() const {
+    return !currentViewFocusKey_.empty() && 
+           !globalFocusedKey_.empty() && 
+           currentViewFocusKey_ == globalFocusedKey_;
+}
+
 } // namespace flux

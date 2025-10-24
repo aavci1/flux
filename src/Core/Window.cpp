@@ -1,5 +1,6 @@
 #include <Flux/Core/Window.hpp>
 #include <Flux/Core/Application.hpp>
+#include <Flux/Core/LayoutTree.hpp>
 #include <Flux/Graphics/Renderer.hpp>
 #include <Flux/Graphics/RenderContext.hpp>
 #include <Flux/Platform/PlatformWindow.hpp>
@@ -11,7 +12,9 @@
 namespace flux {
 
 Window::Window(const WindowConfig& config)
-    : config_(config), currentSize_(config.size) {
+    : config_(config)
+    , currentSize_(config.size)
+    , currentModifiers_(KeyModifier::None) {
 
     // Create Wayland window (Linux/Wayland only)
     platformWindow_ = std::make_unique<WaylandWindow>(
@@ -32,6 +35,9 @@ Window::Window(const WindowConfig& config)
     // Set window reference in renderer for cursor management
     auto* immediateRenderer = static_cast<ImmediateModeRenderer*>(renderer_.get());
     immediateRenderer->setWindow(this);
+
+    // Initialize focus manager
+    focusManager_ = std::make_unique<FocusManager>(this);
 
     // Register with the application
     Application::instance().registerWindow(this);
@@ -132,15 +138,47 @@ void Window::handleMouseUp(int button, float x, float y) {
 }
 
 void Window::handleKeyDown(int key) {
-    std::cout << "[INPUT] Key down: " << key << "\n";
+    // Update modifier state
+    updateModifiers(key, true);
+    
+    // Create KeyEvent
+    KeyEvent event;
+    event.key = keyFromRawCode(key);
+    event.modifiers = currentModifiers_;
+    event.rawKeyCode = key;
+    event.isRepeat = false;
+    
+    std::cout << "[INPUT] Key down: " << keyName(event.key)
+              << " (raw: " << key << ", mods: "
+              << (event.hasCtrl() ? "Ctrl " : "")
+              << (event.hasShift() ? "Shift " : "")
+              << (event.hasAlt() ? "Alt " : "")
+              << ")\n";
+    
+    dispatchKeyDown(event);
 }
 
 void Window::handleKeyUp(int key) {
-    std::cout << "[INPUT] Key up: " << key << "\n";
+    // Update modifier state
+    updateModifiers(key, false);
+    
+    // Create KeyEvent
+    KeyEvent event;
+    event.key = keyFromRawCode(key);
+    event.modifiers = currentModifiers_;
+    event.rawKeyCode = key;
+    event.isRepeat = false;
+    
+    std::cout << "[INPUT] Key up: " << keyName(event.key) << " (raw: " << key << ")\n";
+    
+    dispatchKeyUp(event);
 }
 
 void Window::handleTextInput(const std::string& text) {
-    std::cout << "[INPUT] Text input: " << text << "\n";
+    std::cout << "[INPUT] Text input: \"" << text << "\"\n";
+    
+    TextInputEvent event(text);
+    dispatchTextInput(event);
 }
 
 void Window::handleResize(const Size& newSize) {
@@ -183,6 +221,143 @@ CursorType Window::currentCursor() const {
         return platformWindow_->currentCursor();
     }
     return CursorType::Default;
+}
+
+void Window::dispatchKeyDown(const KeyEvent& event) {
+    // Handle global shortcuts first
+    if (handleGlobalShortcut(event)) {
+        return; // Shortcut consumed the event
+    }
+    
+    // Handle focus navigation
+    if (event.key == Key::Tab && !event.hasCtrl() && !event.hasAlt()) {
+        if (event.hasShift()) {
+            focusManager_->focusPrevious();
+        } else {
+            focusManager_->focusNext();
+        }
+        return;
+    }
+    
+    // Queue the event to be processed during the next render frame
+    // We can't dispatch directly because View objects are temporary
+    pendingKeyDownEvents_.push_back(event);
+    std::cout << "[INPUT] Key down queued for next frame\n";
+}
+
+void Window::dispatchKeyUp(const KeyEvent& event) {
+    // Queue the event to be processed during the next render frame
+    pendingKeyUpEvents_.push_back(event);
+}
+
+void Window::dispatchTextInput(const TextInputEvent& event) {
+    // Queue the event to be processed during the next render frame
+    pendingTextInputEvents_.push_back(event);
+}
+
+bool Window::handleGlobalShortcut(const KeyEvent& event) {
+    // Ctrl+Q - Quit application
+    if (event.key == Key::Q && event.hasCtrl()) {
+        std::cout << "[SHORTCUT] Ctrl+Q - Quit application\n";
+        Application::instance().quit();
+        return true;
+    }
+    
+    // Ctrl+C - Copy (placeholder for clipboard integration)
+    if (event.key == Key::C && event.hasCtrl()) {
+        std::cout << "[SHORTCUT] Ctrl+C - Copy (not yet implemented)\n";
+        // TODO: Implement clipboard copy
+        return true;
+    }
+    
+    // Ctrl+V - Paste (placeholder for clipboard integration)
+    if (event.key == Key::V && event.hasCtrl()) {
+        std::cout << "[SHORTCUT] Ctrl+V - Paste (not yet implemented)\n";
+        // TODO: Implement clipboard paste
+        return true;
+    }
+    
+    // Ctrl+X - Cut (placeholder for clipboard integration)
+    if (event.key == Key::X && event.hasCtrl()) {
+        std::cout << "[SHORTCUT] Ctrl+X - Cut (not yet implemented)\n";
+        // TODO: Implement clipboard cut
+        return true;
+    }
+    
+    // Ctrl+A - Select All (placeholder)
+    if (event.key == Key::A && event.hasCtrl()) {
+        std::cout << "[SHORTCUT] Ctrl+A - Select All (not yet implemented)\n";
+        // TODO: Implement select all
+        return true;
+    }
+    
+    return false; // Shortcut not handled
+}
+
+void Window::updateModifiers(int key, bool pressed) {
+    uint32_t mod = static_cast<uint32_t>(currentModifiers_);
+    
+    switch (key) {
+        case static_cast<int>(Key::LeftShift):
+        case static_cast<int>(Key::RightShift):
+            if (pressed) {
+                mod |= static_cast<uint32_t>(KeyModifier::Shift);
+            } else {
+                mod &= ~static_cast<uint32_t>(KeyModifier::Shift);
+            }
+            break;
+            
+        case static_cast<int>(Key::LeftCtrl):
+        case static_cast<int>(Key::RightCtrl):
+            if (pressed) {
+                mod |= static_cast<uint32_t>(KeyModifier::Ctrl);
+            } else {
+                mod &= ~static_cast<uint32_t>(KeyModifier::Ctrl);
+            }
+            break;
+            
+        case static_cast<int>(Key::LeftAlt):
+        case static_cast<int>(Key::RightAlt):
+            if (pressed) {
+                mod |= static_cast<uint32_t>(KeyModifier::Alt);
+            } else {
+                mod &= ~static_cast<uint32_t>(KeyModifier::Alt);
+            }
+            break;
+            
+        case static_cast<int>(Key::LeftSuper):
+        case static_cast<int>(Key::RightSuper):
+            if (pressed) {
+                mod |= static_cast<uint32_t>(KeyModifier::Super);
+            } else {
+                mod &= ~static_cast<uint32_t>(KeyModifier::Super);
+            }
+            break;
+    }
+    
+    currentModifiers_ = static_cast<KeyModifier>(mod);
+}
+
+void Window::processPendingEvents(LayoutNode& layoutTree) {
+    if (!focusManager_) return;
+    
+    // Process pending key down events
+    for (const auto& event : pendingKeyDownEvents_) {
+        focusManager_->dispatchKeyDownToFocused(layoutTree, event);
+    }
+    pendingKeyDownEvents_.clear();
+    
+    // Process pending key up events
+    for (const auto& event : pendingKeyUpEvents_) {
+        focusManager_->dispatchKeyUpToFocused(layoutTree, event);
+    }
+    pendingKeyUpEvents_.clear();
+    
+    // Process pending text input events
+    for (const auto& event : pendingTextInputEvents_) {
+        focusManager_->dispatchTextInputToFocused(layoutTree, event);
+    }
+    pendingTextInputEvents_.clear();
 }
 
 } // namespace flux

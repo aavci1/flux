@@ -2,6 +2,8 @@
 
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/View.hpp>
+#include <Flux/Core/FocusManager.hpp>
+#include <Flux/Core/KeyEvent.hpp>
 #include <Flux/Graphics/Renderer.hpp>
 #include <Flux/Graphics/RenderContext.hpp>
 #include <string>
@@ -11,6 +13,8 @@ namespace flux {
 
 class RenderContext;
 class PlatformWindow; // Forward declaration
+class FocusManager;
+struct LayoutNode;
 
 struct WindowConfig {
     Size size = {1280, 720};
@@ -28,6 +32,15 @@ private:
     Size currentSize_;
 
     std::unique_ptr<PlatformWindow> platformWindow_; // Wayland window implementation
+    std::unique_ptr<FocusManager> focusManager_;
+
+    // Keyboard state tracking
+    KeyModifier currentModifiers_;
+    
+    // Pending keyboard events (to be dispatched during render frame)
+    std::vector<KeyEvent> pendingKeyDownEvents_;
+    std::vector<KeyEvent> pendingKeyUpEvents_;
+    std::vector<TextInputEvent> pendingTextInputEvents_;
 
 public:
     explicit Window(const WindowConfig& config);
@@ -48,6 +61,11 @@ public:
     void handleKeyUp(int key);
     void handleTextInput(const std::string& text);
     void handleResize(const Size& newSize);
+    
+    // Keyboard event dispatch
+    void dispatchKeyDown(const KeyEvent& event);
+    void dispatchKeyUp(const KeyEvent& event);
+    void dispatchTextInput(const TextInputEvent& event);
 
     // Event dispatch to renderer
     void dispatchEvent(const Event& event);
@@ -58,6 +76,19 @@ public:
 
     // Platform-specific accessors (for Application event handling)
     PlatformWindow* platformWindow() { return platformWindow_.get(); }
+    
+    // Focus management
+    FocusManager* focusManager() { return focusManager_.get(); }
+    
+    // Process pending keyboard events (called during render frame with layout tree)
+    void processPendingEvents(LayoutNode& layoutTree);
+    
+private:
+    // Global keyboard shortcut handlers
+    bool handleGlobalShortcut(const KeyEvent& event);
+    
+    // Update keyboard modifier state
+    void updateModifiers(int key, bool pressed);
 };
 
 } // namespace flux

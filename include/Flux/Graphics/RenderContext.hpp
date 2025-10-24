@@ -440,6 +440,27 @@ public:
     virtual float radToDeg(float radians) = 0;
 
     // ============================================================================
+    // FOCUS STATE (for rendering focus indicators)
+    // ============================================================================
+    
+    /**
+     * Set the focus key for the currently rendering view
+     * This allows views to check if they have focus during rendering
+     */
+    virtual void setCurrentFocusKey(const std::string& focusKey) = 0;
+    
+    /**
+     * Get the focus key that should be highlighted
+     * Returns empty string if no view has focus
+     */
+    virtual std::string getFocusedKey() const = 0;
+    
+    /**
+     * Check if the currently rendering view has focus
+     */
+    virtual bool isCurrentViewFocused() const = 0;
+
+    // ============================================================================
     // LEGACY COMPATIBILITY (deprecated but kept for transition)
     // ============================================================================
 

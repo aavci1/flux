@@ -114,6 +114,7 @@ set(FLUX_SOURCES
     # Core
     src/Core/Application.cpp
     src/Core/Window.cpp
+    src/Core/FocusManager.cpp
     
     # Graphics
     src/Graphics/Path.cpp
@@ -265,6 +266,9 @@ target_link_libraries(cursor_demo PRIVATE flux)
 
 add_executable(declarative_cursor examples/26-declarative-cursor/main.cpp)
 target_link_libraries(declarative_cursor PRIVATE flux)
+
+add_executable(focus_keyboard_demo examples/27-focus-keyboard-demo/main.cpp)
+target_link_libraries(focus_keyboard_demo PRIVATE flux)
 
 endif()
 

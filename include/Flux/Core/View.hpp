@@ -3,6 +3,7 @@
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/Property.hpp>
 #include <Flux/Core/ViewHelpers.hpp>
+#include <Flux/Core/KeyEvent.hpp>
 #include <Flux/Graphics/RenderContext.hpp>
 #include <memory>
 #include <vector>
@@ -58,7 +59,11 @@ inline std::string demangleTypeName(const char* mangledName) {
     Property<float> compressionBias = 1.0f; \
     Property<int> colspan = 1; \
     Property<int> rowspan = 1; \
-    Property<CursorType> cursor = CursorType::Default
+    Property<CursorType> cursor = CursorType::Default; \
+    Property<bool> focusable = false; \
+    Property<std::string> focusKey = ""; \
+    std::function<void()> onFocus = nullptr; \
+    std::function<void()> onBlur = nullptr
 
 // Concept for what makes a View component
 // All methods are now optional - if not defined, default implementations will be used
@@ -101,6 +106,17 @@ public:
     virtual bool handleMouseUp(float x, float y, int button) { (void)x; (void)y; (void)button; return false; }
     virtual bool handleMouseMove(float x, float y) { (void)x; (void)y; return false; }
     virtual bool isInteractive() const { return false; }
+    
+    // Keyboard event handling methods
+    virtual bool handleKeyDown(const KeyEvent& event) { (void)event; return false; }
+    virtual bool handleKeyUp(const KeyEvent& event) { (void)event; return false; }
+    virtual bool handleTextInput(const TextInputEvent& event) { (void)event; return false; }
+    
+    // Focus management
+    virtual bool canBeFocused() const { return false; }
+    virtual std::string getFocusKey() const { return ""; }
+    virtual void notifyFocusGained() {}
+    virtual void notifyFocusLost() {}
     
     // Cursor management
     virtual CursorType getCursor() const = 0;
@@ -155,6 +171,38 @@ struct has_onClick {
     static constexpr bool value = decltype(test(std::declval<const T&>()))::value;
 };
 
+template<typename T>
+struct has_handleKeyDown {
+    template<typename U>
+    static auto test(const U& u) -> decltype(u.handleKeyDown(std::declval<const KeyEvent&>()), std::true_type{});
+    static std::false_type test(...);
+    static constexpr bool value = decltype(test(std::declval<const T&>()))::value;
+};
+
+template<typename T>
+struct has_handleKeyUp {
+    template<typename U>
+    static auto test(const U& u) -> decltype(u.handleKeyUp(std::declval<const KeyEvent&>()), std::true_type{});
+    static std::false_type test(...);
+    static constexpr bool value = decltype(test(std::declval<const T&>()))::value;
+};
+
+template<typename T>
+struct has_handleTextInput {
+    template<typename U>
+    static auto test(const U& u) -> decltype(u.handleTextInput(std::declval<const TextInputEvent&>()), std::true_type{});
+    static std::false_type test(...);
+    static constexpr bool value = decltype(test(std::declval<const T&>()))::value;
+};
+
+template<typename T>
+struct has_init {
+    template<typename U>
+    static auto test(U&& u) -> decltype(u.init(), std::true_type{});
+    static std::false_type test(...);
+    static constexpr bool value = decltype(test(std::declval<T>()))::value;
+};
+
 // Template wrapper that adapts ViewComponent to ViewInterface
 template<ViewComponent T>
 class ViewAdapter : public ViewInterface {
@@ -162,8 +210,16 @@ private:
     mutable T component;  // mutable because layout() needs to modify children
 
 public:
-    ViewAdapter(const T& comp) : component(comp) {}
-    ViewAdapter(T&& comp) : component(std::move(comp)) {}
+    ViewAdapter(const T& comp) : component(comp) {
+        if constexpr (has_init<T>::value) {
+            component.init();
+        }
+    }
+    ViewAdapter(T&& comp) : component(std::move(comp)) {
+        if constexpr (has_init<T>::value) {
+            component.init();
+        }
+    }
 
     LayoutNode layout(RenderContext& ctx, const Rect& bounds) const override;
     View body() const override;
@@ -194,6 +250,17 @@ public:
     bool handleMouseUp(float x, float y, int button) override;
     bool handleMouseMove(float x, float y) override;
     bool isInteractive() const override;
+    
+    // Keyboard event handling methods
+    bool handleKeyDown(const KeyEvent& event) override;
+    bool handleKeyUp(const KeyEvent& event) override;
+    bool handleTextInput(const TextInputEvent& event) override;
+    
+    // Focus management
+    bool canBeFocused() const override;
+    std::string getFocusKey() const override;
+    void notifyFocusGained() override;
+    void notifyFocusLost() override;
     
     // Cursor management
     CursorType getCursor() const override;
@@ -285,6 +352,36 @@ public:
 
     bool isInteractive() const {
         return component_ ? component_->isInteractive() : false;
+    }
+
+    // Keyboard event handling delegation
+    bool handleKeyDown(const KeyEvent& event) {
+        return component_ ? component_->handleKeyDown(event) : false;
+    }
+
+    bool handleKeyUp(const KeyEvent& event) {
+        return component_ ? component_->handleKeyUp(event) : false;
+    }
+
+    bool handleTextInput(const TextInputEvent& event) {
+        return component_ ? component_->handleTextInput(event) : false;
+    }
+
+    // Focus management delegation
+    bool canBeFocused() const {
+        return component_ ? component_->canBeFocused() : false;
+    }
+
+    std::string getFocusKey() const {
+        return component_ ? component_->getFocusKey() : "";
+    }
+
+    void notifyFocusGained() {
+        if (component_) component_->notifyFocusGained();
+    }
+
+    void notifyFocusLost() {
+        if (component_) component_->notifyFocusLost();
     }
 
     CursorType getCursor() const {
@@ -567,6 +664,54 @@ inline bool ViewAdapter<T>::isInteractive() const {
 template<ViewComponent T>
 inline CursorType ViewAdapter<T>::getCursor() const {
     return component.cursor;
+}
+
+template<ViewComponent T>
+inline bool ViewAdapter<T>::handleKeyDown(const KeyEvent& event) {
+    if constexpr (has_handleKeyDown<T>::value) {
+        return component.handleKeyDown(event);
+    }
+    return false;
+}
+
+template<ViewComponent T>
+inline bool ViewAdapter<T>::handleKeyUp(const KeyEvent& event) {
+    if constexpr (has_handleKeyUp<T>::value) {
+        return component.handleKeyUp(event);
+    }
+    return false;
+}
+
+template<ViewComponent T>
+inline bool ViewAdapter<T>::handleTextInput(const TextInputEvent& event) {
+    if constexpr (has_handleTextInput<T>::value) {
+        return component.handleTextInput(event);
+    }
+    return false;
+}
+
+template<ViewComponent T>
+inline bool ViewAdapter<T>::canBeFocused() const {
+    return component.focusable;
+}
+
+template<ViewComponent T>
+inline std::string ViewAdapter<T>::getFocusKey() const {
+    return component.focusKey;
+}
+
+template<ViewComponent T>
+inline void ViewAdapter<T>::notifyFocusGained() {
+    if (component.onFocus) {
+        component.onFocus();
+    }
+}
+
+template<ViewComponent T>
+inline void ViewAdapter<T>::notifyFocusLost() {
+    if (component.onBlur) {
+        component.onBlur();
+    }
 }
 
 } // namespace flux

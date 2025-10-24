@@ -3,6 +3,7 @@
 #include <Flux/Platform/PlatformWindow.hpp>
 #include <Flux/Platform/PlatformRenderer.hpp>
 #include <Flux/Graphics/RenderContext.hpp>
+#include <Flux/Core/KeyEvent.hpp>
 #include <string>
 #include <memory>
 #include <wayland-client-core.h>
@@ -69,6 +70,9 @@ private:
     wl_keyboard* keyboard_;
     wl_output* output_;
     int32_t output_scale_;
+    
+    // Keyboard state
+    KeyModifier currentModifiers_ = KeyModifier::None;
 
     // Input state
     bool pointerEntered_;
@@ -171,6 +175,7 @@ public:
     void handleKeyboardKey(uint32_t serial, uint32_t time, uint32_t key, uint32_t state);
     void handleKeyboardModifiers(uint32_t serial, uint32_t mods_depressed,
                                  uint32_t mods_latched, uint32_t mods_locked, uint32_t group);
+    void updateModifiers(uint32_t key, bool pressed);
     
     // Scale handling
     void updateScale(int32_t scale);

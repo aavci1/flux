@@ -2,6 +2,7 @@
 #include <Flux/Platform/NanoVGRenderer.hpp>
 #include <Flux/Graphics/NanoVGRenderContext.hpp>
 #include <Flux/Core/Window.hpp>
+#include <Flux/Core/KeyEvent.hpp>
 
 #include <wayland-client.h>
 #include <wayland-client-protocol.h>
@@ -1025,10 +1026,38 @@ void WaylandWindow::handleKeyboardKey(uint32_t serial, uint32_t time,
                                      uint32_t key, uint32_t state) {
     (void)serial;
     (void)time;
-    (void)key;
-    (void)state;
-    // TODO: Implement keyboard key events
-    std::cout << "[WaylandWindow] Keyboard key event: " << key << " state: " << state << "\n";
+    
+    if (!fluxWindow_) {
+        return;
+    }
+    
+    // Convert Wayland key code to our Key enum
+    Key fluxKey = keyFromRawCode(key);
+    bool pressed = (state == WL_KEYBOARD_KEY_STATE_PRESSED);
+    
+    // Update modifier state
+    updateModifiers(key, pressed);
+    
+    // Create KeyEvent
+    KeyEvent event(fluxKey, currentModifiers_, key, false);
+    
+    // Log keyboard event (matching mouse event pattern)
+    if (pressed) {
+        std::cout << "[WaylandWindow] Key " << static_cast<int>(fluxKey) 
+                  << " (" << keyName(fluxKey) << ") pressed"
+                  << " (raw: " << key << ")\n";
+    } else {
+        std::cout << "[WaylandWindow] Key " << static_cast<int>(fluxKey)
+                  << " (" << keyName(fluxKey) << ") released"
+                  << " (raw: " << key << ")\n";
+    }
+    
+    // Dispatch to Window
+    if (pressed) {
+        fluxWindow_->dispatchKeyDown(event);
+    } else {
+        fluxWindow_->dispatchKeyUp(event);
+    }
 }
 
 void WaylandWindow::handleKeyboardModifiers(uint32_t serial, uint32_t mods_depressed,
@@ -1152,6 +1181,55 @@ void WaylandWindow::setCursor(CursorType cursor) {
     // Apply immediately if pointer is in the window
     if (pointerEntered_) {
         applyCursor(cursor);
+    }
+}
+
+void WaylandWindow::updateModifiers(uint32_t key, bool pressed) {
+    // Map Wayland key codes to our KeyModifier enum
+    switch (key) {
+        case 42: // Left Shift
+        case 54: // Right Shift
+            if (pressed) {
+                currentModifiers_ = currentModifiers_ | KeyModifier::Shift;
+            } else {
+                currentModifiers_ = static_cast<KeyModifier>(
+                    static_cast<uint32_t>(currentModifiers_) & ~static_cast<uint32_t>(KeyModifier::Shift)
+                );
+            }
+            break;
+            
+        case 29: // Left Ctrl
+        case 97: // Right Ctrl
+            if (pressed) {
+                currentModifiers_ = currentModifiers_ | KeyModifier::Ctrl;
+            } else {
+                currentModifiers_ = static_cast<KeyModifier>(
+                    static_cast<uint32_t>(currentModifiers_) & ~static_cast<uint32_t>(KeyModifier::Ctrl)
+                );
+            }
+            break;
+            
+        case 56: // Left Alt
+        case 100: // Right Alt
+            if (pressed) {
+                currentModifiers_ = currentModifiers_ | KeyModifier::Alt;
+            } else {
+                currentModifiers_ = static_cast<KeyModifier>(
+                    static_cast<uint32_t>(currentModifiers_) & ~static_cast<uint32_t>(KeyModifier::Alt)
+                );
+            }
+            break;
+            
+        case 125: // Left Super
+        case 126: // Right Super
+            if (pressed) {
+                currentModifiers_ = currentModifiers_ | KeyModifier::Super;
+            } else {
+                currentModifiers_ = static_cast<KeyModifier>(
+                    static_cast<uint32_t>(currentModifiers_) & ~static_cast<uint32_t>(KeyModifier::Super)
+                );
+            }
+            break;
     }
 }
 
