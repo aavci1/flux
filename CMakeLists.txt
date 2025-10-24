@@ -18,33 +18,29 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Common dependencies
+# Verify we're on Linux
+if(NOT UNIX OR APPLE)
+    message(FATAL_ERROR "Flux currently supports Linux/Wayland only. Cross-platform support is not a goal at this time.")
+endif()
+
+# Dependencies
 find_package(Threads REQUIRED)
 find_package(Freetype REQUIRED)
+find_package(OpenGL REQUIRED)
 
-# Platform-specific windowing
-if(UNIX AND NOT APPLE)
-    # Linux: Use Wayland
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(WAYLAND_CLIENT REQUIRED wayland-client)
-    pkg_check_modules(WAYLAND_EGL REQUIRED wayland-egl)
-    pkg_check_modules(WAYLAND_CURSOR REQUIRED wayland-cursor)
-    pkg_check_modules(EGL REQUIRED egl)
-    pkg_check_modules(GLES2 REQUIRED glesv2)
-    
-    # Wayland protocol generation
-    find_program(WAYLAND_SCANNER wayland-scanner REQUIRED)
-    pkg_get_variable(WAYLAND_PROTOCOLS_DIR wayland-protocols pkgdatadir)
-    
-    message(STATUS "Building with Wayland backend")
-else()
-    # macOS and Windows: Use GLFW
-    find_package(glfw3 REQUIRED)
-    if(NOT glfw3_FOUND)
-        message(FATAL_ERROR "GLFW3 is required. Please install GLFW3.")
-    endif()
-    message(STATUS "Building with GLFW backend")
-endif()
+# Wayland dependencies
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(WAYLAND_CLIENT REQUIRED wayland-client)
+pkg_check_modules(WAYLAND_EGL REQUIRED wayland-egl)
+pkg_check_modules(WAYLAND_CURSOR REQUIRED wayland-cursor)
+pkg_check_modules(EGL REQUIRED egl)
+pkg_check_modules(GLES2 REQUIRED glesv2)
+
+# Wayland protocol generation
+find_program(WAYLAND_SCANNER wayland-scanner REQUIRED)
+pkg_get_variable(WAYLAND_PROTOCOLS_DIR wayland-protocols pkgdatadir)
+
+message(STATUS "Building Flux for Linux with Wayland + NanoVG + OpenGL ES 2")
 
 # NanoVG for high-quality 2D graphics rendering
 # Check if NanoVG submodule exists
@@ -74,84 +70,70 @@ else()
     message(FATAL_ERROR "STB is required. Please ensure stb submodule is initialized.")
 endif()
 
-# Platform-specific dependencies
-if(UNIX AND NOT APPLE)
-    find_package(OpenGL REQUIRED)
-    message(STATUS "Building for Linux with Wayland + NanoVG + OpenGL")
-elseif(APPLE)
-    find_library(OPENGL_LIBRARY OpenGL REQUIRED)
-    message(STATUS "Building for macOS with GLFW + NanoVG + OpenGL")
-elseif(WIN32)
-    message(STATUS "Building for Windows with GLFW + NanoVG + OpenGL")
-endif()
+# Generate Wayland protocol files
+# XDG Shell protocol (window management)
+set(XDG_SHELL_PROTOCOL "${WAYLAND_PROTOCOLS_DIR}/stable/xdg-shell/xdg-shell.xml")
+set(XDG_SHELL_CLIENT_HEADER "${CMAKE_CURRENT_BINARY_DIR}/xdg-shell-client-protocol.h")
+set(XDG_SHELL_PRIVATE_CODE "${CMAKE_CURRENT_BINARY_DIR}/xdg-shell-protocol.c")
 
-# Generate Wayland protocol files for Linux
-if(UNIX AND NOT APPLE)
-    # XDG Shell protocol
-    set(XDG_SHELL_PROTOCOL "${WAYLAND_PROTOCOLS_DIR}/stable/xdg-shell/xdg-shell.xml")
-    set(XDG_SHELL_CLIENT_HEADER "${CMAKE_CURRENT_BINARY_DIR}/xdg-shell-client-protocol.h")
-    set(XDG_SHELL_PRIVATE_CODE "${CMAKE_CURRENT_BINARY_DIR}/xdg-shell-protocol.c")
+add_custom_command(
+    OUTPUT ${XDG_SHELL_CLIENT_HEADER}
+    COMMAND ${WAYLAND_SCANNER} client-header ${XDG_SHELL_PROTOCOL} ${XDG_SHELL_CLIENT_HEADER}
+    DEPENDS ${XDG_SHELL_PROTOCOL}
+    VERBATIM
+)
 
-    add_custom_command(
-        OUTPUT ${XDG_SHELL_CLIENT_HEADER}
-        COMMAND ${WAYLAND_SCANNER} client-header ${XDG_SHELL_PROTOCOL} ${XDG_SHELL_CLIENT_HEADER}
-        DEPENDS ${XDG_SHELL_PROTOCOL}
-        VERBATIM
-    )
+add_custom_command(
+    OUTPUT ${XDG_SHELL_PRIVATE_CODE}
+    COMMAND ${WAYLAND_SCANNER} private-code ${XDG_SHELL_PROTOCOL} ${XDG_SHELL_PRIVATE_CODE}
+    DEPENDS ${XDG_SHELL_PROTOCOL}
+    VERBATIM
+)
 
-    add_custom_command(
-        OUTPUT ${XDG_SHELL_PRIVATE_CODE}
-        COMMAND ${WAYLAND_SCANNER} private-code ${XDG_SHELL_PROTOCOL} ${XDG_SHELL_PRIVATE_CODE}
-        DEPENDS ${XDG_SHELL_PROTOCOL}
-        VERBATIM
-    )
+# XDG Decoration protocol (window decorations)
+set(XDG_DECORATION_PROTOCOL "${WAYLAND_PROTOCOLS_DIR}/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml")
+set(XDG_DECORATION_CLIENT_HEADER "${CMAKE_CURRENT_BINARY_DIR}/xdg-decoration-client-protocol.h")
+set(XDG_DECORATION_PRIVATE_CODE "${CMAKE_CURRENT_BINARY_DIR}/xdg-decoration-protocol.c")
 
-    # XDG Decoration protocol for window decorations
-    set(XDG_DECORATION_PROTOCOL "${WAYLAND_PROTOCOLS_DIR}/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml")
-    set(XDG_DECORATION_CLIENT_HEADER "${CMAKE_CURRENT_BINARY_DIR}/xdg-decoration-client-protocol.h")
-    set(XDG_DECORATION_PRIVATE_CODE "${CMAKE_CURRENT_BINARY_DIR}/xdg-decoration-protocol.c")
+add_custom_command(
+    OUTPUT ${XDG_DECORATION_CLIENT_HEADER}
+    COMMAND ${WAYLAND_SCANNER} client-header ${XDG_DECORATION_PROTOCOL} ${XDG_DECORATION_CLIENT_HEADER}
+    DEPENDS ${XDG_DECORATION_PROTOCOL}
+    VERBATIM
+)
 
-    add_custom_command(
-        OUTPUT ${XDG_DECORATION_CLIENT_HEADER}
-        COMMAND ${WAYLAND_SCANNER} client-header ${XDG_DECORATION_PROTOCOL} ${XDG_DECORATION_CLIENT_HEADER}
-        DEPENDS ${XDG_DECORATION_PROTOCOL}
-        VERBATIM
-    )
-
-    add_custom_command(
-        OUTPUT ${XDG_DECORATION_PRIVATE_CODE}
-        COMMAND ${WAYLAND_SCANNER} private-code ${XDG_DECORATION_PROTOCOL} ${XDG_DECORATION_PRIVATE_CODE}
-        DEPENDS ${XDG_DECORATION_PROTOCOL}
-        VERBATIM
-    )
-endif()
+add_custom_command(
+    OUTPUT ${XDG_DECORATION_PRIVATE_CODE}
+    COMMAND ${WAYLAND_SCANNER} private-code ${XDG_DECORATION_PROTOCOL} ${XDG_DECORATION_PRIVATE_CODE}
+    DEPENDS ${XDG_DECORATION_PROTOCOL}
+    VERBATIM
+)
 
 # Flux library sources
 set(FLUX_SOURCES
+    # Core
     src/Core/Application.cpp
     src/Core/Window.cpp
+    
+    # Graphics
     src/Graphics/Path.cpp
     src/Graphics/Renderer.cpp
     src/Graphics/NanoVGRenderer.cpp
     src/Graphics/NanoVGRenderContext.cpp
+    
+    # Views
     src/Views/SVG.cpp
     src/Views/NanoSVG.cpp
+    
+    # Platform (Wayland)
+    src/Platform/WaylandWindow.cpp
+    
+    # Generated Wayland protocols
+    ${XDG_SHELL_CLIENT_HEADER}
+    ${XDG_SHELL_PRIVATE_CODE}
+    ${XDG_DECORATION_CLIENT_HEADER}
+    ${XDG_DECORATION_PRIVATE_CODE}
 )
-
-# Platform-specific sources
-if(UNIX AND NOT APPLE)
-    list(APPEND FLUX_SOURCES
-        src/Platform/WaylandWindow.cpp
-        ${XDG_SHELL_CLIENT_HEADER}
-        ${XDG_SHELL_PRIVATE_CODE}
-        ${XDG_DECORATION_CLIENT_HEADER}
-        ${XDG_DECORATION_PRIVATE_CODE}
-    )
-else()
-    list(APPEND FLUX_SOURCES
-        src/Platform/GLFWWindow.cpp
-    )
-endif()
 
 # Build NanoVG
 add_library(nanovg STATIC
@@ -176,26 +158,11 @@ set_target_properties(nanovg PROPERTIES
     C_STANDARD_REQUIRED ON
 )
 
-# Define OpenGL version for NanoVG based on platform
-if(APPLE)
-    # macOS: Use OpenGL 2 (OpenGL ES 2 headers not readily available)
-    target_compile_definitions(nanovg PRIVATE NANOVG_GL2 GL_SILENCE_DEPRECATION FONS_USE_FREETYPE)
-elseif(UNIX)
-    # Linux: Use OpenGL ES 2
-    target_compile_definitions(nanovg PRIVATE NANOVG_GLES2 FONS_USE_FREETYPE)
-elseif(WIN32)
-    # Windows: Use OpenGL 2
-    target_compile_definitions(nanovg PRIVATE NANOVG_GL2 FONS_USE_FREETYPE)
-endif()
+# Define OpenGL ES 2 for NanoVG (Linux/Wayland)
+target_compile_definitions(nanovg PRIVATE NANOVG_GLES2 FONS_USE_FREETYPE)
 
 # Link OpenGL to NanoVG
-if(UNIX AND NOT APPLE)
-    target_link_libraries(nanovg PUBLIC OpenGL::GL)
-elseif(APPLE)
-    target_link_libraries(nanovg PUBLIC ${OPENGL_LIBRARY})
-elseif(WIN32)
-    target_link_libraries(nanovg PUBLIC opengl32)
-endif()
+target_link_libraries(nanovg PUBLIC OpenGL::GL)
 
 add_library(flux STATIC ${FLUX_SOURCES})
 
@@ -206,44 +173,25 @@ target_include_directories(flux PUBLIC
     $<BUILD_INTERFACE:${STB_SOURCE_DIR}>
 )
 
-# Platform-specific includes for Wayland
-if(UNIX AND NOT APPLE)
-    target_include_directories(flux PRIVATE
-        ${WAYLAND_CLIENT_INCLUDE_DIRS}
-        ${WAYLAND_EGL_INCLUDE_DIRS}
-        ${EGL_INCLUDE_DIRS}
-        ${GLES2_INCLUDE_DIRS}
-        ${CMAKE_CURRENT_BINARY_DIR}
-    )
-endif()
+# Wayland-specific includes
+target_include_directories(flux PRIVATE
+    ${WAYLAND_CLIENT_INCLUDE_DIRS}
+    ${WAYLAND_EGL_INCLUDE_DIRS}
+    ${EGL_INCLUDE_DIRS}
+    ${GLES2_INCLUDE_DIRS}
+    ${CMAKE_CURRENT_BINARY_DIR}
+)
 
 target_link_libraries(flux PUBLIC
     Threads::Threads
     Freetype::Freetype
     nanovg
+    ${WAYLAND_CLIENT_LIBRARIES}
+    ${WAYLAND_EGL_LIBRARIES}
+    ${WAYLAND_CURSOR_LIBRARIES}
+    ${EGL_LIBRARIES}
+    ${GLES2_LIBRARIES}
 )
-
-# Platform-specific libraries
-if(UNIX AND NOT APPLE)
-    target_link_libraries(flux PUBLIC
-        ${WAYLAND_CLIENT_LIBRARIES}
-        ${WAYLAND_EGL_LIBRARIES}
-        ${WAYLAND_CURSOR_LIBRARIES}
-        ${EGL_LIBRARIES}
-        ${GLES2_LIBRARIES}
-    )
-else()
-    target_link_libraries(flux PUBLIC
-        glfw
-    )
-endif()
-
-# Additional platform-specific linking (beyond windowing)
-if(APPLE)
-    target_link_libraries(flux PUBLIC ${OPENGL_LIBRARY})
-elseif(WIN32)
-    target_link_libraries(flux PUBLIC opengl32)
-endif()
 
 target_compile_options(flux PRIVATE
     -Wall -Wextra -Wpedantic

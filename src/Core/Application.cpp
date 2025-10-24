@@ -1,6 +1,5 @@
 #include <Flux/Core/Application.hpp>
 #include <Flux/Core/Window.hpp>
-#include <Flux/Core/WindowBackend.hpp>
 #include <Flux/Platform/PlatformWindow.hpp>
 #include <chrono>
 #include <thread>

@@ -301,22 +301,30 @@ struct VStack {  // Plain struct, no inheritance
 - Unified Property system (stateful + configuration)
 - View system
 - View builder pattern
-- 5 view components (Text, Button, VStack, HStack, Spacer)
+- 10 view components (Text, Button, VStack, HStack, Spacer, Grid, Image, SVG, Slider)
 - Flexible layout system (expansionBias, compressionBias)
 - ViewHelpers for unified rendering
-- SDL2 backend with hardware-accelerated rendering
-- 8 comprehensive examples
+- Wayland backend with NanoVG hardware-accelerated rendering
+- 12+ comprehensive examples
+- Mouse event handling and cursor management
 
-🚧 To Implement:
-- Real RenderContext backend (Vulkan/Skia for Linux)
-- Window backend (Wayland)
-- Full mouse/keyboard event propagation to views
+🚧 To Implement (Priority Order):
+- Keyboard input dispatch and focus management
+- Text input components (TextInput, TextArea)
+- Wayland clipboard protocol (copy/paste)
+- Wayland text-input protocol (IME support)
+- ScrollView and ListView with virtualization
+- Modal dialogs and navigation
+- Form validation framework
+- Accessibility (AT-SPI integration)
 
-✅ SDL2 Backend (Cross-platform):
-- SDL2RenderContext for hardware-accelerated rendering
-- SDL2Window for cross-platform windowing (Linux, macOS, Windows)
-- Full event handling (mouse, keyboard, resize, close)
-- SDL2 as required dependency
+✅ Wayland Backend (Linux-only):
+- WaylandWindow for native Wayland support
+- NanoVG with OpenGL ES 2 for rendering
+- xdg-shell and xdg-decoration protocols
+- Mouse event handling (move, click, scroll)
+- Window management (resize, fullscreen, decorations)
+- Cursor management with wayland-cursor
 
 ## Summary
 

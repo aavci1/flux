@@ -278,6 +278,7 @@ int main(int argc, char* argv[]) {
 - Plain structs with designated initializers
 - Flexible layout system (expansionBias, compressionBias)
 - ViewHelpers for unified rendering
+- Native Wayland integration (Linux-focused)
 - TitleCase convention
-- Absolutely minimal (17 headers, 5 view components)
+- Absolutely minimal (17 headers, 10 view components)
 

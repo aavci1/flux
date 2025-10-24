@@ -112,21 +112,19 @@ A fully functional calculator application featuring:
 
 ## Building Examples
 
-Each example is a standalone application. To build an example:
+All examples are built automatically with the main project:
 
 ```bash
-cd <example-directory>
-g++ -std=c++23 -o app main.cpp -lflux -lvulkan -lskia -ldrm -lgbm -linput
-./app
-```
+# From project root
+mkdir build && cd build
+cmake ..
+make
 
-Or using CMake:
-
-```bash
-cd <example-directory>
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build
-./build/app
+# Run any example
+./hello_world
+./counter
+./calculator
+./automotive_dashboard
 ```
 
 ## Learning Path
@@ -154,10 +152,12 @@ Each example contains:
 
 ## Requirements
 
-All examples assume:
-- Flux framework is installed and available
-- C++23 compatible compiler
-- Required system libraries (Vulkan, Skia, DRM, etc.)
+All examples require:
+- Linux with Wayland compositor
+- C++23 compatible compiler (Clang recommended)
+- Wayland development libraries
+- OpenGL ES 2 / EGL
+- Freetype2
 
 ## Notes
 

@@ -1,6 +1,6 @@
 # Flux UI Framework
 
-A minimal, declarative UI framework for Linux built with pure C++23.
+A minimal, declarative UI framework for Linux/Wayland built with pure C++23.
 
 ## Key Features
 
@@ -9,7 +9,7 @@ A minimal, declarative UI framework for Linux built with pure C++23.
 - Flexible properties (stateful values, direct values, or lambdas)
 - Immediate mode rendering
 - Type-safe with compile-time checking
-- **NEW**: SDL2 backend for cross-platform windowing and hardware-accelerated rendering
+- Native Wayland support with hardware-accelerated rendering (NanoVG + OpenGL ES 2)
 
 ## Quick Start
 
@@ -152,15 +152,27 @@ See `examples/` directory:
 
 ## Building
 
+### Prerequisites (Arch Linux)
+```bash
+sudo pacman -S wayland wayland-protocols libxkbcommon mesa freetype2 clang
+```
+
+### Prerequisites (Ubuntu/Debian)
+```bash
+sudo apt install libwayland-dev wayland-protocols libxkbcommon-dev \
+                 libegl1-mesa-dev libgles2-mesa-dev libfreetype6-dev clang
+```
+
+### Build
 ```bash
 mkdir build && cd build
 cmake ..
 make
 
-# Run examples (SDL2 window)
+# Run examples
 ./hello_world
 ./counter
-./dashboard
+./calculator
 ```
 
 ## Include Patterns
@@ -179,15 +191,26 @@ make
 This is a minimal framework implementation with:
 - ✅ 17 headers (TitleCase convention)
 - ✅ 5 source files
-- ✅ 5 view components (Text, Button, VStack, HStack, Spacer)
+- ✅ 10 view components (Text, Button, VStack, HStack, Spacer, Grid, Image, SVG, Slider)
 - ✅ Flexible layout system (expansionBias, compressionBias)
 - ✅ ViewHelpers for unified rendering
-- ✅ 8 comprehensive examples
+- ✅ 12+ comprehensive examples
 - ✅ Concept-based view system (no inheritance required)
-- ✅ SDL2 backend with hardware-accelerated rendering
-- 🚧 Vulkan/Skia render backend (for Linux)
-- 🚧 Wayland window backend
-- 🚧 Input handling
+- ✅ Wayland backend with NanoVG hardware-accelerated rendering
+- ✅ Basic mouse event handling
+- 🚧 Keyboard input and focus management
+- 🚧 Text input components (TextInput, TextArea)
+- 🚧 Wayland clipboard protocol integration
+- 🚧 ScrollView and list virtualization
+
+## Platform Support
+
+Flux is **Linux/Wayland-only** by design. Cross-platform support is not a goal at this time.
+This allows for:
+- Deep Wayland protocol integration
+- Native Linux experience
+- Simplified codebase
+- Better performance
 
 ## License
 

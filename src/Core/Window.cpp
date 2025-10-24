@@ -3,68 +3,35 @@
 #include <Flux/Graphics/Renderer.hpp>
 #include <Flux/Graphics/RenderContext.hpp>
 #include <Flux/Platform/PlatformWindow.hpp>
-
-#if defined(__linux__) && !defined(__ANDROID__)
-    #include <Flux/Platform/WaylandWindow.hpp>
-#else
-    #include <Flux/Platform/GLFWWindow.hpp>
-#endif
+#include <Flux/Platform/WaylandWindow.hpp>
 
 #include <iostream>
 #include <cstdlib>
 
 namespace flux {
 
-// Forward declaration of factory functions
-// Platform window is created by GLFWWindow
-
 Window::Window(const WindowConfig& config)
     : config_(config), currentSize_(config.size) {
 
-    // Determine which backend to use
-    WindowBackend backendToUse = config.backend;
+    // Create Wayland window (Linux/Wayland only)
+    platformWindow_ = std::make_unique<WaylandWindow>(
+        config.title,
+        config.size,
+        config.resizable,
+        config.fullscreen
+    );
+    
+    std::cout << "[WINDOW] Using Wayland + NanoVG backend\n";
 
-    if (backendToUse == WindowBackend::Auto) {
-        // Auto-select: use GLFW + NanoVG
-        backendToUse = WindowBackend::Default;
-    }
+    // Set the Flux Window reference for resize callbacks
+    platformWindow_->setFluxWindow(this);
 
-    activeBackend_ = backendToUse;
-
-    // Initialize the appropriate backend
-    if (backendToUse == WindowBackend::Default) {
-#if defined(__linux__) && !defined(__ANDROID__)
-        // Create Wayland window on Linux
-        platformWindow_ = std::make_unique<WaylandWindow>(
-            config.title,
-            config.size,
-            config.resizable,
-            config.fullscreen
-        );
-        std::cout << "[WINDOW] Using Wayland + NanoVG backend\n";
-#else
-        // Create GLFW window on macOS and Windows
-        platformWindow_ = std::make_unique<GLFWWindow>(
-            config.title,
-            config.size,
-            config.resizable,
-            config.fullscreen
-        );
-        std::cout << "[WINDOW] Using GLFW + NanoVG backend\n";
-#endif
-
-        // Set the Flux Window reference for resize callbacks
-        platformWindow_->setFluxWindow(this);
-
-        renderContext_.reset(); // PlatformWindow owns the render context
-        renderer_ = std::make_unique<ImmediateModeRenderer>(platformWindow_->renderContext());
-        
-        // Set window reference in renderer for cursor management
-        auto* immediateRenderer = static_cast<ImmediateModeRenderer*>(renderer_.get());
-        immediateRenderer->setWindow(this);
-    } else {
-        throw std::runtime_error("Unsupported backend. Please use WindowBackend::Default or WindowBackend::Auto.");
-    }
+    renderContext_.reset(); // PlatformWindow owns the render context
+    renderer_ = std::make_unique<ImmediateModeRenderer>(platformWindow_->renderContext());
+    
+    // Set window reference in renderer for cursor management
+    auto* immediateRenderer = static_cast<ImmediateModeRenderer*>(renderer_.get());
+    immediateRenderer->setWindow(this);
 
     // Register with the application
     Application::instance().registerWindow(this);

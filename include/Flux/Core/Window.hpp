@@ -2,7 +2,6 @@
 
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/View.hpp>
-#include <Flux/Core/WindowBackend.hpp>
 #include <Flux/Graphics/Renderer.hpp>
 #include <Flux/Graphics/RenderContext.hpp>
 #include <string>
@@ -18,7 +17,6 @@ struct WindowConfig {
     std::string title = "Flux Application";
     bool fullscreen = false;
     bool resizable = true;
-    WindowBackend backend = WindowBackend::Auto;
 };
 
 class Window {
@@ -28,9 +26,8 @@ private:
     View rootView_;
     WindowConfig config_;
     Size currentSize_;
-    WindowBackend activeBackend_;
 
-    std::unique_ptr<PlatformWindow> platformWindow_; // The platform-specific window implementation
+    std::unique_ptr<PlatformWindow> platformWindow_; // Wayland window implementation
 
 public:
     explicit Window(const WindowConfig& config);
@@ -54,9 +51,6 @@ public:
 
     // Event dispatch to renderer
     void dispatchEvent(const Event& event);
-
-    // Backend info
-    WindowBackend backend() const { return activeBackend_; }
 
     // Cursor management
     void setCursor(CursorType cursor);
