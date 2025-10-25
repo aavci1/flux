@@ -3,6 +3,13 @@
 
 using namespace flux;
 
+template <typename T, typename U, typename F>
+std::vector<U> map(const std::vector<T>& arr, F fn) {
+    std::vector<U> result;
+    std::transform(arr.begin(), arr.end(), std::back_inserter(result), fn);
+    return result;
+}
+
 int main(int argc, char* argv[]) {
     Application app(argc, argv);
 
@@ -12,8 +19,7 @@ int main(int argc, char* argv[]) {
         const char* name;
     };
 
-    const CursorInfo cursors[] = {
-        {CursorType::Default, "Default"},
+    const std::vector<CursorInfo> cursors = {
         {CursorType::Pointer, "Pointer"},
         {CursorType::Text, "Text"},
         {CursorType::Crosshair, "Crosshair"},
@@ -31,8 +37,6 @@ int main(int argc, char* argv[]) {
         {CursorType::ZoomIn, "Zoom In"},
         {CursorType::ZoomOut, "Zoom Out"},
     };
-
-    const int cursorCount = sizeof(cursors) / sizeof(cursors[0]);
 
     Window window({
         .size = {600, 500},
@@ -53,45 +57,24 @@ int main(int argc, char* argv[]) {
                 },
                 
                 Text {
-                    .value = "Click buttons to change the cursor",
+                    .value = "Hover over the buttons to see the cursor",
                     .fontSize = 16,
                     .color = Color::hex(0x666666)
                 },
 
                 // Grid of cursor buttons
                 Grid {
-                    .columns = 3,
+                    .rows = 4,
+                    .columns = 4,
                     .spacing = 12,
                     .expansionBias = 1.0f,
-                    .children = [&]() {
-                        std::vector<View> buttons;
-                        for (int i = 0; i < cursorCount; i++) {
-                            buttons.push_back(View(Button {
-                                .text = cursors[i].name,
-                                .padding = EdgeInsets(12, 16),
-                                .backgroundColor = Color::hex(0x2196F3),
-                                .cornerRadius = 8,
-                                .onClick = [&window, &cursors, i]() {
-                                    window.setCursor(cursors[i].type);
-                                    std::cout << "[CursorDemo] Changed cursor to: " 
-                                              << cursors[i].name << std::endl;
-                                }
-                            }));
-                        }
-                        return buttons;
-                    }()
-                },
-
-                // Reset button
-                Button {
-                    .text = "Reset to Default",
-                    .padding = EdgeInsets(12, 24),
-                    .backgroundColor = Color::hex(0x4CAF50),
-                    .cornerRadius = 8,
-                    .onClick = [&window]() {
-                        window.setCursor(CursorType::Default);
-                        std::cout << "[CursorDemo] Reset to default cursor\n";
-                    }
+                    .children = map(cursors, [](const CursorInfo& cursor) {
+                        return Button {
+                            .cursor = cursor.type,
+                            .text = cursor.name,
+                            .cornerRadius = 8
+                        };
+                    })
                 }
             }
         }

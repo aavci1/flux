@@ -12,8 +12,6 @@ int main(int argc, char* argv[]) {
 
     window.setRootView(
         Text {
-            .color = Colors::red,
-            .fontSize = 48,
             .value = "Hello, world!"
         }
     );

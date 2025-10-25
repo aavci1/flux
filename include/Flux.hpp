@@ -23,6 +23,7 @@
 #include <Flux/Views/Image.hpp>
 #include <Flux/Views/ProgressBar.hpp>
 #include <Flux/Views/RadioButton.hpp>
+#include <Flux/Views/ScrollArea.hpp>
 #include <Flux/Views/Slider.hpp>
 #include <Flux/Views/Spacer.hpp>
 #include <Flux/Views/SVG.hpp>
