@@ -184,16 +184,30 @@ struct Button {
 };
 ```
 
-## Minimal Components
+## Components
 
-### Layout Components (3)
+### Layout Components (4)
 - **VStack** - Vertical stack with spacing and alignment
 - **HStack** - Horizontal stack with spacing and alignment
+- **Grid** - Grid layout with rows and columns
 - **Spacer** - Flexible space filler
 
-### UI Components (2)
+### Basic UI Components (2)
 - **Text** - Text display with formatting and alignment
 - **Button** - Interactive button with states and styling
+
+### Form Input Components (4)
+- **Checkbox** - Checkbox input with label
+- **RadioButton** - Radio button for mutually exclusive selections
+- **Toggle** - Toggle switch for boolean values
+- **Slider** - Value slider for numeric input
+
+### Visual Components (5)
+- **Image** - Raster image display
+- **SVG** - SVG vector graphics rendering
+- **Badge** - Small indicator badge
+- **Divider** - Visual separator line
+- **ProgressBar** - Progress indicator
 
 ## Architecture
 
@@ -280,5 +294,8 @@ int main(int argc, char* argv[]) {
 - ViewHelpers for unified rendering
 - Native Wayland integration (Linux-focused)
 - TitleCase convention
-- Absolutely minimal (17 headers, 10 view components)
+- Comprehensive component library (39 headers, 16 view components)
+- Full event system (17 events on all views)
+- Focus management with tab navigation
+- Custom cursor support
 

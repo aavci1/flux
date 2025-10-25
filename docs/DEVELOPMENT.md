@@ -25,14 +25,17 @@ make
 
 ```
 flux/
-├── include/Flux/          17 headers
-│   ├── Core/              10 files
-│   ├── Views/             5 files
-│   └── Graphics/          2 files
-├── src/                   5 cpp files
-│   ├── core/              3 files
-│   └── graphics/          2 files
-└── examples/              8 examples
+├── include/Flux/          39 headers
+│   ├── Core/              15 files
+│   ├── Views/             16 files
+│   ├── Graphics/          4 files
+│   └── Platform/          4 files
+├── src/                   12 cpp files
+│   ├── Core/              7 files
+│   ├── Graphics/          4 files
+│   ├── Platform/          1 file
+│   └── Views/             2 files
+└── examples/              32+ examples
 ```
 
 ## Code Style
@@ -218,21 +221,22 @@ void render(...) {
 - Example code
 
 ### Phase 2: Render Backend ✅
-- SDL2 backend implemented
-- Hardware-accelerated rendering
-- Text rendering with SDL_ttf
-- Shape primitives
+- NanoVG backend implemented
+- Hardware-accelerated rendering with OpenGL ES 2
+- Text rendering with Freetype
+- Shape primitives and paths
 
-### Phase 3: Window Backend 🚧
-- Window creation
+### Phase 3: Window Backend ✅
+- Wayland window implementation
 - Event loop
-- Input handling
-- Mouse/keyboard events
+- Full input handling
+- Mouse/keyboard/focus events
 
-### Phase 4: Platform Integration 📋
-- Wayland protocol
+### Phase 4: Platform Integration ✅
+- Wayland protocols (xdg-shell, xdg-decoration)
 - Surface management
 - Display integration
+- Cursor management
 
 ## Performance Considerations
 

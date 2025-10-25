@@ -2,6 +2,30 @@
 
 This document tracks features that are not yet implemented but are planned for future development.
 
+## Summary of Current Status
+
+### ✅ Completed Since Last Update
+- **Checkbox Component** - Full implementation with label positioning and keyboard support
+- **RadioButton Component** - Full implementation with label positioning  
+- **Toggle/Switch Component** - Full implementation with label positioning
+- **ProgressBar Component** - Determinate and indeterminate modes
+- **Mouse Enter/Leave Events** - Full event detection and callbacks
+- **Double-Click Detection** - Complete timing logic
+- **Basic Scrolling** - Vertical scroll with mouse wheel support
+- **Badge Component** - Small indicator badges
+- **Divider Component** - Visual separator lines
+
+### 🚧 Partially Completed
+- **ScrollView** - Basic vertical scrolling works, full implementation in progress
+- **FlexBox Layout** - Basic expansion/compression via expansionBias/compressionBias
+
+### 📋 High Priority Remaining
+- **TextInput Component** - Essential for form input
+- **TextArea Component** - Multi-line text editing
+- **Clipboard Support** - Copy/paste functionality
+- **Drag and Drop** - Full drag and drop system
+- **ListView with Virtualization** - For large lists
+
 ## Priority 1: Essential Input Components
 
 ### TextInput Component
@@ -37,39 +61,35 @@ This document tracks features that are not yet implemented but are planned for f
 - Auto-indent (optional)
 
 **Dependencies:**
-- ScrollView component
+- ScrollArea component
 - TextInput foundation
 
 ## Priority 2: Advanced Interaction
 
-### Mouse Enter/Leave Events
-**Status**: Partially implemented (callbacks defined, detection not implemented)  
+### Mouse Enter/Leave Events ✅
+**Status**: Implemented  
 **Description**: onMouseEnter and onMouseLeave event detection
 
-**Required Features:**
-- Track which view mouse is currently over
-- Detect when mouse enters/exits view bounds
-- Trigger onMouseEnter callback on entry
-- Trigger onMouseLeave callback on exit
-- Handle nested views correctly (event bubbling)
+**Features:**
+- ✅ Track which view mouse is currently over
+- ✅ Detect when mouse enters/exits view bounds
+- ✅ Trigger onMouseEnter callback on entry
+- ✅ Trigger onMouseLeave callback on exit
+- ✅ Handle nested views correctly
+- ✅ Callbacks defined in FLUX_VIEW_PROPERTIES
+- ✅ Wired up in event system
 
-**Current State:**
-- Callbacks defined in FLUX_VIEW_PROPERTIES
-- Not yet wired up in renderer/event system
-
-### Double-Click Detection
-**Status**: Partially implemented (callback defined, timing not implemented)  
+### Double-Click Detection ✅
+**Status**: Implemented  
 **Description**: onDoubleClick event with timing detection
 
-**Required Features:**
-- Track time between clicks
-- Detect double-click within threshold (typically 500ms)
-- Distinguish from two separate clicks
-- Trigger onDoubleClick callback
-
-**Current State:**
-- Callback defined in FLUX_VIEW_PROPERTIES
-- Timing logic not implemented
+**Features:**
+- ✅ Track time between clicks
+- ✅ Detect double-click within threshold (typically 500ms)
+- ✅ Distinguish from two separate clicks
+- ✅ Trigger onDoubleClick callback
+- ✅ Callback defined in FLUX_VIEW_PROPERTIES
+- ✅ Timing logic implemented
 
 ### Drag and Drop System
 **Status**: Not implemented (callbacks defined)  
@@ -91,24 +111,31 @@ This document tracks features that are not yet implemented but are planned for f
 
 ## Priority 3: Scrolling & Virtualization
 
-### ScrollView Component
-**Status**: Not implemented  
-**Description**: Scrollable container with scrollbars
+### ScrollArea Component
+**Status**: Implemented  
+**Description**: Scrollable container for content that exceeds viewport bounds
 
-**Required Features:**
-- Vertical and horizontal scrolling
-- Scrollbar rendering (optional, can be hidden)
-- Mouse wheel support
-- Touch/trackpad gestures
-- Scroll position API
-- Programmatic scrolling
-- Scroll animation/easing
-- Content clipping
+**Features:**
+- ✅ Vertical scrolling
+- ✅ Mouse wheel support
+- ✅ Content clipping
+- ✅ ScrollArea demo (example 33)
+- ✅ Scroll sensitivity control
+- ✅ Dynamic content size calculation
+- 🚧 Horizontal scrolling
+- 🚧 Touch/trackpad gestures
+- 🚧 Scroll position API
+- 🚧 Programmatic scrolling
+- 🚧 Scroll animation/easing
+- 🚧 Scrollbar rendering (deferred for now)
 
 **Implementation Notes:**
-- Requires clip property support (✅ implemented)
-- Needs scroll event handling
-- Viewport calculations for visible area
+- ✅ clip property support implemented
+- ✅ onScroll event handling implemented
+- ✅ Content clipping respects borders
+- ✅ ClipContainer helper for proper content containment
+- 🚧 Full scrollbar UI (deferred)
+- 🚧 Viewport calculations for virtualization
 
 ### ListView Component
 **Status**: Not implemented  
@@ -125,7 +152,7 @@ This document tracks features that are not yet implemented but are planned for f
 - Infinite scroll (optional)
 
 **Dependencies:**
-- ScrollView component
+- ScrollArea component
 - Focus system (✅ implemented)
 
 ## Priority 4: Advanced Layout
@@ -217,32 +244,37 @@ This document tracks features that are not yet implemented but are planned for f
 
 ## Priority 6: Advanced Components
 
-### Checkbox Component
-**Status**: Not implemented  
-**Required Features:**
-- Check/uncheck state
-- Visual indicator (checkmark)
-- Label support
-- Keyboard toggle (Space)
-- onChange callback
+### Checkbox Component ✅
+**Status**: Implemented  
+**Features:**
+- ✅ Check/uncheck state
+- ✅ Visual indicator (checkmark)
+- ✅ Label support with positioning
+- ✅ Keyboard toggle (Space)
+- ✅ onChange callback
+- ✅ Focus support
 
-### Radio Button Component
-**Status**: Not implemented  
-**Required Features:**
-- Radio group (mutual exclusion)
-- Selection state
-- Visual indicator (circle/dot)
-- Keyboard navigation (arrow keys)
-- onChange callback
+### Radio Button Component ✅
+**Status**: Implemented  
+**Features:**
+- ✅ Selection state
+- ✅ Visual indicator (circle/dot)
+- ✅ Label support with positioning
+- ✅ Keyboard toggle (Space)
+- ✅ onChange callback
+- ✅ Focus support
+- ⚠️ Radio group coordination (manual via shared state)
 
-### Toggle/Switch Component
-**Status**: Not implemented  
-**Required Features:**
-- On/off state
-- Animated transition
-- Visual switch design
-- Keyboard toggle (Space)
-- onChange callback
+### Toggle/Switch Component ✅
+**Status**: Implemented  
+**Features:**
+- ✅ On/off state
+- ✅ Visual switch design
+- ✅ Label support with positioning
+- ✅ Keyboard toggle (Space)
+- ✅ onChange callback
+- ✅ Focus support
+- 🚧 Animated transition
 
 ### Dropdown/Select Component
 **Status**: Not implemented  
@@ -257,16 +289,16 @@ This document tracks features that are not yet implemented but are planned for f
 
 **Dependencies:**
 - Overlay system
-- ScrollView (for long lists)
+- ScrollArea (for long lists and scrollable content)
 
-### ProgressBar Component
-**Status**: Not implemented  
-**Required Features:**
-- Determinate mode (0-100%)
-- Indeterminate mode (loading animation)
-- Custom styling
-- Label/text display
-- Circular variant (optional)
+### ProgressBar Component ✅
+**Status**: Implemented  
+**Features:**
+- ✅ Determinate mode (0-100%)
+- ✅ Indeterminate mode (loading animation)
+- ✅ Custom styling (color)
+- 🚧 Label/text display
+- 🚧 Circular variant
 
 ### TabView Component
 **Status**: Not implemented  

@@ -61,7 +61,7 @@ int main(int argc, char* argv[]) {
 include/
 ├── Flux.hpp                    // Main header - includes everything
 └── Flux/
-    ├── Core/                   // Core types and system (9 headers)
+    ├── Core/                   // Core system (15 headers)
     │   ├── Types.hpp          // Point, Rect, Color, etc.
     │   ├── Property.hpp       // Reactive properties & state
     │   ├── View.hpp           // Base view class
@@ -69,26 +69,56 @@ include/
     │   ├── Application.hpp    // App lifecycle
     │   ├── Window.hpp         // Window management
     │   ├── LayoutTree.hpp     // Layout management
-    │   ├── TextUtils.hpp      // Text utilities
-    │   └── Utilities.hpp      // Common utilities
-    ├── Views/                  // UI components and layouts (5 headers)
-    │   ├── Text.hpp
-    │   ├── Button.hpp
-    │   ├── VStack.hpp
-    │   ├── HStack.hpp
-    │   └── Spacer.hpp
-    └── Graphics/               // Rendering (2 headers)
-        ├── RenderContext.hpp
-        └── Renderer.hpp
+    │   ├── Utilities.hpp      // Common utilities
+    │   ├── KeyEvent.hpp       // Keyboard event types
+    │   ├── FocusState.hpp     // Focus management
+    │   ├── KeyboardInputHandler.hpp
+    │   ├── MouseInputHandler.hpp
+    │   ├── ShortcutManager.hpp
+    │   ├── PlatformWindowFactory.hpp
+    │   └── WindowEventObserver.hpp
+    ├── Views/                  // UI components and layouts (16 headers)
+    │   ├── Text.hpp           // Text display
+    │   ├── Button.hpp         // Interactive button
+    │   ├── VStack.hpp         // Vertical stack layout
+    │   ├── HStack.hpp         // Horizontal stack layout
+    │   ├── Spacer.hpp         // Flexible space
+    │   ├── Grid.hpp           // Grid layout
+    │   ├── StackLayout.hpp    // Stack layout utilities
+    │   ├── Image.hpp          // Image display
+    │   ├── SVG.hpp            // SVG rendering
+    │   ├── Slider.hpp         // Value slider
+    │   ├── Checkbox.hpp       // Checkbox input
+    │   ├── RadioButton.hpp    // Radio button input
+    │   ├── Toggle.hpp         // Toggle switch
+    │   ├── Badge.hpp          // Badge indicator
+    │   ├── Divider.hpp        // Visual divider
+    │   └── ProgressBar.hpp    // Progress indicator
+    ├── Graphics/               // Rendering (4 headers)
+    │   ├── RenderContext.hpp
+    │   ├── Renderer.hpp
+    │   ├── NanoVGRenderer.hpp
+    │   └── Path.hpp
+    └── Platform/               // Platform support (4 headers)
+        ├── PlatformWindow.hpp
+        ├── WaylandWindow.hpp
+        ├── WaylandProtocols.hpp
+        └── WaylandCursor.hpp
 ```
 
 ## Components
 
-**Layout Components (3):**
-- VStack, HStack, Spacer
+**Layout Components (4):**
+- VStack, HStack, Grid, Spacer
 
-**UI Components (2):**
+**Basic UI Components (2):**
 - Text, Button
+
+**Form Input Components (4):**
+- Checkbox, RadioButton, Toggle, Slider
+
+**Visual Components (5):**
+- Image, SVG, Badge, Divider, ProgressBar
 
 ## Property System
 
@@ -139,16 +169,31 @@ Property<std::string> text = [&]() {
 
 ## Examples
 
-See `examples/` directory:
+See `examples/` directory (32 examples):
 - **01-hello-world** - Basic setup
-- **02-stack-alignment-demo** - Text alignment and custom components
 - **03-counter** - Property system + reactivity
 - **04-todo-app** - Dynamic lists and CRUD operations
 - **05-colors-and-theming** - Color system and theming
-- **07-custom-drawing** - Custom graphics rendering
-- **08-dashboard** - Chart components and business visualization
 - **09-flexbox-demo** - Flexible layouts with expansion/compression
 - **10-justify-content-demo** - Content justification and alignment
+- **11-automotive-dashboard** - Dashboard with gauges and indicators
+- **14-svg-demo** - SVG rendering
+- **15-render-context-demo** - Custom drawing with RenderContext
+- **17-login-manager** - Form layout example
+- **19-clock** - Animated clock with custom rendering
+- **22-grid-demo** - Grid layout demonstration
+- **23-spacer-grid-demo** - Grid with spacers
+- **24-calculator** - Full calculator implementation
+- **25-cursor-demo** - Custom cursor types
+- **26-declarative-cursor** - Declarative cursor API
+- **27-focus-keyboard-demo** - Focus management and keyboard input
+- **28-event-system-demo** - Comprehensive event handling
+- **29-color-picker** - Interactive color picker
+- **31-component-showcase** - All components in one demo
+- **33-scroll-area-demo** - ScrollArea component demonstration
+- **32-label-position-demo** - Label positioning
+
+And more!
 
 ## Building
 
@@ -188,20 +233,33 @@ make
 
 ## Project Status
 
-This is a minimal framework implementation with:
-- ✅ 17 headers (TitleCase convention)
-- ✅ 5 source files
-- ✅ 10 view components (Text, Button, VStack, HStack, Spacer, Grid, Image, SVG, Slider)
+This is a feature-rich framework implementation with:
+- ✅ 39 headers (TitleCase convention)
+  - 15 Core headers
+  - 16 Views headers
+  - 4 Graphics headers
+  - 4 Platform headers
+- ✅ 12 source files
+- ✅ 16 view components
+  - Layout: VStack, HStack, Grid, Spacer
+  - Basic UI: Text, Button
+  - Form Inputs: Checkbox, RadioButton, Toggle, Slider
+  - Visual: Image, SVG, Badge, Divider, ProgressBar
 - ✅ Flexible layout system (expansionBias, compressionBias)
 - ✅ ViewHelpers for unified rendering
-- ✅ 12+ comprehensive examples
+- ✅ 32+ comprehensive examples
 - ✅ Concept-based view system (no inheritance required)
 - ✅ Wayland backend with NanoVG hardware-accelerated rendering
-- ✅ Basic mouse event handling
-- 🚧 Keyboard input and focus management
+- ✅ Comprehensive mouse event handling (7 events)
+- ✅ Keyboard input and focus management
+- ✅ Tab navigation and focus system
+- ✅ 17 total event callbacks on all views
+- ✅ Custom cursor support (9 cursor types)
+- ✅ Shortcut manager for global keyboard shortcuts
 - 🚧 Text input components (TextInput, TextArea)
 - 🚧 Wayland clipboard protocol integration
-- 🚧 ScrollView and list virtualization
+- ✅ ScrollArea component with mouse wheel scrolling
+- 🚧 ScrollView with virtualization
 
 ## Platform Support
 

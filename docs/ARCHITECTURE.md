@@ -11,7 +11,7 @@ flux/
 ├── include/
 │   ├── Flux.hpp                    Main header
 │   └── Flux/
-│       ├── Core/                   Core system (10 headers)
+│       ├── Core/                   Core system (15 headers)
 │       │   ├── Types.hpp          Geometry, colors, enums
 │       │   ├── Property.hpp       Reactive properties & state
 │       │   ├── View.hpp           Base view class & event system
@@ -20,18 +20,30 @@ flux/
 │       │   ├── Window.hpp         Window & focus management
 │       │   ├── LayoutTree.hpp     Layout management
 │       │   ├── KeyEvent.hpp       Keyboard event types
-│       │   └── Utilities.hpp      Common utilities
-│       ├── Views/                  Components + Layouts (10 headers)
-│       │   ├── Text.hpp
-│       │   ├── Button.hpp
-│       │   ├── VStack.hpp
-│       │   ├── HStack.hpp
-│       │   ├── Spacer.hpp
-│       │   ├── Grid.hpp
-│       │   ├── Image.hpp
-│       │   ├── SVG.hpp
-│       │   ├── Slider.hpp
-│       │   └── StackLayout.hpp
+│       │   ├── Utilities.hpp      Common utilities
+│       │   ├── FocusState.hpp     Focus state management
+│       │   ├── KeyboardInputHandler.hpp  Keyboard input handling
+│       │   ├── MouseInputHandler.hpp     Mouse input handling
+│       │   ├── ShortcutManager.hpp       Global shortcuts
+│       │   ├── PlatformWindowFactory.hpp Platform abstraction
+│       │   └── WindowEventObserver.hpp   Window event observation
+│       ├── Views/                  Components + Layouts (16 headers)
+│       │   ├── Text.hpp           Text display
+│       │   ├── Button.hpp         Interactive button
+│       │   ├── VStack.hpp         Vertical stack layout
+│       │   ├── HStack.hpp         Horizontal stack layout
+│       │   ├── Spacer.hpp         Flexible space
+│       │   ├── Grid.hpp           Grid layout
+│       │   ├── StackLayout.hpp    Stack layout utilities
+│       │   ├── Image.hpp          Image display
+│       │   ├── SVG.hpp            SVG rendering
+│       │   ├── Slider.hpp         Value slider
+│       │   ├── Checkbox.hpp       Checkbox input
+│       │   ├── RadioButton.hpp    Radio button input
+│       │   ├── Toggle.hpp         Toggle switch
+│       │   ├── Badge.hpp          Badge indicator
+│       │   ├── Divider.hpp        Visual divider
+│       │   └── ProgressBar.hpp    Progress indicator
 │       ├── Graphics/               Rendering (4 headers)
 │       │   ├── RenderContext.hpp
 │       │   ├── Renderer.hpp
@@ -45,7 +57,12 @@ flux/
 ├── src/
 │   ├── Core/
 │   │   ├── Application.cpp        Event loop, window management
-│   │   └── Window.cpp             Window & focus management
+│   │   ├── Window.cpp             Window & focus management
+│   │   ├── KeyboardInputHandler.cpp  Keyboard input processing
+│   │   ├── MouseInputHandler.cpp     Mouse input processing
+│   │   ├── FocusState.cpp            Focus state management
+│   │   ├── ShortcutManager.cpp       Shortcut handling
+│   │   └── PlatformWindowFactory.cpp Platform factory
 │   ├── Graphics/
 │   │   ├── NanoVGRenderContext.cpp  NanoVG rendering implementation
 │   │   ├── NanoVGRenderer.cpp       Renderer implementation
@@ -56,14 +73,18 @@ flux/
 │   └── Views/
 │       ├── NanoSVG.cpp             SVG support
 │       └── SVG.cpp                 SVG view
-└── examples/                       27+ examples
+└── examples/                       32+ examples
     ├── 01-hello-world/
     ├── 03-counter/
     ├── 04-todo-app/
     ├── 11-automotive-dashboard/
     ├── 24-calculator/
     ├── 27-focus-keyboard-demo/
-    └── 28-event-system-demo/
+    ├── 28-event-system-demo/
+    ├── 29-color-picker/
+    ├── 33-scroll-area-demo/
+    ├── 31-component-showcase/
+    └── 32-label-position-demo/
 ```
 
 ## Core Types
@@ -487,18 +508,21 @@ struct Button {
 - Keyboard input (keys, text, modifiers)
 - Cursor management with context-sensitive shapes
 
-**Components (10):**
-- Text, Button, Spacer
-- VStack, HStack, Grid
-- Image, SVG, Slider
+**Components (16):**
+- Layout: VStack, HStack, Grid, Spacer, StackLayout
+- Basic UI: Text, Button
+- Form Inputs: Checkbox, RadioButton, Toggle, Slider
+- Visual: Image, SVG, Badge, Divider, ProgressBar
 - Custom rendering support
 
-**Examples (27+):**
+**Examples (32+):**
 - Hello World, Counter, Todo App
-- Calculator, Dashboard
+- Calculator, Dashboard, Clock
 - Focus & Keyboard Demo
 - Event System Demo
-- And many more...
+- Color Picker, ScrollArea Demo
+- Component Showcase
+- And many more!
 
 ### 🚧 Not Yet Implemented
 

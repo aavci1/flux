@@ -639,6 +639,79 @@ Invisible view that fills available space.
 
 **Type**: Leaf view (no children)
 
+#### Image
+Displays raster images.
+
+**Properties**: `path`, `fit`
+
+**Type**: Leaf view (no children)
+
+#### SVG
+Renders SVG vector graphics.
+
+**Properties**: `path`, `width`, `height`
+
+**Type**: Leaf view (no children)
+
+#### Divider
+Visual separator line.
+
+**Properties**: `thickness`, `color`, `orientation`
+
+**Type**: Leaf view (no children)
+
+#### Badge
+Small indicator badge with text or count.
+
+**Properties**: `text`, `color`, `variant`
+
+**Type**: Leaf view (no children)
+
+### Form Input Components
+
+#### Slider
+Value slider for numeric input.
+
+**Properties**: `value`, `min`, `max`, `step`
+
+**Callbacks**: `onChange`
+
+**Type**: Leaf view (no children)
+
+#### Checkbox
+Checkbox input with label.
+
+**Properties**: `checked`, `label`, `labelPosition`
+
+**Callbacks**: `onChange`
+
+**Type**: Composite view (generates label + checkbox)
+
+#### RadioButton
+Radio button input with label for mutually exclusive selections.
+
+**Properties**: `selected`, `label`, `labelPosition`
+
+**Callbacks**: `onChange`
+
+**Type**: Composite view (generates label + radio button)
+
+#### Toggle
+Toggle switch for boolean values.
+
+**Properties**: `isOn`, `label`, `labelPosition`
+
+**Callbacks**: `onChange`
+
+**Type**: Composite view (generates label + switch)
+
+#### ProgressBar
+Progress indicator (determinate/indeterminate).
+
+**Properties**: `progress`, `indeterminate`, `color`
+
+**Type**: Leaf view (no children)
+
 ### Container Views
 
 #### VStack
@@ -658,6 +731,44 @@ Arranges children horizontally with spacing.
 **Layout**: Distributes width equally among children
 
 **Type**: Container view
+
+#### Grid
+Arranges children in a grid layout.
+
+**Properties**: `children`, `columns`, `rows`, `spacing`
+
+**Layout**: Grid-based positioning
+
+**Type**: Container view
+
+#### ScrollArea
+Scrollable container for content that exceeds viewport bounds.
+
+**Properties**: `children`, `scrollX`, `scrollY`, `contentSize`, `scrollSensitivity`
+
+**Events**: `onScroll`
+
+**Features**:
+- Vertical scrolling with mouse wheel
+- Content clipping within borders
+- Dynamic content size calculation
+- Configurable scroll sensitivity
+
+**Type**: Container view with clipping
+
+**Example**:
+```cpp
+ScrollArea {
+    .children = { /* ... large list of items ... */ },
+    .backgroundColor = Colors::white,
+    .borderColor = Colors::lightGray,
+    .borderWidth = 2,
+    .cornerRadius = 8,
+    .padding = 12,
+    .expansionBias = 1.0f,  // Fill available space
+    .scrollSensitivity = 1.0f  // Default scroll speed
+}
+```
 
 ### Flexible Layout with expansionBias and compressionBias
 

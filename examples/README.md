@@ -110,6 +110,17 @@ A fully functional calculator application featuring:
 - Real-time display updates using lambda properties
 - Professional calculator UI design with color-coded buttons
 
+### 33. ScrollArea Demo (~80 lines)
+**Concepts:** Scrollable content, mouse wheel handling, content clipping, overflow management
+
+A demonstration of the ScrollArea component featuring:
+- Vertical scrolling with mouse wheel
+- Content clipping within borders
+- Dynamic content size calculation
+- Scroll sensitivity control
+- Proper padding and spacing with scrollable content
+- Content that exceeds viewport boundaries
+
 ## Building Examples
 
 All examples are built automatically with the main project:
@@ -142,6 +153,7 @@ Follow the examples in order:
 9. **10-justify-content-demo**: Content justification and alignment modes
 10. **17-login-manager**: Custom components and macOS Big Sur theme
 11. **24-calculator**: Complex state management and calculator UI
+12. **33-scroll-area-demo**: ScrollArea component and scrollable content
 
 ## Example Structure
 
