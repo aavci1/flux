@@ -9,13 +9,52 @@
 
 namespace flux {
 
+// size 20px
+// font 14px
+void drawCheckbox(RenderContext& ctx, const Rect& bounds, bool isChecked) {
+    auto ux = bounds.width * 0.05f;
+    auto uy = bounds.height * 0.05f;
+    auto ur = (ux + uy) * 0.5f;
+
+    if (!isChecked) {
+        ctx.setFillStyle(FillStyle::solid(Colors::white));
+        ctx.setStrokeStyle(StrokeStyle::solid(Colors::lightGray, ur * 2));
+        ctx.drawRect(bounds, CornerRadius(ur * 4.0f));
+    }
+    else {
+        ctx.setFillStyle(FillStyle::solid(Colors::blue));
+        ctx.setStrokeStyle(StrokeStyle::none());
+        ctx.drawRect(bounds, CornerRadius(ur * 4.0f));
+
+        // Draw checkmark path
+        auto center = bounds.center();
+        auto size = bounds.size();
+        Path path;
+        // path.moveTo({bounds.x + 5, bounds.y + bounds.height * 0.5f});
+        // path.lineTo({bounds.x + 9, bounds.y + bounds.height * 0.5f + 4});
+        // path.lineTo({bounds.x + 15, bounds.y + bounds.height * 0.5f - 4});
+        path.moveTo({center.x - 5 * ux, center.y});
+        path.lineTo({center.x - ux, center.y + 4 * uy});
+        path.lineTo({center.x + 5 * ux, center.y - 4 * uy});
+
+        ctx.setFillStyle(FillStyle::none());
+        ctx.setStrokeStyle(StrokeStyle{
+            .color = Colors::white,
+            .width = ur * 2.0f,
+            .cap = LineCap::Round,
+            .join = LineJoin::Round
+        });
+
+        ctx.drawPath(path);
+    }
+}
+
 struct Checkbox {
     FLUX_VIEW_PROPERTIES;
 
     Property<bool> checked = false;
     Property<std::string> label = "";
     Property<float> size = 20.0f;
-    Property<Color> checkColor = Colors::blue;
     Property<Color> labelColor = Colors::black;
     Property<float> labelFontSize = 14.0f;
 
@@ -44,49 +83,7 @@ struct Checkbox {
 
         // Draw checkbox box
         Rect checkboxRect = {checkboxX, checkboxY, boxSize, boxSize};
-        
-        // Draw background - fill with color when checked for better visibility
-        if (isChecked) {
-            ctx.setFillStyle(FillStyle::solid(checkColor));
-            ctx.setStrokeStyle(StrokeStyle::none());
-            ctx.drawRect(checkboxRect, CornerRadius(3.0f));
-        } else {
-            ctx.setFillStyle(FillStyle::solid(Colors::white));
-            ctx.setStrokeStyle(StrokeStyle::none());
-            ctx.drawRect(checkboxRect, CornerRadius(3.0f));
-            
-            // Draw border
-            Color borderColor = hasFocus ? static_cast<Color>(checkColor).darken(0.2f) : Colors::gray;
-            ctx.setFillStyle(FillStyle::none());
-            ctx.setStrokeStyle(StrokeStyle{
-                .color = borderColor,
-                .width = hasFocus ? 2.5f : 2.0f
-            });
-            ctx.drawRect(checkboxRect, CornerRadius(3.0f));
-        }
-
-        // Draw checkmark if checked (white on colored background)
-        if (isChecked) {
-            ctx.setFillStyle(FillStyle::none());
-            ctx.setStrokeStyle(StrokeStyle{
-                .color = Colors::white,  // White checkmark on colored background
-                .width = 2.5f,
-                .cap = LineCap::Round,
-                .join = LineJoin::Round
-            });
-
-            // Draw checkmark path
-            float centerX = checkboxX + boxSize / 2;
-            float centerY = checkboxY + boxSize / 2;
-            float scale = boxSize / 20.0f;
-
-            Point p1 = {centerX - 4 * scale, centerY};
-            Point p2 = {centerX - 1 * scale, centerY + 3 * scale};
-            Point p3 = {centerX + 5 * scale, centerY - 4 * scale};
-
-            ctx.drawLine(p1, p2);
-            ctx.drawLine(p2, p3);
-        }
+        drawCheckbox(ctx, checkboxRect, isChecked);
 
         // Draw label if provided
         std::string labelText = label;

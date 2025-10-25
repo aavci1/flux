@@ -6,6 +6,9 @@
 #include <Flux/Core/Property.hpp>
 #include <cmath>
 #include <chrono>
+#include <thread>
+#include <atomic>
+#include <memory>
 
 namespace flux {
 
@@ -19,11 +22,38 @@ struct ProgressBar {
 
     Property<float> value = 0.0f;  // 0.0 to 1.0 for determinate mode
     Property<ProgressBarMode> mode = ProgressBarMode::Determinate;
-    Property<float> height = 8.0f;
+    Property<float> height = 4.0f;
     Property<Color> fillColor = Colors::blue;
     Property<Color> trackColor = Colors::lightGray;
     Property<bool> showLabel = false;
     Property<float> labelFontSize = 12.0f;
+    
+    // Animation property for indeterminate mode
+    Property<float> animationPhase = 0.0f;
+    
+    // Track if animation thread is running (using shared_ptr to make it copyable)
+    mutable std::shared_ptr<std::atomic<bool>> animationRunning = std::make_shared<std::atomic<bool>>(false);
+    
+    void init() {
+        // Start animation thread for indeterminate mode
+        if (mode == ProgressBarMode::Indeterminate && !animationRunning->exchange(true)) {
+            std::thread([this]() {
+                while (*animationRunning) {
+                    auto now = std::chrono::steady_clock::now();
+                    auto duration = now.time_since_epoch();
+                    float time = std::chrono::duration<float>(duration).count();
+                    
+                    float cycleTime = 2.0f;  // 2 second cycle
+                    float phase = std::fmod(time, cycleTime) / cycleTime;
+                    
+                    animationPhase = phase;
+                    
+                    // Update at ~60 FPS
+                    std::this_thread::sleep_for(std::chrono::milliseconds(16));
+                }
+            }).detach();
+        }
+    }
 
     void render(RenderContext& ctx, const Rect& bounds) const {
         ViewHelpers::renderView(*this, ctx, bounds);
@@ -76,14 +106,8 @@ struct ProgressBar {
             }
         } else {
             // Indeterminate mode - animated sliding bar
-            // Use time-based animation
-            auto now = std::chrono::steady_clock::now();
-            auto duration = now.time_since_epoch();
-            float time = std::chrono::duration<float>(duration).count();
-            
-            // Create sliding effect
-            float cycleTime = 2.0f;  // 2 second cycle
-            float phase = std::fmod(time, cycleTime) / cycleTime;
+            // Use the animationPhase property for smooth animation
+            float phase = animationPhase;
             
             float indeterminateWidth = barWidth * 0.3f;
             float indeterminateX = barX + (barWidth - indeterminateWidth) * phase;

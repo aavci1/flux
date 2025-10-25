@@ -16,11 +16,13 @@ struct Slider {
     Property<float> maxValue = 1.0f;
     Property<float> step = 0.01f;
     Property<Color> activeColor = Colors::blue;
-    Property<Color> inactiveColor = Colors::gray;
+    Property<Color> inactiveColor = Colors::lightGray;
     Property<float> thumbRadius = 8.0f;
     Property<float> trackHeight = 4.0f;
 
     mutable bool isDragging = false;
+    mutable float lastSliderX = 0.0f;
+    mutable float lastSliderWidth = 200.0f;
 
     void init() {
         focusable = true;  // Sliders are focusable for keyboard control
@@ -59,6 +61,10 @@ struct Slider {
         float sliderY = bounds.y + paddingVal.top + (bounds.height - paddingVal.vertical()) / 2;
         float sliderX = bounds.x + paddingVal.left + thumbR;
         float sliderWidth = bounds.width - paddingVal.horizontal() - thumbR * 2;
+
+        // Store for mouse position calculations
+        lastSliderX = sliderX;
+        lastSliderWidth = sliderWidth;
 
         // Normalize value to 0-1 range
         float val = value;
@@ -157,18 +163,18 @@ struct Slider {
 
 private:
     void updateValueFromPosition(float x, float /* y */) {
-        // Calculate from the current bounds (we need to access them somehow)
-        // For now, we'll use a simple calculation based on the last render
-        // This is a limitation of the immediate mode approach
-        
-        // We need to store bounds - for now just update the value proportionally
-        // In a real implementation, we'd need to track the slider bounds
+        std::cout << "updateValueFromPosition: " << x << std::endl;
+        std::cout << "lastSliderX: " << lastSliderX << std::endl;
+        std::cout << "lastSliderWidth: " << lastSliderWidth << std::endl;
         float minVal = minValue;
         float maxVal = maxValue;
         
-        // This is approximate - in practice we'd need the actual bounds
-        // For the demo, this will work reasonably well
-        float newValue = minVal + (maxVal - minVal) * std::clamp(x / 200.0f, 0.0f, 1.0f);
+        // Calculate position relative to the slider track
+        float relativeX = x - lastSliderX;
+        float normalizedValue = std::clamp(relativeX / lastSliderWidth, 0.0f, 1.0f);
+        
+        // Convert normalized value to actual value range
+        float newValue = minVal + (maxVal - minVal) * normalizedValue;
         
         // Apply step
         float stepVal = step;

@@ -109,7 +109,9 @@ bool Renderer::findAndDispatchEvent(const LayoutNode& node, const Event& event, 
     if (node.bounds.contains(point)) {
         // Dispatch click events to interactive views
         if (node.view.isInteractive()) {
-            return dispatchEventToView(node.view, event, point);
+            // Convert point to local coordinates (relative to view's origin)
+            Point localPoint = {point.x - node.bounds.x, point.y - node.bounds.y};
+            return dispatchEventToView(node.view, event, localPoint);
         }
     }
 

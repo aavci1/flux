@@ -93,15 +93,13 @@ int main(int argc, char* argv[]) {
                                         Checkbox {
                                             .checked = checkbox2,
                                             .label = "Auto-save changes",
-                                            .checkColor = Colors::green,
                                             .onChange = [&]() {
                                                 std::cout << "Checkbox 2: " << static_cast<bool>(checkbox2) << std::endl;
                                             }
                                         },
                                         Checkbox {
                                             .checked = checkbox3,
-                                            .label = "Dark mode",
-                                            .checkColor = Color::hex(0x9C27B0)
+                                            .label = "Dark mode"
                                         }
                                     }
                                 },
@@ -170,8 +168,7 @@ int main(int argc, char* argv[]) {
                                     .children = {
                                         RadioButton {
                                             .selected = [&]() { return selectedOption.get() == "option1"; },
-                                            .value = "option1",
-                                            .group = "demo-group",
+                                            .value = "option1",  // For reference only
                                             .label = "Option 1",
                                             .onChange = [&]() {
                                                 selectedOption = "option1";
@@ -181,9 +178,7 @@ int main(int argc, char* argv[]) {
                                         RadioButton {
                                             .selected = [&]() { return selectedOption.get() == "option2"; },
                                             .value = "option2",
-                                            .group = "demo-group",
                                             .label = "Option 2",
-                                            .selectedColor = Colors::green,
                                             .onChange = [&]() {
                                                 selectedOption = "option2";
                                                 std::cout << "Selected: Option 2" << std::endl;
@@ -192,9 +187,7 @@ int main(int argc, char* argv[]) {
                                         RadioButton {
                                             .selected = [&]() { return selectedOption.get() == "option3"; },
                                             .value = "option3",
-                                            .group = "demo-group",
                                             .label = "Option 3",
-                                            .selectedColor = Color::hex(0x9C27B0),
                                             .onChange = [&]() {
                                                 selectedOption = "option3";
                                                 std::cout << "Selected: Option 3" << std::endl;

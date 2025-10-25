@@ -17,6 +17,7 @@ project(flux VERSION 2.0.0 LANGUAGES CXX C)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+add_definitions(-w)
 
 # Verify we're on Linux
 if(NOT UNIX OR APPLE)
