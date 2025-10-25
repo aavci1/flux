@@ -78,31 +78,36 @@ StackLayoutResult<Axis> layoutStack(
     }
 
     // Calculate spacing and available space for content
+    // Spacing is treated as MINIMUM spacing - it should never be less than specified
     float baseSpacing = static_cast<float>(spacing);
     float totalSpacing = baseSpacing * (visibleCount - 1);
+    
+    // Calculate available space for children after reserving space for spacing
     float availableContentSize = availableMainSize - totalSpacing;
+    float remainingSpace = availableContentSize - totalBaseSize;
     
     // Calculate dynamic spacing for space distribution modes
     float dynamicSpacing = baseSpacing;
-    if (visibleCount > 1) {
+    
+    if (visibleCount > 1 && remainingSpace >= 0) {
+        // Enough space - calculate dynamic spacing for space distribution
         float availableSpace = availableMainSize - totalBaseSize;
         
         if (justifyContent == JustifyContent::spaceBetween) {
-            dynamicSpacing = availableSpace / (visibleCount - 1);
+            dynamicSpacing = std::max(baseSpacing, availableSpace / (visibleCount - 1));
         } else if (justifyContent == JustifyContent::spaceAround) {
             // spaceAround: x/2 at edges, x between items
             // Total spacing = 2 * (x/2) + (visibleCount-1) * x = x + (visibleCount-1) * x = visibleCount * x
             // So: visibleCount * x = availableSpace, therefore x = availableSpace / visibleCount
-            dynamicSpacing = availableSpace / visibleCount;
+            dynamicSpacing = std::max(baseSpacing, availableSpace / visibleCount);
         } else if (justifyContent == JustifyContent::spaceEvenly) {
-            dynamicSpacing = availableSpace / (visibleCount + 1);
+            dynamicSpacing = std::max(baseSpacing, availableSpace / (visibleCount + 1));
         }
     }
 
     // Distribute space using flexbox algorithm
     std::vector<float> finalSizes;
     finalSizes.reserve(visibleCount); // Reserve space to avoid reallocations
-    float remainingSpace = availableContentSize - totalBaseSize;
 
     if (remainingSpace > 0) {
         // Expansion phase: distribute extra space
@@ -117,7 +122,8 @@ StackLayoutResult<Axis> layoutStack(
             }
         }
     } else if (remainingSpace < 0) {
-        // Compression phase: reduce space proportionally
+        // Compression phase: children must shrink to maintain minimum spacing
+        // All available space (after spacing) must be distributed among children
         if (totalCompressionBias > 0) {
             for (const auto& info : visibleChildren) {
                 float compressionRatio = info.compressionBias / totalCompressionBias;
@@ -125,8 +131,17 @@ StackLayoutResult<Axis> layoutStack(
                 finalSizes.push_back(std::max(0.0f, info.baseSize - compressionAmount));
             }
         } else {
-            for (const auto& info : visibleChildren) {
-                finalSizes.push_back(info.baseSize);
+            // No compression bias - compress all children uniformly
+            if (availableContentSize > 0) {
+                float uniformCompressionRatio = availableContentSize / totalBaseSize;
+                for (const auto& info : visibleChildren) {
+                    finalSizes.push_back(std::max(0.0f, info.baseSize * uniformCompressionRatio));
+                }
+            } else {
+                // Not enough space even for spacing - set all children to 0
+                for (const auto& info : visibleChildren) {
+                    finalSizes.push_back(0.0f);
+                }
             }
         }
     } else {
@@ -135,6 +150,9 @@ StackLayoutResult<Axis> layoutStack(
             finalSizes.push_back(info.baseSize);
         }
     }
+    
+    // Effective spacing is always at least the minimum spacing
+    float effectiveSpacing = baseSpacing;
 
     // Apply justifyContent
     float startMainPos = (Axis == StackAxis::Horizontal) ? 
@@ -143,11 +161,25 @@ StackLayoutResult<Axis> layoutStack(
     float totalUsedSize = std::accumulate(finalSizes.begin(), finalSizes.end(), 0.0f);
     float totalAvailableSpace = availableMainSize - totalUsedSize;
     
-    if (justifyContent == JustifyContent::center) {
+    // Determine which spacing to use for positioning
+    float positioningSpacing = effectiveSpacing;
+    bool useDynamicSpacing = false;
+    
+    if (remainingSpace >= 0) {
+        // Only use dynamic spacing when we have enough space
+        useDynamicSpacing = (justifyContent == JustifyContent::spaceBetween || 
+                             justifyContent == JustifyContent::spaceAround || 
+                             justifyContent == JustifyContent::spaceEvenly);
+        if (useDynamicSpacing) {
+            positioningSpacing = dynamicSpacing;
+        }
+    }
+    
+    if (justifyContent == JustifyContent::center && remainingSpace >= 0) {
         startMainPos += totalAvailableSpace / 2.0f;
     } else if (justifyContent == JustifyContent::end) {
         // For end, position so that the rightmost child ends at the right padding boundary
-        float totalSpacingSize = (visibleCount > 1) ? baseSpacing * (visibleCount - 1) : 0.0f;
+        float totalSpacingSize = (visibleCount > 1) ? effectiveSpacing * (visibleCount - 1) : 0.0f;
         float totalUsedSizeWithSpacing = totalUsedSize + totalSpacingSize;
         
         if (Axis == StackAxis::Horizontal) {
@@ -162,17 +194,14 @@ StackLayoutResult<Axis> layoutStack(
     float mainPos = startMainPos;
     result.childLayouts.reserve(visibleCount); // Reserve space for child layouts
 
-    // Add initial spacing for spaceAround and spaceEvenly
-    if (justifyContent == JustifyContent::spaceAround) {
-        mainPos += dynamicSpacing / 2.0f;  // x/2 space at the beginning
-    } else if (justifyContent == JustifyContent::spaceEvenly) {
-        mainPos += dynamicSpacing;  // x space at the beginning
+    // Add initial spacing for spaceAround and spaceEvenly (only when we have enough space)
+    if (remainingSpace >= 0) {
+        if (justifyContent == JustifyContent::spaceAround) {
+            mainPos += dynamicSpacing / 2.0f;  // x/2 space at the beginning
+        } else if (justifyContent == JustifyContent::spaceEvenly) {
+            mainPos += dynamicSpacing;  // x space at the beginning
+        }
     }
-
-    // Pre-calculate spacing mode to avoid repeated condition checks
-    bool useDynamicSpacing = (justifyContent == JustifyContent::spaceBetween || 
-                             justifyContent == JustifyContent::spaceAround || 
-                             justifyContent == JustifyContent::spaceEvenly);
 
     for (size_t i = 0; i < visibleCount; ++i) {
         const auto& info = visibleChildren[i];
@@ -208,7 +237,7 @@ StackLayoutResult<Axis> layoutStack(
         // Move to next position
         mainPos += childMainSize;
         if (i < visibleCount - 1) {
-            mainPos += useDynamicSpacing ? dynamicSpacing : baseSpacing;
+            mainPos += positioningSpacing;
         }
     }
 
