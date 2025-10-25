@@ -287,6 +287,9 @@ target_link_libraries(scroll_demo PRIVATE flux)
 add_executable(component_showcase examples/31-component-showcase/main.cpp)
 target_link_libraries(component_showcase PRIVATE flux)
 
+add_executable(label_position_demo examples/32-label-position-demo/main.cpp)
+target_link_libraries(label_position_demo PRIVATE flux)
+
 endif()
 
 # Installation rules

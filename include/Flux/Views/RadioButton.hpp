@@ -5,46 +5,63 @@
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/Property.hpp>
 #include <Flux/Core/KeyEvent.hpp>
+#include <Flux/Views/HStack.hpp>
+#include <Flux/Views/Text.hpp>
 #include <string>
 
 namespace flux {
 
-void drawRadioButton(RenderContext& ctx, const Rect& bounds, bool isSelected) {
-    auto ux = bounds.width * 0.5f;
-    auto uy = bounds.height * 0.5f;
-    auto ur = (ux + uy) * 0.5f;
+// TODO: make size of the accessory calculated based on the font size of the label
+struct RadioButtonAccessory {
+    FLUX_VIEW_PROPERTIES;
 
-    if (!isSelected) {
-        ctx.setFillStyle(FillStyle::solid(Colors::white));
-        ctx.setStrokeStyle(StrokeStyle::solid(Colors::lightGray, ur * 0.2f));
-        ctx.drawCircle(bounds.center(), ur);
-    }
-    else {
-        ctx.setFillStyle(FillStyle::solid(Colors::blue));
-        ctx.setStrokeStyle(StrokeStyle::none());
-        ctx.drawCircle(bounds.center(), ur);
+    Property<bool> selected = false;
 
-        ctx.setFillStyle(FillStyle::solid(Colors::white));
-        ctx.setStrokeStyle(StrokeStyle::none());
-        ctx.drawCircle(bounds.center(), ur * 0.4f);
+    void render(RenderContext& ctx, const Rect& bounds) const {
+        ViewHelpers::renderView(*this, ctx, bounds);
+
+        auto ux = bounds.width * 0.5f;
+        auto uy = bounds.height * 0.5f;
+        auto ur = (ux + uy) * 0.5f;
+    
+        if (!selected) {
+            ctx.setFillStyle(FillStyle::solid(Colors::white));
+            ctx.setStrokeStyle(StrokeStyle::solid(Colors::lightGray, ur * 0.2f));
+            ctx.drawCircle(bounds.center(), ur);
+        }
+        else {
+            ctx.setFillStyle(FillStyle::solid(Colors::blue));
+            ctx.setStrokeStyle(StrokeStyle::none());
+            ctx.drawCircle(bounds.center(), ur);
+    
+            ctx.setFillStyle(FillStyle::solid(Colors::white));
+            ctx.setStrokeStyle(StrokeStyle::none());
+            ctx.drawCircle(bounds.center(), ur * 0.4f);
+        }
     }
-}
+
+    Size preferredSize(TextMeasurement& /* textMeasurer */) const {
+        EdgeInsets paddingVal = padding;
+        return {20.0f + paddingVal.horizontal(), 20.0f + paddingVal.vertical()};
+    }
+};
 
 struct RadioButton {
     FLUX_VIEW_PROPERTIES;
 
     Property<bool> selected = false;
-    Property<std::string> value = "";  // The value this radio represents (optional, for user reference)
+    Property<std::string> value = "";
     Property<std::string> label = "";
     Property<float> size = 20.0f;
     Property<Color> labelColor = Colors::black;
     Property<float> labelFontSize = 14.0f;
+    Property<LabelPosition> labelPosition = LabelPosition::trailing;
+    Property<JustifyContent> justifyContent = JustifyContent::start;
+    Property<float> spacing = 8.0f;
 
     void init() {
-        focusable = true;  // Radio buttons are focusable
-        
-        // Handle click to select
-        // User should set onChange to update their shared Property
+        focusable = true;
+        cursor = CursorType::Pointer;
         onClick = [this]() {
             if (!static_cast<bool>(selected) && onChange) {
                 onChange();
@@ -52,53 +69,54 @@ struct RadioButton {
         };
     }
 
-    void render(RenderContext& ctx, const Rect& bounds) const {
-        ViewHelpers::renderView(*this, ctx, bounds);
-
-        bool hasFocus = ctx.isCurrentViewFocused();
-        bool isSelected = selected;  // Simply use the selected property
-        float radioSize = size;
-        EdgeInsets paddingVal = padding;
-
-        // Calculate radio button position
-        float radioX = bounds.x + paddingVal.left;
-        float radioY = bounds.y + paddingVal.top;
-
-        // Draw radio button
-        Rect radioRect = {radioX, radioY, radioSize, radioSize};
-        drawRadioButton(ctx, radioRect, isSelected);
-
-        // Draw label if provided
+    View body() const {
         std::string labelText = label;
-        if (!labelText.empty()) {
-            float labelX = bounds.x + paddingVal.left + radioSize + 8.0f;
-            float labelY = bounds.y + paddingVal.top;
-            float labelHeight = bounds.height - paddingVal.vertical();
-
-            ctx.setTextStyle(TextStyle::regular("default", labelFontSize));
-            ctx.setFillStyle(FillStyle::solid(labelColor));
-
-            Size textSize = ctx.measureText(labelText, TextStyle::regular("default", labelFontSize));
-            float textY = labelY + (labelHeight - textSize.height) / 2 + textSize.height;
-
-            ctx.drawText(labelText, {labelX, textY}, HorizontalAlignment::leading, VerticalAlignment::bottom);
+        
+        // If no label, just render the radio button accessory
+        if (labelText.empty()) {
+            return RadioButtonAccessory {
+                .selected = selected
+            };
         }
+
+        std::vector<View> children = {
+            RadioButtonAccessory {
+                .selected = selected
+            },
+            Text {
+                .value = labelText,
+                .fontSize = labelFontSize,
+                .color = labelColor
+            }
+        };
+
+        if (labelPosition == LabelPosition::leading) {
+            std::reverse(children.begin(), children.end());
+        }
+
+        return HStack {
+            .spacing = spacing,
+            .justifyContent = justifyContent,
+            .alignItems = AlignItems::center,
+            .padding = padding,
+            .children = children
+        };
     }
 
     Size preferredSize(TextMeasurement& textMeasurer) const {
         EdgeInsets paddingVal = padding;
         float radioSize = size;
-        float width = radioSize + paddingVal.horizontal();
-        float height = radioSize + paddingVal.vertical();
-
+        
         std::string labelText = label;
-        if (!labelText.empty()) {
-            Size textSize = textMeasurer.measureText(labelText, TextStyle::regular("default", labelFontSize));
-            width += 8.0f + textSize.width;
-            height = std::max(height, textSize.height + paddingVal.vertical());
+        if (labelText.empty()) {
+            return {radioSize + paddingVal.horizontal(), radioSize + paddingVal.vertical()};
         }
 
-        return {width, height};
+        Size textSize = textMeasurer.measureText(labelText, TextStyle::regular("default", labelFontSize));
+        float totalWidth = radioSize + static_cast<float>(spacing) + textSize.width + paddingVal.horizontal();
+        float totalHeight = std::max(radioSize, textSize.height) + paddingVal.vertical();
+
+        return {totalWidth, totalHeight};
     }
 
     bool handleKeyDown(const KeyEvent& event) {

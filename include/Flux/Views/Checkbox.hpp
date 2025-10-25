@@ -5,6 +5,8 @@
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/Property.hpp>
 #include <Flux/Core/KeyEvent.hpp>
+#include <Flux/Views/HStack.hpp>
+#include <Flux/Views/Text.hpp>
 #include <string>
 
 namespace flux {
@@ -30,9 +32,6 @@ void drawCheckbox(RenderContext& ctx, const Rect& bounds, bool isChecked) {
         auto center = bounds.center();
         auto size = bounds.size();
         Path path;
-        // path.moveTo({bounds.x + 5, bounds.y + bounds.height * 0.5f});
-        // path.lineTo({bounds.x + 9, bounds.y + bounds.height * 0.5f + 4});
-        // path.lineTo({bounds.x + 15, bounds.y + bounds.height * 0.5f - 4});
         path.moveTo({center.x - 5 * ux, center.y});
         path.lineTo({center.x - ux, center.y + 4 * uy});
         path.lineTo({center.x + 5 * ux, center.y - 4 * uy});
@@ -49,6 +48,36 @@ void drawCheckbox(RenderContext& ctx, const Rect& bounds, bool isChecked) {
     }
 }
 
+// CheckboxAccessory - Just the checkbox box part
+struct CheckboxAccessory {
+    FLUX_VIEW_PROPERTIES;
+
+    Property<bool> checked = false;
+    Property<float> size = 20.0f;
+
+    void render(RenderContext& ctx, const Rect& bounds) const {
+        ViewHelpers::renderView(*this, ctx, bounds);
+
+        bool isChecked = checked;
+        float boxSize = size;
+        EdgeInsets paddingVal = padding;
+
+        // Calculate checkbox position
+        float checkboxX = bounds.x + paddingVal.left;
+        float checkboxY = bounds.y + paddingVal.top + (bounds.height - paddingVal.vertical() - boxSize) / 2;
+
+        // Draw checkbox box
+        Rect checkboxRect = {checkboxX, checkboxY, boxSize, boxSize};
+        drawCheckbox(ctx, checkboxRect, isChecked);
+    }
+
+    Size preferredSize(TextMeasurement& /* textMeasurer */) const {
+        EdgeInsets paddingVal = padding;
+        float boxSize = size;
+        return {boxSize + paddingVal.horizontal(), boxSize + paddingVal.vertical()};
+    }
+};
+
 struct Checkbox {
     FLUX_VIEW_PROPERTIES;
 
@@ -57,6 +86,9 @@ struct Checkbox {
     Property<float> size = 20.0f;
     Property<Color> labelColor = Colors::black;
     Property<float> labelFontSize = 14.0f;
+    Property<LabelPosition> labelPosition = LabelPosition::trailing;
+    Property<JustifyContent> justifyContent = JustifyContent::start;
+    Property<float> spacing = 8.0f;
 
     void init() {
         cursor = CursorType::Pointer;
@@ -69,53 +101,59 @@ struct Checkbox {
         };
     }
 
-    void render(RenderContext& ctx, const Rect& bounds) const {
-        ViewHelpers::renderView(*this, ctx, bounds);
-
-        bool hasFocus = ctx.isCurrentViewFocused();
-        bool isChecked = checked;
-        float boxSize = size;
-        EdgeInsets paddingVal = padding;
-
-        // Calculate checkbox position
-        float checkboxX = bounds.x + paddingVal.left;
-        float checkboxY = bounds.y + paddingVal.top + (bounds.height - paddingVal.vertical() - boxSize) / 2;
-
-        // Draw checkbox box
-        Rect checkboxRect = {checkboxX, checkboxY, boxSize, boxSize};
-        drawCheckbox(ctx, checkboxRect, isChecked);
-
-        // Draw label if provided
+    View body() const {
         std::string labelText = label;
-        if (!labelText.empty()) {
-            float labelX = checkboxX + boxSize + 8.0f;
-            float labelY = bounds.y + paddingVal.top;
-            float labelHeight = bounds.height - paddingVal.vertical();
-
-            ctx.setTextStyle(TextStyle::regular("default", labelFontSize));
-            ctx.setFillStyle(FillStyle::solid(labelColor));
-
-            Size textSize = ctx.measureText(labelText, TextStyle::regular("default", labelFontSize));
-            float textY = labelY + (labelHeight - textSize.height) / 2 + textSize.height;
-
-            ctx.drawText(labelText, {labelX, textY}, HorizontalAlignment::leading, VerticalAlignment::bottom);
+        
+        // If no label, just render the checkbox accessory
+        if (labelText.empty()) {
+            return View(CheckboxAccessory {
+                .checked = checked,
+                .size = size
+            });
         }
+        
+        // Create label
+        Text labelView {
+            .value = labelText,
+            .fontSize = labelFontSize,
+            .color = labelColor,
+            .verticalAlignment = VerticalAlignment::center,
+            .horizontalAlignment = HorizontalAlignment::leading
+        };
+        
+        // Create accessory
+        CheckboxAccessory accessory {
+            .checked = checked,
+            .size = size
+        };
+        
+        // Create HStack with appropriate order
+        LabelPosition pos = labelPosition;
+        return View(HStack {
+            .spacing = spacing,
+            .justifyContent = justifyContent,
+            .alignItems = AlignItems::center,
+            .padding = padding,
+            .children = pos == LabelPosition::leading 
+                ? std::vector<View>{View(labelView), View(accessory)}
+                : std::vector<View>{View(accessory), View(labelView)}
+        });
     }
 
     Size preferredSize(TextMeasurement& textMeasurer) const {
         EdgeInsets paddingVal = padding;
         float boxSize = size;
-        float width = boxSize + paddingVal.horizontal();
-        float height = boxSize + paddingVal.vertical();
-
+        
         std::string labelText = label;
-        if (!labelText.empty()) {
-            Size textSize = textMeasurer.measureText(labelText, TextStyle::regular("default", labelFontSize));
-            width += 8.0f + textSize.width;
-            height = std::max(height, textSize.height + paddingVal.vertical());
+        if (labelText.empty()) {
+            return {boxSize + paddingVal.horizontal(), boxSize + paddingVal.vertical()};
         }
 
-        return {width, height};
+        Size textSize = textMeasurer.measureText(labelText, TextStyle::regular("default", labelFontSize));
+        float totalWidth = boxSize + static_cast<float>(spacing) + textSize.width + paddingVal.horizontal();
+        float totalHeight = std::max(boxSize, textSize.height) + paddingVal.vertical();
+
+        return {totalWidth, totalHeight};
     }
 
     bool handleKeyDown(const KeyEvent& event) {

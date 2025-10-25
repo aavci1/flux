@@ -171,6 +171,12 @@ enum class VerticalAlignment {
     bottom     // Align to bottom
 };
 
+// For components with labels - controls label position relative to accessory
+enum class LabelPosition {
+    leading,   // Label comes first (left side)
+    trailing   // Label comes last (right side)
+};
+
 enum class FontWeight {
     thin = 100, light = 300, regular = 400,
     medium = 500, semibold = 600, bold = 700,
