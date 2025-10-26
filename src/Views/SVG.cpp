@@ -6,6 +6,7 @@
 
 #include <iostream>
 #include <algorithm>
+#include <cmath>
 #include <nanosvg.h>
 #include <unordered_map>
 
@@ -18,7 +19,6 @@ struct CachedSVGPath {
     Path path;
     FillStyle fillStyle;
     StrokeStyle strokeStyle;
-    PathWinding winding;
     float opacity;
 };
 
@@ -40,6 +40,7 @@ void parseShapeToPaths(NSVGshape* shape, std::vector<CachedSVGPath>& paths);
 Path buildPathFromSVG(NSVGpath* svgPath);
 float calculatePathArea(NSVGpath* path);
 Color nsvgColorToFluxColor(unsigned int color);
+FillStyle nsvgPaintToFillStyle(const NSVGpaint& paint);
 void drawCheckerboardBackground(RenderContext& ctx, const Rect& bounds);
 
 CachedSVGData parseSVGContent(const std::string& svgStr) {
@@ -54,12 +55,9 @@ CachedSVGData parseSVGContent(const std::string& svgStr) {
     NSVGimage* image = nsvgParse(const_cast<char*>(svgStr.c_str()), "px", 96.0f);
 
     if (!image) {
-        std::cout << "[SVG] Failed to parse SVG string" << std::endl;
         result.isValid = false;
         return result;
     }
-
-    std::cout << "[SVG] Parsed SVG string: " << image->width << "x" << image->height << std::endl;
 
     // Store original dimensions
     result.originalWidth = static_cast<float>(image->width);
@@ -70,7 +68,7 @@ CachedSVGData parseSVGContent(const std::string& svgStr) {
         parseShapeToPaths(shape, result.paths);
     }
 
-    std::cout << "[SVG] Converted " << result.paths.size() << " paths from SVG shapes" << std::endl;
+
 
     // Clean up NanoSVG data
     nsvgDelete(image);
@@ -82,74 +80,57 @@ CachedSVGData parseSVGContent(const std::string& svgStr) {
 void parseShapeToPaths(NSVGshape* shape, std::vector<CachedSVGPath>& paths) {
     if (!shape) return;
 
-    std::cout << "[SVG] Parsing shape: " << shape->id << std::endl;
-
-    // Convert NanoSVG color to Flux color
-    Color fillColor = nsvgColorToFluxColor(shape->fill.color);
+    // Convert NanoSVG paint (color or gradient) to FillStyle
+    FillStyle fillStyle = nsvgPaintToFillStyle(shape->fill);
+    
+    // Convert stroke color
     Color strokeColor = nsvgColorToFluxColor(shape->stroke.color);
     float strokeWidth = shape->strokeWidth;
 
-    // Apply opacity
-    fillColor.a *= shape->opacity;
-    strokeColor.a *= shape->opacity;
-
-    // Parse each path in the shape
-    for (NSVGpath* path = shape->paths; path != nullptr; path = path->next) {
-        CachedSVGPath pathData;
-        
-        // Build the path
-        pathData.path = buildPathFromSVG(path);
-        
-        // Determine winding direction based on area
-        float area = calculatePathArea(path);
-        std::cout << "[SVG] Path area: " << area << std::endl;
-        pathData.winding = (area <= 0.0f) ? PathWinding::CounterClockwise : PathWinding::Clockwise;
-        
-        // Set fill style
-        if (fillColor.a > 0.0f) {
-            pathData.fillStyle = FillStyle::solid(fillColor);
-            pathData.fillStyle.winding = pathData.winding;
-        } else {
-            pathData.fillStyle = FillStyle::none();
-        }
-        
-        // Set stroke style
-        if (strokeColor.a > 0.0f && strokeWidth > 0.0f) {
-            pathData.strokeStyle = StrokeStyle::solid(strokeColor, strokeWidth);
-        } else {
-            pathData.strokeStyle = StrokeStyle::none();
-        }
-        
-        pathData.opacity = shape->opacity;
-        
-        paths.push_back(pathData);
-    }
-}
-
-Path buildPathFromSVG(NSVGpath* svgPath) {
+    // Create one Flux path for all paths in this shape
     Path path;
-    if (!svgPath || svgPath->npts < 2) return path;
-
-    // Move to first point
-    path.moveTo({svgPath->pts[0], svgPath->pts[1]});
-
-    // Draw cubic bezier curves
-    for (int i = 1; i < svgPath->npts - 1; i += 3) {
-        if (i + 2 < svgPath->npts) {
-            path.bezierTo(
-                {svgPath->pts[i*2], svgPath->pts[i*2+1]},         // control point 1
-                {svgPath->pts[(i+1)*2], svgPath->pts[(i+1)*2+1]}, // control point 2
-                {svgPath->pts[(i+2)*2], svgPath->pts[(i+2)*2+1]}  // end point
-            );
+    
+    // Parse each NSVG path and add to the Flux path
+    for (NSVGpath* svgPath = shape->paths; svgPath != nullptr; svgPath = svgPath->next) {
+        if (!svgPath || svgPath->npts < 2) {
+            continue;
         }
-    }
 
-    // Close path if it's closed
-    if (svgPath->closed) {
-        path.close();
+        // Calculate the signed area to determine winding
+        auto area = calculatePathArea(svgPath);
+        
+        // In SVG, positive area means counter-clockwise (solid), negative means clockwise (hole)
+        // Flux uses PathWinding::CounterClockwise for solid, PathWinding::Clockwise for holes
+        // So we set the winding right before adding this path
+        path.setWinding(area >= 0.0f ? PathWinding::Clockwise : PathWinding::CounterClockwise);
+
+        // Move to first point
+        path.moveTo({svgPath->pts[0], svgPath->pts[1]});
+    
+        // Draw cubic bezier curves
+        for (int i = 1; i < svgPath->npts - 1; i += 3) {
+            if (i + 2 < svgPath->npts) {
+                path.bezierTo(
+                    {svgPath->pts[i*2], svgPath->pts[i*2+1]},         // control point 1
+                    {svgPath->pts[(i+1)*2], svgPath->pts[(i+1)*2+1]}, // control point 2
+                    {svgPath->pts[(i+2)*2], svgPath->pts[(i+2)*2+1]}  // end point
+                );
+            }
+        }
+    
+        // Close path if it's closed
+        if (svgPath->closed) {
+            path.close();
+        }
     }
     
-    return path;
+    // Add the complete path to the paths vector
+    paths.push_back({
+        .path = path,
+        .fillStyle = fillStyle,
+        .strokeStyle = StrokeStyle::solid(strokeColor, strokeWidth),
+        .opacity = shape->opacity
+    });
 }
 
 float calculatePathArea(NSVGpath* path) {
@@ -186,13 +167,102 @@ Color nsvgColorToFluxColor(unsigned int color) {
     float r = (color & 0xFF) / 255.0f;           // bits 0-7
     float g = ((color >> 8) & 0xFF) / 255.0f;    // bits 8-15
     float b = ((color >> 16) & 0xFF) / 255.0f;   // bits 16-23
-    float a = 1.0f;  // Alpha is stored separately in NanoSVG (opacity, etc.)
+    float a = ((color >> 24) & 0xFF) / 255.0f;   // bits 24-31
 
     return Color(r, g, b, a);
 }
 
+FillStyle nsvgPaintToFillStyle(const NSVGpaint& paint) {
+    switch (paint.type) {
+        case NSVG_PAINT_NONE:
+            return FillStyle::none();
+            
+        case NSVG_PAINT_COLOR: {
+            Color color = nsvgColorToFluxColor(paint.color);
+            return FillStyle::solid(color);
+        }
+        
+        case NSVG_PAINT_LINEAR_GRADIENT: {
+            FillStyle style;
+            style.type = FillStyle::Type::LinearGradient;
+            
+            if (paint.gradient && paint.gradient->nstops >= 2) {
+                // Get first and last color stops
+                Color startColor = nsvgColorToFluxColor(paint.gradient->stops[0].color);
+                Color endColor = nsvgColorToFluxColor(paint.gradient->stops[paint.gradient->nstops - 1].color);
+                
+                style.startColor = startColor;
+                style.endColor = endColor;
+                
+                // Extract gradient line from transform matrix
+                // NanoSVG stores: xform[0]=dy, xform[1]=-dx, xform[2]=dx, xform[3]=dy, xform[4]=x1, xform[5]=y1
+                float* xform = paint.gradient->xform;
+                float dx = xform[2];
+                float dy = xform[3];
+                
+                // Start point (x1, y1)
+                style.startPoint = {xform[4], xform[5]};
+                
+                // For proper gradient rendering, we need a reasonable end point
+                // The gradient direction is stored in xform[2] and xform[3]
+                // We'll use the original length to get proper scaling
+                float gradLength = sqrtf(dx * dx + dy * dy);
+                
+                // End point is start point plus the direction vector
+                if (gradLength > 0.0001f) {
+                    style.endPoint = {
+                        style.startPoint.x + dx,
+                        style.startPoint.y + dy
+                    };
+                } else {
+                    // Fallback for zero-length gradients (shouldn't happen in practice)
+                    style.endPoint = {style.startPoint.x + 100, style.startPoint.y};
+                }
+            }
+            
+            return style;
+        }
+        
+        case NSVG_PAINT_RADIAL_GRADIENT: {
+            FillStyle style;
+            style.type = FillStyle::Type::RadialGradient;
+            
+            if (paint.gradient && paint.gradient->nstops >= 2) {
+                // Get first and last color stops
+                Color startColor = nsvgColorToFluxColor(paint.gradient->stops[0].color);
+                Color endColor = nsvgColorToFluxColor(paint.gradient->stops[paint.gradient->nstops - 1].color);
+                
+                style.startColor = startColor;
+                style.endColor = endColor;
+                
+                // Get center from transform
+                float* xform = paint.gradient->xform;
+                style.center = {xform[4], xform[5]};
+                
+                // Get radius from focus point
+                style.innerRadius = 0.0f;
+                style.outerRadius = 100.0f; // Default fallback
+                
+                if (paint.gradient) {
+                    // Use fx, fy as the focus point to estimate outer radius
+                    float focusX = paint.gradient->fx;
+                    float focusY = paint.gradient->fy;
+                    float dx = focusX - style.center.x;
+                    float dy = focusY - style.center.y;
+                    style.outerRadius = sqrtf(dx * dx + dy * dy);
+                }
+            }
+            
+            return style;
+        }
+        
+        default:
+            return FillStyle::none();
+    }
+}
+
 void renderCachedSVG(RenderContext& ctx, const CachedSVGData& data, const Rect& bounds) {
-    drawCheckerboardBackground(ctx, bounds);
+    // drawCheckerboardBackground(ctx, bounds);
 
     if (!data.isValid || data.paths.empty()) return;
 
@@ -214,8 +284,6 @@ void renderCachedSVG(RenderContext& ctx, const CachedSVGData& data, const Rect& 
 
     // Render all cached paths
     for (const auto& pathData : data.paths) {
-        // Set path winding
-        ctx.setPathWinding(pathData.winding);
         ctx.setFillStyle(pathData.fillStyle);
         ctx.setStrokeStyle(pathData.strokeStyle);
         ctx.drawPath(pathData.path);
@@ -280,6 +348,11 @@ void SVG::render(RenderContext& ctx, const Rect& bounds) const {
 }
 
 Size SVG::preferredSize(TextMeasurement& /* textMeasurer */) const {
+    const Size& sizeVal = size;
+    if (sizeVal.width > 0 && sizeVal.height > 0) {
+        return sizeVal;
+    }
+
     EdgeInsets paddingVal = padding;
 
     const std::string currentContent = static_cast<std::string>(content);

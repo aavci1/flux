@@ -9,6 +9,12 @@ namespace flux {
 // Forward declarations
 class NanoVGRenderContext;
 
+
+enum class PathWinding {
+    CounterClockwise,  // Solid shapes
+    Clockwise          // Holes
+};
+
 /**
  * Path - Independent path construction class
  * 
@@ -29,6 +35,11 @@ public:
     // ============================================================================
     // PATH CONSTRUCTION
     // ============================================================================
+
+    /**
+     * Set the winding direction of the path
+     */
+    void setWinding(PathWinding winding);
     
     /**
      * Move the current point to a new position without drawing
@@ -102,6 +113,7 @@ public:
 private:
     // Path command types
     enum class CommandType {
+        SetWinding,
         MoveTo,
         LineTo,
         QuadTo,
@@ -117,6 +129,7 @@ private:
     // Generic path command
     struct Command {
         CommandType type;
+        PathWinding winding = PathWinding::CounterClockwise;
         std::vector<float> data;  // Points and parameters flattened
         
         Command(CommandType t) : type(t) {}

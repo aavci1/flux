@@ -15,6 +15,7 @@ struct SVG {
 
     Property<std::string> content = "";
     Property<bool> preserveAspectRatio = true;
+    Property<Size> size = Size{-1.0f, -1.0f};
 
     void render(RenderContext& ctx, const Rect& bounds) const;
     Size preferredSize(TextMeasurement& textMeasurer) const;

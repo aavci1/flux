@@ -20,11 +20,6 @@ enum class LineJoin {
     Bevel    // Cut corners
 };
 
-enum class PathWinding {
-    CounterClockwise,  // Solid shapes
-    Clockwise          // Holes
-};
-
 enum class CompositeOperation {
     SourceOver,           // Default: source over destination
     SourceIn,            // Source in destination

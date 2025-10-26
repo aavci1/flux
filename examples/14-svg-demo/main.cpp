@@ -3,6 +3,9 @@
 #include <iostream>
 #include <string>
 
+using namespace flux;
+
+
 std::string readSVGFile(const std::string& filename) {
     std::ifstream file(filename);
     if (!file.is_open()) {
@@ -23,8 +26,6 @@ std::string readSVGFile(const std::string& filename) {
 }
 
 int main(int argc, char* argv[]) {
-    using namespace flux;
-
     // Check command line arguments
     if (argc < 2) {
         std::cerr << "Usage: " << argv[0] << " <svg_filename>" << std::endl;
@@ -66,6 +67,7 @@ int main(int argc, char* argv[]) {
                 SVG {
                     .clip = true,
                     .expansionBias = true,
+                    .padding = 8,
                     .content = svgContent
                 }
             }

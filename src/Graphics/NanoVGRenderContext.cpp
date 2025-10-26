@@ -221,6 +221,9 @@ void NanoVGRenderContext::drawPath(const Path& path) {
     // Replay path commands to NanoVG
     for (const auto& cmd : path.commands_) {
         switch (cmd.type) {
+            case Path::CommandType::SetWinding:
+                nvgPathWinding(nvgContext_, getNVGPathWinding(cmd.winding));
+                break;
             case Path::CommandType::MoveTo:
                 if (cmd.data.size() >= 2) {
                     nvgMoveTo(nvgContext_, cmd.data[0], cmd.data[1]);

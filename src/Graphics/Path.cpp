@@ -39,6 +39,13 @@ Path& Path::operator=(Path&& other) noexcept {
     return *this;
 }
 
+void Path::setWinding(PathWinding winding) {
+    Command cmd(CommandType::SetWinding);
+    cmd.winding = winding;
+    commands_.push_back(std::move(cmd));
+    invalidateBounds();
+}
+
 void Path::moveTo(const Point& point) {
     Command cmd(CommandType::MoveTo);
     cmd.data = {point.x, point.y};
