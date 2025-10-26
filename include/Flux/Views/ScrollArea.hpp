@@ -121,25 +121,6 @@ struct ScrollArea {
         return LayoutNode(View(*this), bounds, std::move(childLayouts));
     }
 
-    void render(RenderContext& ctx, const Rect& bounds) const {
-        // Draw background
-        Color bgColor = backgroundColor;
-        if (bgColor.a > 0) {
-            ctx.setFillStyle(FillStyle::solid(bgColor));
-            ctx.setStrokeStyle(StrokeStyle::none());
-            ctx.drawRect(bounds, cornerRadius);
-        }
-        
-        // Draw border
-        float borderW = borderWidth;
-        Color borderCol = borderColor;
-        if (borderW > 0 && borderCol.a > 0) {
-            ctx.setFillStyle(FillStyle::none());
-            ctx.setStrokeStyle(StrokeStyle::solid(borderCol, borderW));
-            ctx.drawRect(bounds, cornerRadius);
-        }
-    }
-
     Size preferredSize(TextMeasurement& /*textMeasurer*/) const {
         EdgeInsets paddingVal = padding;
         return Size(paddingVal.horizontal(), paddingVal.vertical());

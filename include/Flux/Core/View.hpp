@@ -42,7 +42,6 @@ inline std::string demangleTypeName(const char* mangledName) {
 // Macro to inject common view properties into components
 // This allows designated initializers to work while maintaining code reuse
 #define FLUX_VIEW_PROPERTIES \
-    Property<EdgeInsets> margin = {}; \
     Property<EdgeInsets> padding = {}; \
     Property<Color> backgroundColor = Colors::transparent; \
     Property<BackgroundImage> backgroundImage = BackgroundImage{}; \

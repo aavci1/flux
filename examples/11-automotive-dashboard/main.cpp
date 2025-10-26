@@ -72,8 +72,7 @@ struct BatteryIcon {
                         BatteryTerminal {
                             .compressionBias = 0,
                             .expansionBias = 1,
-                            .backgroundColor = Colors::gray,
-                            .margin = EdgeInsets{ 4, 0, 4, 0 }
+                            .backgroundColor = Colors::gray
                         },
                         Spacer {},
                     }
