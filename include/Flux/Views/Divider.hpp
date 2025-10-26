@@ -16,54 +16,22 @@ struct Divider {
     FLUX_VIEW_PROPERTIES;
 
     Property<DividerOrientation> orientation = DividerOrientation::Horizontal;
-    Property<float> thickness = 1.0f;
-    Property<Color> color = Colors::lightGray;
 
-    void render(RenderContext& ctx, const Rect& bounds) const {
-        ViewHelpers::renderView(*this, ctx, bounds);
-
-        EdgeInsets paddingVal = padding;
-        DividerOrientation orient = orientation;
-        float thick = thickness;
-
-        if (orient == DividerOrientation::Horizontal) {
-            // Horizontal line across the width
-            float lineY = bounds.y + paddingVal.top + (bounds.height - paddingVal.vertical() - thick) / 2;
-            Rect lineRect = {
-                bounds.x + paddingVal.left,
-                lineY,
-                bounds.width - paddingVal.horizontal(),
-                thick
-            };
-            ctx.setFillStyle(FillStyle::solid(color));
-            ctx.setStrokeStyle(StrokeStyle::none());
-            ctx.drawRect(lineRect);
-        } else {
-            // Vertical line across the height
-            float lineX = bounds.x + paddingVal.left + (bounds.width - paddingVal.horizontal() - thick) / 2;
-            Rect lineRect = {
-                lineX,
-                bounds.y + paddingVal.top,
-                thick,
-                bounds.height - paddingVal.vertical()
-            };
-            ctx.setFillStyle(FillStyle::solid(color));
-            ctx.setStrokeStyle(StrokeStyle::none());
-            ctx.drawRect(lineRect);
-        }
+    void init() {
+        borderWidth = 1.0f;
+        borderColor = Colors::gray.opacity(0.2f);
+        compressionBias = 0.0f;
+        expansionBias = 0.0f;
     }
 
     Size preferredSize(TextMeasurement& /* textMeasurer */) const {
         EdgeInsets paddingVal = padding;
         DividerOrientation orient = orientation;
-        float thick = thickness;
 
         if (orient == DividerOrientation::Horizontal) {
-            // Horizontal divider: full width, minimal height
-            return {100.0f + paddingVal.horizontal(), thick + paddingVal.vertical()};
+            return {paddingVal.horizontal(), 0.5f + paddingVal.vertical()};
         } else {
-            // Vertical divider: minimal width, full height
-            return {thick + paddingVal.horizontal(), 100.0f + paddingVal.vertical()};
+            return {0.5f + paddingVal.horizontal(), paddingVal.vertical()};
         }
     }
 };
