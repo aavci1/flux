@@ -343,7 +343,6 @@ int main(int argc, char* argv[]) {
                                             .color = Color::hex(0x7f8c8d)
                                         },
                                         BatteryIcon {
-                                            .margin = 8,
                                             .compressionBias = 0,
                                             .expansionBias = 1,
                                             .chargeLevel = chargeLevel,
