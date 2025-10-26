@@ -58,6 +58,10 @@ inline std::string demangleTypeName(const char* mangledName) {
     Property<Point> offset = Point{0, 0}; \
     Property<float> expansionBias = 0.0f; \
     Property<float> compressionBias = 1.0f; \
+    Property<std::optional<float>> minWidth = std::nullopt; \
+    Property<std::optional<float>> maxWidth = std::nullopt; \
+    Property<std::optional<float>> minHeight = std::nullopt; \
+    Property<std::optional<float>> maxHeight = std::nullopt; \
     Property<int> colspan = 1; \
     Property<int> rowspan = 1; \
     Property<std::optional<CursorType>> cursor = std::nullopt; \
@@ -108,6 +112,10 @@ public:
     virtual bool shouldClip() const = 0;
     virtual float getExpansionBias() const = 0;
     virtual float getCompressionBias() const = 0;
+    virtual std::optional<float> getMinWidth() const = 0;
+    virtual std::optional<float> getMaxWidth() const = 0;
+    virtual std::optional<float> getMinHeight() const = 0;
+    virtual std::optional<float> getMaxHeight() const = 0;
     virtual int getColspan() const = 0;
     virtual int getRowspan() const = 0;
 
@@ -256,6 +264,10 @@ public:
     bool shouldClip() const override;
     float getExpansionBias() const override;
     float getCompressionBias() const override;
+    std::optional<float> getMinWidth() const override;
+    std::optional<float> getMaxWidth() const override;
+    std::optional<float> getMinHeight() const override;
+    std::optional<float> getMaxHeight() const override;
     int getColspan() const override;
     int getRowspan() const override;
 
@@ -338,6 +350,22 @@ public:
 
     float getCompressionBias() const {
         return component_ ? component_->getCompressionBias() : 1.0f;
+    }
+
+    std::optional<float> getMinWidth() const {
+        return component_ ? component_->getMinWidth() : std::nullopt;
+    }
+
+    std::optional<float> getMaxWidth() const {
+        return component_ ? component_->getMaxWidth() : std::nullopt;
+    }
+
+    std::optional<float> getMinHeight() const {
+        return component_ ? component_->getMinHeight() : std::nullopt;
+    }
+
+    std::optional<float> getMaxHeight() const {
+        return component_ ? component_->getMaxHeight() : std::nullopt;
     }
 
     int getColspan() const {
@@ -605,6 +633,69 @@ inline float ViewAdapter<T>::getCompressionBias() const {
         }
     }
     return component.compressionBias;
+}
+
+template<ViewComponent T>
+inline std::optional<float> ViewAdapter<T>::getMinWidth() const {
+    // If component has body(), inherit minWidth from body unless explicitly overridden
+    if constexpr (has_body<T>::value) {
+        View bodyView = component.body();
+        if (bodyView.isValid()) {
+            // If component's minWidth is set, use it
+            auto minWidthVal = component.minWidth.get();
+            if (minWidthVal) {
+                return minWidthVal;
+            }
+            // Otherwise, use body's minWidth property
+            return bodyView->getMinWidth();
+        }
+    }
+    return component.minWidth.get();
+}
+
+template<ViewComponent T>
+inline std::optional<float> ViewAdapter<T>::getMaxWidth() const {
+    if constexpr (has_body<T>::value) {
+        View bodyView = component.body();
+        if (bodyView.isValid()) {
+            auto maxWidthVal = component.maxWidth.get();
+            if (maxWidthVal) {
+                return maxWidthVal;
+            }
+            return bodyView->getMaxWidth();
+        }
+    }
+    return component.maxWidth.get();
+}
+
+template<ViewComponent T>
+inline std::optional<float> ViewAdapter<T>::getMinHeight() const {
+    if constexpr (has_body<T>::value) {
+        View bodyView = component.body();
+        if (bodyView.isValid()) {
+            auto minHeightVal = component.minHeight.get();
+            if (minHeightVal) {
+                return minHeightVal;
+            }
+            return bodyView->getMinHeight();
+        }
+    }
+    return component.minHeight.get();
+}
+
+template<ViewComponent T>
+inline std::optional<float> ViewAdapter<T>::getMaxHeight() const {
+    if constexpr (has_body<T>::value) {
+        View bodyView = component.body();
+        if (bodyView.isValid()) {
+            auto maxHeightVal = component.maxHeight.get();
+            if (maxHeightVal) {
+                return maxHeightVal;
+            }
+            return bodyView->getMaxHeight();
+        }
+    }
+    return component.maxHeight.get();
 }
 
 template<ViewComponent T>

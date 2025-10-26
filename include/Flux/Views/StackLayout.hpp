@@ -151,6 +151,30 @@ StackLayoutResult<Axis> layoutStack(
         }
     }
     
+    // Apply min/max size constraints
+    for (size_t i = 0; i < visibleCount; ++i) {
+        float& size = finalSizes[i];
+        const auto& info = visibleChildren[i];
+        
+        // Get constraints based on axis
+        std::optional<float> minSize, maxSize;
+        if constexpr (Axis == StackAxis::Horizontal) {
+            minSize = info.child->getMinWidth();
+            maxSize = info.child->getMaxWidth();
+        } else {
+            minSize = info.child->getMinHeight();
+            maxSize = info.child->getMaxHeight();
+        }
+        
+        // Apply constraints
+        if (minSize && size < *minSize) {
+            size = *minSize;
+        }
+        if (maxSize && size > *maxSize) {
+            size = *maxSize;
+        }
+    }
+    
     // Effective spacing is always at least the minimum spacing
     float effectiveSpacing = baseSpacing;
 
