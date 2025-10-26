@@ -490,9 +490,18 @@ inline LayoutNode ViewAdapter<T>::layout(RenderContext& ctx, const Rect& bounds)
         // Build children layout nodes from resolved results
         std::vector<LayoutNode> childNodes;
 
+        // Apply component's padding to get content bounds
+        EdgeInsets componentPadding = component.padding;
+        Rect contentBounds = {
+            bounds.x + componentPadding.left,
+            bounds.y + componentPadding.top,
+            bounds.width - componentPadding.horizontal(),
+            bounds.height - componentPadding.vertical()
+        };
+
         // Add body result as child
         if (node.resolvedBody.has_value() && node.resolvedBody->isValid()) {
-            LayoutNode bodyLayout = node.resolvedBody->layout(ctx, bounds);
+            LayoutNode bodyLayout = node.resolvedBody->layout(ctx, contentBounds);
             childNodes.push_back(std::move(bodyLayout));
         }
 
@@ -500,7 +509,7 @@ inline LayoutNode ViewAdapter<T>::layout(RenderContext& ctx, const Rect& bounds)
         if (node.resolvedChildren.has_value()) {
             for (const auto& childView : *node.resolvedChildren) {
                 if (childView.isValid()) {
-                    LayoutNode childLayout = childView.layout(ctx, bounds);
+                    LayoutNode childLayout = childView.layout(ctx, contentBounds);
                     childNodes.push_back(std::move(childLayout));
                 }
             }

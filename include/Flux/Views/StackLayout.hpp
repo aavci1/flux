@@ -57,7 +57,25 @@ StackLayoutResult<Axis> layoutStack(
         if (!child->isVisible()) continue;
 
         Size childSize = child.preferredSize(static_cast<TextMeasurement&>(ctx));
-        float baseSize = (Axis == StackAxis::Horizontal) ? childSize.width : childSize.height;
+        float preferredSize = (Axis == StackAxis::Horizontal) ? childSize.width : childSize.height;
+        
+        // Apply min/max constraints to base size before distribution
+        std::optional<float> minSize, maxSize;
+        if constexpr (Axis == StackAxis::Horizontal) {
+            minSize = child.getMinWidth();
+            maxSize = child.getMaxWidth();
+        } else {
+            minSize = child.getMinHeight();
+            maxSize = child.getMaxHeight();
+        }
+        
+        float baseSize = preferredSize;
+        if (minSize && baseSize < *minSize) {
+            baseSize = *minSize;
+        }
+        if (maxSize && baseSize > *maxSize) {
+            baseSize = *maxSize;
+        }
         
         StackChildInfo<Axis> info = {
             &child,
@@ -151,7 +169,7 @@ StackLayoutResult<Axis> layoutStack(
         }
     }
     
-    // Apply min/max size constraints
+    // Apply min/max size constraints (these may differ from baseSize if distribution changed them)
     for (size_t i = 0; i < visibleCount; ++i) {
         float& size = finalSizes[i];
         const auto& info = visibleChildren[i];
@@ -166,7 +184,7 @@ StackLayoutResult<Axis> layoutStack(
             maxSize = info.child->getMaxHeight();
         }
         
-        // Apply constraints
+        // Apply constraints (only if distribution changed the size from baseSize)
         if (minSize && size < *minSize) {
             size = *minSize;
         }
