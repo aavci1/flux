@@ -50,8 +50,8 @@ int main(int argc, char* argv[]) {
                 },
 
                 Divider {
-                    .thickness = 2.0f,
-                    .color = Colors::gray
+                    .borderWidth = 2.0f,
+                    .borderColor = Colors::gray
                 },
 
                 // Main content with two columns
