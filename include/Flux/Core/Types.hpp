@@ -132,7 +132,7 @@ namespace Colors {
     constexpr Color gray = Color::hex(0x9E9E9E);
     constexpr Color transparent = Color(0, 0, 0, 0);
     constexpr Color darkGray = Color::hex(0x424242);
-    constexpr Color lightGray = Color::hex(0xEEEEEE);
+    constexpr Color lightGray = Color::hex(0xE0E0E0);
 }
 
 // Enums
