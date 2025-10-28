@@ -16,6 +16,40 @@ const std::string svgString = R"(<svg width="256px" height="256px" viewBox="0 0 
 <path d="M127.962816,0 C198.911815,0.558586285 255.754376,55.4725719 255.999327,129.30333 C256.222426,196.981097 200.939466,257.457031 124.744539,255.972592 C55.244106,254.617978 -1.52329281,198.006026 0.0311827848,124.08815 C1.40287938,58.8018828 54.6684376,0.674744901 127.962816,0 Z M101.003768,147.357453 C105.554452,147.357453 110.106845,147.367703 114.65753,147.352329 C116.833796,147.345496 118.196951,147.837462 117.689611,150.565481 C116.574147,156.564732 115.660252,162.599855 114.679737,168.621313 C112.832587,179.971832 110.991701,191.32349 109.157078,202.676286 C108.981132,203.757586 108.415712,204.914048 109.809616,205.660538 C112.182326,206.929741 118.670127,205.31377 120.011075,203.0743 C137.018063,174.694017 154.01651,146.30861 171.006416,117.918077 C174.535588,112.012778 172.683883,108.820124 165.760488,108.768878 C157.794512,108.711938 149.828537,108.711938 141.862561,108.768878 C139.389066,108.782544 137.708182,108.456275 138.304349,105.219207 C140.080893,95.5899998 141.703697,85.9334607 143.331626,76.2769217 C144.604815,68.7175012 145.824481,61.1489702 146.990622,53.5713287 C147.16486,52.4404904 147.853271,51.0414624 146.011815,50.3701339 C142.079426,49.2279869 137.854573,50.6944931 135.475545,54.0274221 C122.392896,75.8151342 109.320497,97.6091098 96.2583467,119.409349 C92.3157866,125.985976 88.2553597,132.494275 84.4989951,139.176812 C81.6838569,144.181882 83.5321454,147.282292 89.0565125,147.34208 C93.0383616,147.384785 97.0219188,147.350621 101.005476,147.359162 L101.003768,147.357453 Z" fill="#1D5FE6" />
 </svg>)";
 
+struct SecurityGroup {
+    FLUX_VIEW_PROPERTIES;
+
+    View body() const {
+        return VStack {
+            .backgroundColor = Colors::lightGray.opacity(0.1f),
+            .borderColor = Colors::gray.opacity(0.1f),
+            .borderWidth = 1,
+            .cornerRadius = 16,
+            .padding = 64,
+            .spacing = 16,
+            .alignItems = AlignItems::center,
+            .children {
+                SVG {
+                    .content = svgString,
+                    .size = Size { 64.0f, 64.0f },
+                },
+                Text {
+                    .value = "Strong Password",
+                    .fontWeight = FontWeight::bold,
+                    .fontSize = 18
+                },
+                Text {
+                    .value = "This password is long, difficult to guess, and unique. For additional security, add a verification code",
+                    .color = Colors::gray
+                },
+                Button {
+                    .text = "Add Verification Code..."
+                }
+            }
+        };
+    }
+};
+
 struct PasswordDetails {
     FLUX_VIEW_PROPERTIES;
 
@@ -25,13 +59,49 @@ struct PasswordDetails {
         auto itemVal = item.get();
         
         return VStack {
-            .backgroundColor = Colors::lightGray.opacity(0.4f),
-            .borderColor = Colors::gray.opacity(0.4f),
+            .backgroundColor = Colors::lightGray.opacity(0.1f),
+            .borderColor = Colors::gray.opacity(0.1f),
             .borderWidth = 1,
             .cornerRadius = 16,
             .padding = 16,
             .spacing = 16,
             .children = {
+                HStack {
+                    .spacing = 16.0f,
+                    .alignItems = AlignItems::center,
+                    .children {
+                        SVG {
+                            .content = svgString,
+                            .size = Size{64.0f, 64.0f}
+                        },
+                        VStack {
+                            .expansionBias = 1.0f,
+                            .spacing = 8.0f,
+                            .children {
+                                Text {
+                                    .value = itemVal.name,
+                                    .fontWeight = FontWeight::bold,
+                                    .fontSize = 18,
+                                    .horizontalAlignment = HorizontalAlignment::leading
+                                },
+                                Text {
+                                    .value = "Last modified today at 9:41 am",
+                                    .fontSize = 12,
+                                    .fontWeight = FontWeight::bold,
+                                    .color = Colors::gray,
+                                    .horizontalAlignment = HorizontalAlignment::leading
+                                }
+                            }
+                        },
+                        Button {
+                            .text = "Edit"
+                        },
+                        Button {
+                            .text = "Share"
+                        }
+                    }
+                },
+                Divider {},
                 HStack {
                     .justifyContent = JustifyContent::spaceBetween,
                     .children = {
@@ -231,6 +301,7 @@ int main(int argc, char* argv[]) {
 
                         if (selectedItemVal) {
                             children.push_back(PasswordDetails { .item = *selectedItemVal });
+                            children.push_back(SecurityGroup {});
                         } else {
                             children.push_back(Text { .value = "No password selected" });
                         }

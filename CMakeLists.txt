@@ -257,35 +257,38 @@ if(BUILD_EXAMPLES)
     add_executable(clock examples/19-clock/main.cpp)
     target_link_libraries(clock PRIVATE flux)
 
-add_executable(grid_demo examples/22-grid-demo/main.cpp)
-target_link_libraries(grid_demo PRIVATE flux)
+    add_executable(grid_demo examples/22-grid-demo/main.cpp)
+    target_link_libraries(grid_demo PRIVATE flux)
 
-add_executable(spacer_grid_demo examples/23-spacer-grid-demo/main.cpp)
-target_link_libraries(spacer_grid_demo PRIVATE flux)
+    add_executable(spacer_grid_demo examples/23-spacer-grid-demo/main.cpp)
+    target_link_libraries(spacer_grid_demo PRIVATE flux)
 
-add_executable(calculator examples/24-calculator/main.cpp)
-target_link_libraries(calculator PRIVATE flux)
+    add_executable(calculator examples/24-calculator/main.cpp)
+    target_link_libraries(calculator PRIVATE flux)
 
-add_executable(cursor_demo examples/25-cursor-demo/main.cpp)
-target_link_libraries(cursor_demo PRIVATE flux)
+    add_executable(cursor_demo examples/25-cursor-demo/main.cpp)
+    target_link_libraries(cursor_demo PRIVATE flux)
 
-add_executable(focus_keyboard_demo examples/27-focus-keyboard-demo/main.cpp)
-target_link_libraries(focus_keyboard_demo PRIVATE flux)
+    add_executable(focus_keyboard_demo examples/27-focus-keyboard-demo/main.cpp)
+    target_link_libraries(focus_keyboard_demo PRIVATE flux)
 
-add_executable(event_system_demo examples/28-event-system-demo/main.cpp)
-target_link_libraries(event_system_demo PRIVATE flux)
+    add_executable(event_system_demo examples/28-event-system-demo/main.cpp)
+    target_link_libraries(event_system_demo PRIVATE flux)
 
-add_executable(color_picker examples/29-color-picker/main.cpp)
-target_link_libraries(color_picker PRIVATE flux)
+    add_executable(color_picker examples/29-color-picker/main.cpp)
+    target_link_libraries(color_picker PRIVATE flux)
 
-add_executable(component_showcase examples/31-component-showcase/main.cpp)
-target_link_libraries(component_showcase PRIVATE flux)
+    add_executable(component_showcase examples/31-component-showcase/main.cpp)
+    target_link_libraries(component_showcase PRIVATE flux)
 
-add_executable(label_position_demo examples/32-label-position-demo/main.cpp)
-target_link_libraries(label_position_demo PRIVATE flux)
+    add_executable(label_position_demo examples/32-label-position-demo/main.cpp)
+    target_link_libraries(label_position_demo PRIVATE flux)
 
-add_executable(scroll_area_demo examples/33-scroll-area-demo/main.cpp)
-target_link_libraries(scroll_area_demo PRIVATE flux)
+    add_executable(scroll_area_demo examples/33-scroll-area-demo/main.cpp)
+    target_link_libraries(scroll_area_demo PRIVATE flux)
+
+    add_executable(passwords examples/passwords/main.cpp)
+    target_link_libraries(passwords PRIVATE flux)
 
 endif()
 
