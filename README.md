@@ -199,7 +199,7 @@ And more!
 
 ### Prerequisites (Arch Linux)
 ```bash
-sudo pacman -S wayland wayland-protocols libxkbcommon mesa freetype2 clang
+sudo pacman -S wayland wayland-protocols libxkbcommon mesa freetype2 clang cmake stb glfw
 ```
 
 ### Prerequisites (Ubuntu/Debian)
