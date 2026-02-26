@@ -205,7 +205,7 @@ sudo pacman -S wayland wayland-protocols libxkbcommon mesa freetype2 clang cmake
 ### Prerequisites (Ubuntu/Debian)
 ```bash
 sudo apt install libwayland-dev wayland-protocols libxkbcommon-dev \
-                 libegl1-mesa-dev libgles2-mesa-dev libfreetype6-dev clang
+                 libegl1-mesa-dev libgles2-mesa-dev libfreetype6-dev clang cmake libstb-dev libglfw3-dev
 ```
 
 ### Build
