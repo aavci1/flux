@@ -1,7 +1,7 @@
 #include <Flux/Core/FocusState.hpp>
 #include <Flux/Core/LayoutTree.hpp>
 #include <Flux/Core/Application.hpp>
-#include <iostream>
+#include <Flux/Core/Log.hpp>
 #include <sstream>
 #include <algorithm>
 
@@ -9,17 +9,17 @@ namespace flux {
 
 FocusState::FocusState()
     : focusedKey_("") {
-    std::cout << "[FOCUS] Focus management initialized (key-based tracking)\n";
+    FLUX_LOG_DEBUG("[FOCUS] Focus management initialized (key-based tracking)");
 }
 
 void FocusState::registerFocusableView(View* view, const Rect& bounds) {
     if (!view) {
-        std::cout << "[FOCUS] Attempted to register null view\n";
+        FLUX_LOG_WARN("[FOCUS] Attempted to register null view");
         return;
     }
 
     if (bounds.width <= 0 || bounds.height <= 0) {
-        std::cout << "[FOCUS] Skipping view with invalid bounds\n";
+        FLUX_LOG_WARN("[FOCUS] Skipping view with invalid bounds");
         return;
     }
 
@@ -28,11 +28,10 @@ void FocusState::registerFocusableView(View* view, const Rect& bounds) {
         key = generateAutoKey(view, static_cast<int>(focusableViews_.size()));
     }
     
-    std::cout << "[FOCUS] Registered focusable view #" << focusableViews_.size() 
-              << " (" << view->getTypeName() << ") with key '" << key << "' at ("
-              << bounds.x << ", " << bounds.y << ", "
-              << bounds.width << "x" << bounds.height << ")\n";
-    
+    FLUX_LOG_DEBUG("[FOCUS] Registered focusable view #%zu (%s) with key '%s' at (%.0f, %.0f, %.0fx%.0f)",
+                   focusableViews_.size(), view->getTypeName().c_str(), key.c_str(),
+                   bounds.x, bounds.y, bounds.width, bounds.height);
+
     focusableViews_.push_back({view, bounds, key});
 }
 
@@ -42,7 +41,7 @@ void FocusState::clearFocusableViews() {
 
 void FocusState::focusNext() {
     if (focusableViews_.empty()) {
-        std::cout << "[FOCUS] No focusable views available\n";
+        FLUX_LOG_DEBUG("[FOCUS] No focusable views available");
         return;
     }
 
@@ -56,16 +55,16 @@ void FocusState::focusNext() {
     }
     
     focusedKey_ = focusableViews_[nextIndex].key;
-    
-    std::cout << "[FOCUS] Moving focus: index " << currentIndex << " -> " << nextIndex 
-              << " (key: '" << focusedKey_ << "', total: " << focusableViews_.size() << " views)\n";
-    
+
+    FLUX_LOG_DEBUG("[FOCUS] Moving focus: index %d -> %d (key: '%s', total: %zu views)",
+                   currentIndex, nextIndex, focusedKey_.c_str(), focusableViews_.size());
+
     Application::instance().requestRedraw();
 }
 
 void FocusState::focusPrevious() {
     if (focusableViews_.empty()) {
-        std::cout << "[FOCUS] No focusable views available\n";
+        FLUX_LOG_DEBUG("[FOCUS] No focusable views available");
         return;
     }
 
@@ -82,10 +81,10 @@ void FocusState::focusPrevious() {
     }
     
     focusedKey_ = focusableViews_[prevIndex].key;
-    
-    std::cout << "[FOCUS] Moving focus: index " << currentIndex << " -> " << prevIndex 
-              << " (key: '" << focusedKey_ << "', total: " << focusableViews_.size() << " views)\n";
-    
+
+    FLUX_LOG_DEBUG("[FOCUS] Moving focus: index %d -> %d (key: '%s', total: %zu views)",
+                   currentIndex, prevIndex, focusedKey_.c_str(), focusableViews_.size());
+
     Application::instance().requestRedraw();
 }
 
@@ -98,22 +97,21 @@ View* FocusState::getFocusedView() const {
 }
 
 void FocusState::clearFocus() {
-    std::cout << "[FOCUS] Clearing focus (was on key '" << focusedKey_ << "')\n";
+    FLUX_LOG_DEBUG("[FOCUS] Clearing focus (was on key '%s')", focusedKey_.c_str());
     focusedKey_.clear();
 }
 
 bool FocusState::focusViewAtPoint(const Point& point) {
     for (int i = static_cast<int>(focusableViews_.size()) - 1; i >= 0; --i) {
         if (focusableViews_[i].bounds.contains(point)) {
-            std::cout << "[FOCUS] Found focusable view at click point ("
-                      << point.x << ", " << point.y << ") - key '" 
-                      << focusableViews_[i].key << "'\n";
+            FLUX_LOG_DEBUG("[FOCUS] Found focusable view at click point (%.0f, %.0f) - key '%s'",
+                           point.x, point.y, focusableViews_[i].key.c_str());
             focusedKey_ = focusableViews_[i].key;
             return true;
         }
     }
     
-    std::cout << "[FOCUS] No focusable view at point (" << point.x << ", " << point.y << ")\n";
+    FLUX_LOG_DEBUG("[FOCUS] No focusable view at point (%.0f, %.0f)", point.x, point.y);
     return false;
 }
 
@@ -144,21 +142,21 @@ bool FocusState::dispatchKeyDownToFocused(LayoutNode& root, const KeyEvent& even
     
     int focusedIndex = findViewIndexByKey(focusedKey_);
     if (focusedIndex < 0 || focusedIndex >= static_cast<int>(focusableViews_.size())) {
-        std::cout << "[FOCUS] Focused view '" << focusedKey_ << "' not found in current frame\n";
+        FLUX_LOG_WARN("[FOCUS] Focused view '%s' not found in current frame", focusedKey_.c_str());
         return false;
     }
-    
+
     View* focusedView = focusableViews_[focusedIndex].view;
     if (!focusedView) {
-        std::cout << "[FOCUS] Focused view pointer is null\n";
+        FLUX_LOG_WARN("[FOCUS] Focused view pointer is null");
         return false;
     }
     
     bool handled = focusedView->handleKeyDown(event);
     if (handled) {
-        std::cout << "[FOCUS] Key down handled by focused view '" << focusedKey_ << "'\n";
+        FLUX_LOG_DEBUG("[FOCUS] Key down handled by focused view '%s'", focusedKey_.c_str());
     } else {
-        std::cout << "[FOCUS] Key down not handled by focused view '" << focusedKey_ << "'\n";
+        FLUX_LOG_DEBUG("[FOCUS] Key down not handled by focused view '%s'", focusedKey_.c_str());
     }
     return handled;
 }
@@ -182,7 +180,7 @@ bool FocusState::dispatchKeyUpToFocused(LayoutNode& root, const KeyEvent& event)
     
     bool handled = focusedView->handleKeyUp(event);
     if (handled) {
-        std::cout << "[FOCUS] Key up handled by focused view '" << focusedKey_ << "'\n";
+        FLUX_LOG_DEBUG("[FOCUS] Key up handled by focused view '%s'", focusedKey_.c_str());
     }
     return handled;
 }
@@ -206,7 +204,8 @@ bool FocusState::dispatchTextInputToFocused(LayoutNode& root, const TextInputEve
     
     bool handled = focusedView->handleTextInput(event);
     if (handled) {
-        std::cout << "[FOCUS] Text input '" << event.text << "' handled by focused view '" << focusedKey_ << "'\n";
+        FLUX_LOG_DEBUG("[FOCUS] Text input '%s' handled by focused view '%s'",
+                       event.text.c_str(), focusedKey_.c_str());
     }
     return handled;
 }

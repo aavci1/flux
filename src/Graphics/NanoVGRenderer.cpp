@@ -8,7 +8,7 @@
 #endif
 
 #include <nanovg_gl.h>
-#include <iostream>
+#include <Flux/Core/Log.hpp>
 
 namespace flux {
 
@@ -29,14 +29,13 @@ bool NanoVGRenderer::initialize(int width, int height, float dpiScaleX, float dp
     nvgContext_ = nvgCreateGL2(NVG_ANTIALIAS | NVG_STENCIL_STROKES);
 
     if (!nvgContext_) {
-        std::cerr << "[NanoVGRenderer] Failed to initialize NanoVG\n";
+        FLUX_LOG_ERROR("[NanoVGRenderer] Failed to initialize NanoVG");
         return false;
     }
 
     renderContext_ = std::make_unique<NanoVGRenderContext>(nvgContext_, width_, height_, dpiScaleX_, dpiScaleY_);
 
-    std::cout << "[NanoVGRenderer] Initialized with size " << width_ << "x" << height_
-              << " DPI scale " << dpiScaleX_ << "x" << dpiScaleY_ << "\n";
+    FLUX_LOG_INFO("[NanoVGRenderer] Initialized with size %dx%d DPI scale %fx%f", width_, height_, dpiScaleX_, dpiScaleY_);
 
     return true;
 }
@@ -74,15 +73,14 @@ void NanoVGRenderer::resize(int width, int height) {
         renderContext_->resize(width, height);
     }
 
-    std::cout << "[NanoVGRenderer] Resized to " << width_ << "x" << height_
-              << " DPI scale " << dpiScaleX_ << "x" << dpiScaleY_ << "\n";
+    FLUX_LOG_DEBUG("[NanoVGRenderer] Resized to %dx%d DPI scale %fx%f", width_, height_, dpiScaleX_, dpiScaleY_);
 }
 
 void NanoVGRenderer::updateDPIScale(float dpiScaleX, float dpiScaleY) {
     dpiScaleX_ = dpiScaleX;
     dpiScaleY_ = dpiScaleY;
 
-    std::cout << "[NanoVGRenderer] Updated DPI scale to " << dpiScaleX_ << "x" << dpiScaleY_ << "\n";
+    FLUX_LOG_DEBUG("[NanoVGRenderer] Updated DPI scale to %fx%f", dpiScaleX_, dpiScaleY_);
 }
 
 void NanoVGRenderer::swapBuffers() {

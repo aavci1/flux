@@ -1,7 +1,7 @@
 #include <Flux/Core/KeyboardInputHandler.hpp>
 #include <Flux/Core/FocusState.hpp>
 #include <Flux/Core/LayoutTree.hpp>
-#include <iostream>
+#include <Flux/Core/Log.hpp>
 
 namespace flux {
 
@@ -20,13 +20,12 @@ void KeyboardInputHandler::handleKeyDown(int key) {
     event.rawKeyCode = key;
     event.isRepeat = false;
     
-    std::cout << "[INPUT] Key down: " << keyName(event.key)
-              << " (raw: " << key << ", mods: "
-              << (event.hasCtrl() ? "Ctrl " : "")
-              << (event.hasShift() ? "Shift " : "")
-              << (event.hasAlt() ? "Alt " : "")
-              << ")\n";
-    
+    FLUX_LOG_DEBUG("[INPUT] Key down: %s (raw: %d, mods: %s%s%s)",
+                   keyName(event.key).c_str(), key,
+                   event.hasCtrl() ? "Ctrl " : "",
+                   event.hasShift() ? "Shift " : "",
+                   event.hasAlt() ? "Alt " : "");
+
     // Queue the event to be processed during the next render frame
     pendingKeyDownEvents_.push_back(event);
 }
@@ -42,15 +41,15 @@ void KeyboardInputHandler::handleKeyUp(int key) {
     event.rawKeyCode = key;
     event.isRepeat = false;
     
-    std::cout << "[INPUT] Key up: " << keyName(event.key) << " (raw: " << key << ")\n";
-    
+    FLUX_LOG_DEBUG("[INPUT] Key up: %s (raw: %d)", keyName(event.key).c_str(), key);
+
     // Queue the event
     pendingKeyUpEvents_.push_back(event);
 }
 
 void KeyboardInputHandler::handleTextInput(const std::string& text) {
-    std::cout << "[INPUT] Text input: \"" << text << "\"\n";
-    
+    FLUX_LOG_DEBUG("[INPUT] Text input: \"%s\"", text.c_str());
+
     TextInputEvent event(text);
     pendingTextInputEvents_.push_back(event);
 }

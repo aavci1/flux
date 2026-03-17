@@ -1,16 +1,16 @@
 #include <Flux/Core/ShortcutManager.hpp>
 #include <Flux/Core/Window.hpp>
 #include <Flux/Core/Application.hpp>
-#include <iostream>
+#include <Flux/Core/Log.hpp>
 
 namespace flux {
 
 ShortcutManager::ShortcutManager() {
-    std::cout << "[SHORTCUTS] Shortcut manager initialized\n";
+    FLUX_LOG_INFO("[SHORTCUTS] Shortcut manager initialized");
 }
 
 void ShortcutManager::registerShortcut(KeyBinding binding, std::unique_ptr<ShortcutCommand> command) {
-    std::cout << "[SHORTCUTS] Registered shortcut: " << command->description() << "\n";
+    FLUX_LOG_DEBUG("[SHORTCUTS] Registered shortcut: %s", command->description().c_str());
     shortcuts_[binding] = std::move(command);
 }
 
@@ -27,7 +27,7 @@ bool ShortcutManager::handleShortcut(const KeyEvent& event, Window& window) {
     
     auto it = shortcuts_.find(binding);
     if (it != shortcuts_.end()) {
-        std::cout << "[SHORTCUTS] Executing: " << it->second->description() << "\n";
+        FLUX_LOG_DEBUG("[SHORTCUTS] Executing: %s", it->second->description().c_str());
         it->second->execute(window);
         return true;
     }
@@ -64,31 +64,31 @@ void ShortcutManager::clearAllShortcuts() {
 
 void QuitCommand::execute(Window& window) {
     (void)window;
-    std::cout << "[SHORTCUT] Quit application\n";
+    FLUX_LOG_INFO("[SHORTCUT] Quit application");
     Application::instance().quit();
 }
 
 void CopyCommand::execute(Window& window) {
     (void)window;
-    std::cout << "[SHORTCUT] Copy (not yet implemented)\n";
+    FLUX_LOG_DEBUG("[SHORTCUT] Copy (not yet implemented)");
     // TODO: Implement clipboard copy
 }
 
 void PasteCommand::execute(Window& window) {
     (void)window;
-    std::cout << "[SHORTCUT] Paste (not yet implemented)\n";
+    FLUX_LOG_DEBUG("[SHORTCUT] Paste (not yet implemented)");
     // TODO: Implement clipboard paste
 }
 
 void CutCommand::execute(Window& window) {
     (void)window;
-    std::cout << "[SHORTCUT] Cut (not yet implemented)\n";
+    FLUX_LOG_DEBUG("[SHORTCUT] Cut (not yet implemented)");
     // TODO: Implement clipboard cut
 }
 
 void SelectAllCommand::execute(Window& window) {
     (void)window;
-    std::cout << "[SHORTCUT] Select All (not yet implemented)\n";
+    FLUX_LOG_DEBUG("[SHORTCUT] Select All (not yet implemented)");
     // TODO: Implement select all
 }
 

@@ -1,7 +1,6 @@
 #include <Flux/Graphics/NanoVGRenderContext.hpp>
-#include <iostream>
+#include <Flux/Core/Log.hpp>
 #include <cmath>
-#include <sstream>
 
 namespace flux {
 
@@ -17,9 +16,8 @@ NanoVGRenderContext::NanoVGRenderContext(NVGcontext* nvgContext, int width, int 
     framebufferWidth_ = static_cast<int>(width_ * dpiScaleX_);
     framebufferHeight_ = static_cast<int>(height_ * dpiScaleY_);
 
-    std::cout << "[NanoVGRenderContext] Created with size " << width_ << "x" << height_
-              << " DPI scale " << dpiScaleX_ << "x" << dpiScaleY_
-              << " Framebuffer " << framebufferWidth_ << "x" << framebufferHeight_ << "\n";
+    FLUX_LOG_DEBUG("[NanoVGRenderContext] Created with size %dx%d DPI scale %fx%f Framebuffer %dx%d",
+                   width_, height_, dpiScaleX_, dpiScaleY_, framebufferWidth_, framebufferHeight_);
 }
 
 // ============================================================================
@@ -49,8 +47,8 @@ void NanoVGRenderContext::resize(int width, int height) {
     framebufferWidth_ = static_cast<int>(width_ * dpiScaleX_);
     framebufferHeight_ = static_cast<int>(height_ * dpiScaleY_);
 
-    std::cout << "[NanoVGRenderContext] Resized to " << width_ << "x" << height_
-              << " Framebuffer " << framebufferWidth_ << "x" << framebufferHeight_ << "\n";
+    FLUX_LOG_DEBUG("[NanoVGRenderContext] Resized to %dx%d Framebuffer %dx%d",
+                   width_, height_, framebufferWidth_, framebufferHeight_);
 }
 
 void NanoVGRenderContext::updateDPIScale(float dpiScaleX, float dpiScaleY) {
@@ -61,8 +59,8 @@ void NanoVGRenderContext::updateDPIScale(float dpiScaleX, float dpiScaleY) {
     framebufferWidth_ = static_cast<int>(width_ * dpiScaleX_);
     framebufferHeight_ = static_cast<int>(height_ * dpiScaleY_);
 
-    std::cout << "[NanoVGRenderContext] Updated DPI scale to " << dpiScaleX_ << "x" << dpiScaleY_
-              << " Framebuffer " << framebufferWidth_ << "x" << framebufferHeight_ << "\n";
+    FLUX_LOG_DEBUG("[NanoVGRenderContext] Updated DPI scale to %fx%f Framebuffer %dx%d",
+                   dpiScaleX_, dpiScaleY_, framebufferWidth_, framebufferHeight_);
 }
 
 // ============================================================================
@@ -161,12 +159,12 @@ void NanoVGRenderContext::setDashPattern(const std::vector<float>& pattern, floa
     if (pattern.empty()) {
         // Reset dash pattern to solid line - NanoVG doesn't have a way to reset dash patterns
         // This is a limitation of the current NanoVG implementation
-        std::cout << "[NanoVGRenderContext] Dash pattern reset not supported by NanoVG\n";
+        FLUX_LOG_WARN("[NanoVGRenderContext] Dash pattern reset not supported by NanoVG");
     } else {
         // Note: NanoVG doesn't have direct dash pattern support in the public API
         // This would need to be implemented using the internal API or custom shaders
         // For now, we'll store the pattern and use it in stroke operations
-        std::cout << "[NanoVGRenderContext] Dash patterns not fully implemented yet\n";
+        FLUX_LOG_WARN("[NanoVGRenderContext] Dash patterns not fully implemented yet");
     }
     (void)offset; // Suppress unused parameter warning
 }
@@ -738,7 +736,7 @@ int NanoVGRenderContext::getFont(const std::string& fontName, FontWeight weight)
     for (int i = 0; fontPaths[i] != nullptr; i++) {
         font = nvgCreateFont(nvgContext_, fontKey.c_str(), fontPaths[i]);
         if (font != -1) {
-            std::cout << "[NanoVGRenderContext] Loaded font: " << fontPaths[i] << std::endl;
+            FLUX_LOG_DEBUG("[NanoVGRenderContext] Loaded font: %s", fontPaths[i]);
             break;
         }
     }
@@ -747,10 +745,10 @@ int NanoVGRenderContext::getFont(const std::string& fontName, FontWeight weight)
     if (font == -1) {
         font = nvgCreateFont(nvgContext_, fontKey.c_str(), nullptr);
         if (font == -1) {
-            std::cerr << "[NanoVGRenderContext] Failed to load any font!" << std::endl;
+            FLUX_LOG_ERROR("[NanoVGRenderContext] Failed to load any font!");
             font = 0;
         } else {
-            std::cout << "[NanoVGRenderContext] Using default font" << std::endl;
+            FLUX_LOG_INFO("[NanoVGRenderContext] Using default font");
         }
     }
 

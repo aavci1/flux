@@ -3,6 +3,7 @@
 #include <Flux/Core/View.hpp>
 #include <Flux/Core/LayoutTree.hpp>
 #include <Flux/Core/Types.hpp>
+#include <Flux/Core/Log.hpp>
 #include <Flux/Graphics/RenderContext.hpp>
 
 namespace flux {
@@ -98,8 +99,7 @@ private:
                     View mutableView = view;
                     handled = mutableView.handleMouseDown(localPoint.x, localPoint.y, event.mouseButton.button);
                     if (handled) {
-                        std::cout << "[Renderer] MouseDown handled by " << view.getTypeName() 
-                                  << " at (" << localPoint.x << ", " << localPoint.y << ")\n";
+                        FLUX_LOG_DEBUG("[Renderer] MouseDown handled by %s at (%f, %f)", view.getTypeName().c_str(), localPoint.x, localPoint.y);
                     }
                 }
                 break;
@@ -128,9 +128,7 @@ private:
                         event.mouseScroll.deltaY
                     );
                     if (handled) {
-                        std::cout << "[Renderer] MouseScroll handled by " << view.getTypeName() 
-                                  << " deltaX=" << event.mouseScroll.deltaX 
-                                  << " deltaY=" << event.mouseScroll.deltaY << "\n";
+                        FLUX_LOG_DEBUG("[Renderer] MouseScroll handled by %s deltaX=%f deltaY=%f", view.getTypeName().c_str(), event.mouseScroll.deltaX, event.mouseScroll.deltaY);
                     }
                 }
                 break;

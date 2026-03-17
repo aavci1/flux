@@ -12,7 +12,7 @@
 #include <Flux/Graphics/NanoVGRenderContext.hpp>
 #include <Flux/Platform/PlatformWindow.hpp>
 
-#include <iostream>
+#include <Flux/Core/Log.hpp>
 #include <algorithm>
 
 namespace flux {
@@ -50,7 +50,7 @@ struct Window::WindowImpl {
             cfg.fullscreen
         );
         
-        std::cout << "[WINDOW] Using " << factory->getPlatformName() << " + NanoVG backend\n";
+        FLUX_LOG_INFO("Using %s + NanoVG backend", factory->getPlatformName().c_str());
         
         // Create renderer
         renderer = std::make_unique<ImmediateModeRenderer>(platformWindow->renderContext());
@@ -59,8 +59,7 @@ struct Window::WindowImpl {
         shortcutManager = std::make_unique<ShortcutManager>();
         registerDefaultShortcuts();
         
-        std::cout << "[WINDOW] Created window \"" << cfg.title
-                  << "\" size: " << cfg.size.width << "x" << cfg.size.height << "\n";
+        FLUX_LOG_INFO("Created window \"%s\" size: %gx%g", cfg.title.c_str(), cfg.size.width, cfg.size.height);
     }
     
     void registerDefaultShortcuts() {
@@ -125,7 +124,7 @@ Window::~Window() {
     // Unregister from application
     Application::instance().unregisterWindow(this);
     
-    std::cout << "[WINDOW] Destroyed window \"" << impl_->config.title << "\"\n";
+    FLUX_LOG_INFO("Destroyed window \"%s\"", impl_->config.title.c_str());
 }
 
 // Window management
@@ -151,7 +150,7 @@ void Window::resize(const Size& newSize) {
         impl_->platformWindow->resize(newSize);
     }
     
-    std::cout << "[WINDOW] Resized to " << newSize.width << "x" << newSize.height << "\n";
+    FLUX_LOG_INFO("Resized to %gx%g", newSize.width, newSize.height);
     requestRedraw();
 }
 
@@ -162,7 +161,7 @@ void Window::setFullscreen(bool fullscreen) {
         impl_->platformWindow->setFullscreen(fullscreen);
     }
     
-    std::cout << "[WINDOW] Fullscreen: " << (fullscreen ? "ON" : "OFF") << "\n";
+    FLUX_LOG_INFO("Fullscreen: %s", fullscreen ? "ON" : "OFF");
 }
 
 void Window::setTitle(const std::string& title) {
@@ -172,7 +171,7 @@ void Window::setTitle(const std::string& title) {
         impl_->platformWindow->setTitle(title);
     }
     
-    std::cout << "[WINDOW] Title changed to \"" << title << "\"\n";
+    FLUX_LOG_INFO("Title changed to \"%s\"", title.c_str());
 }
 
 unsigned int Window::windowID() const {
@@ -237,7 +236,7 @@ void Window::handleKeyDown(int key) {
         }
     }
     
-    std::cout << "[INPUT] Key down queued for next frame\n";
+    FLUX_LOG_DEBUG("Key down queued for next frame");
 }
 
 void Window::handleKeyUp(int key) {
@@ -249,7 +248,7 @@ void Window::handleTextInput(const std::string& text) {
 }
 
 void Window::handleResize(const Size& newSize) {
-    std::cout << "[WINDOW] Internal handleResize called with " << newSize.width << "x" << newSize.height << "\n";
+    FLUX_LOG_DEBUG("Internal handleResize called with %gx%g", newSize.width, newSize.height);
     
     resize(newSize);
     
