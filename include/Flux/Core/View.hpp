@@ -73,7 +73,12 @@ std::string demangleTypeName(const char* mangledName);
 // Concept for what makes a View component
 // All methods are now optional - if not defined, default implementations will be used
 template<typename T>
-concept ViewComponent = (!std::is_same_v<std::remove_cvref_t<T>, View>);
+concept ViewComponent =
+    !std::is_same_v<std::remove_cvref_t<T>, View> &&
+    requires(const T& t) {
+        { t.visible } -> std::convertible_to<bool>;
+        { t.padding };
+    };
 
 // Virtual interface for type erasure (runtime polymorphism)
 class ViewInterface {
