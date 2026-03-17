@@ -20,6 +20,8 @@ std::unique_ptr<Element> Element::buildTree(const LayoutNode& node, size_t index
     element->typeName = node.view.getTypeName();
     element->structuralIndex = index;
     element->description = std::make_unique<View>(node.view);
+    element->cachedBounds = node.bounds;
+    element->lastConstraints = node.bounds;
 
     for (size_t i = 0; i < node.children.size(); ++i) {
         element->children.push_back(buildTree(node.children[i], i));
@@ -32,8 +34,17 @@ std::unique_ptr<Element> Element::buildTree(const LayoutNode& node, size_t index
 void Element::reconcile(const LayoutNode& newNode) {
     *description = newNode.view;
     typeName = newNode.view.getTypeName();
+
+    bool boundsChanged = (cachedBounds.x != newNode.bounds.x ||
+                          cachedBounds.y != newNode.bounds.y ||
+                          cachedBounds.width != newNode.bounds.width ||
+                          cachedBounds.height != newNode.bounds.height);
+
+    cachedBounds = newNode.bounds;
+    lastConstraints = newNode.bounds;
     bodyDirty = false;
-    layoutDirty = false;
+    layoutDirty = boundsChanged;
+
     reconcileChildren(newNode.children);
 }
 

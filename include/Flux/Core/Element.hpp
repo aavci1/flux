@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Flux/Core/Types.hpp>
 #include <memory>
 #include <vector>
 #include <string>
@@ -20,6 +21,13 @@ public:
     bool isMounted = false;
     bool bodyDirty = true;
     bool layoutDirty = true;
+
+    Rect cachedBounds = {0, 0, 0, 0};
+    Rect lastConstraints = {0, 0, 0, 0};
+
+    bool hasValidLayout() const {
+        return !layoutDirty && cachedBounds.width > 0;
+    }
 
     Element();
     ~Element();
