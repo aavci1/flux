@@ -1,7 +1,8 @@
+#pragma once
+
 #include <Flux/Platform/PlatformRenderer.hpp>
 #include <Flux/Graphics/RenderContext.hpp>
 #include <nanovg.h>
-#include <GLFW/glfw3.h>
 #include <iostream>
 #include <stdexcept>
 
@@ -20,7 +21,6 @@ public:
     NanoVGRenderer();
     ~NanoVGRenderer() override;
 
-    // PlatformRenderer interface
     bool initialize(int width, int height, float dpiScaleX = 1.0f, float dpiScaleY = 1.0f) override;
     void cleanup() override;
 
@@ -34,7 +34,6 @@ public:
 
     void swapBuffers() override;
 
-    // NanoVG-specific accessor
     NVGcontext* nvgContext() const { return nvgContext_; }
 };
 

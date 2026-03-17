@@ -85,15 +85,9 @@ void Application::processEvents() {
 }
 
 void Application::waitForNextFrame() {
-    // Target 60 FPS = 16.67ms per frame
-    static auto lastFrame = std::chrono::high_resolution_clock::now();
-    auto now = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> diff = now - lastFrame;
-
-    if (diff.count() < 16.67) {
-        std::this_thread::sleep_for(std::chrono::duration<double, std::milli>(16.67 - diff.count()));
-    }
-    lastFrame = std::chrono::high_resolution_clock::now();
+    // VSync in SDL handles frame pacing when rendering.
+    // This sleep just yields CPU when idle (no redraw needed).
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
 }
 
 } // namespace flux

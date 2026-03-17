@@ -49,10 +49,7 @@ int main(int argc, char* argv[]) {
                     .padding = EdgeInsets(0, 0, 10, 0)
                 },
 
-                Divider {
-                    .borderWidth = 2.0f,
-                    .borderColor = Colors::gray
-                },
+                Divider {},
 
                 // Main content with two columns
                 HStack {
@@ -485,10 +482,7 @@ int main(int argc, char* argv[]) {
                 },
 
                 // Footer
-                Divider {
-                    .thickness = 2.0f,
-                    .color = Colors::gray
-                },
+                Divider {},
 
                 HStack {
                     .justifyContent = JustifyContent::center,

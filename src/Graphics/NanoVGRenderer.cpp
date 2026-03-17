@@ -1,16 +1,14 @@
 #include <Flux/Platform/NanoVGRenderer.hpp>
 #include <Flux/Graphics/NanoVGRenderContext.hpp>
 
-// Platform-specific NanoVG backend
-#if defined(__linux__) && !defined(__ANDROID__)
-    #define NANOVG_GLES2_IMPLEMENTATION
+#ifdef __APPLE__
+#include <OpenGL/gl.h>
 #else
-    #define NANOVG_GL2_IMPLEMENTATION
+#include <GL/gl.h>
 #endif
 
 #include <nanovg_gl.h>
 #include <iostream>
-#include <stdexcept>
 
 namespace flux {
 
@@ -28,19 +26,13 @@ bool NanoVGRenderer::initialize(int width, int height, float dpiScaleX, float dp
     dpiScaleX_ = dpiScaleX;
     dpiScaleY_ = dpiScaleY;
 
-    // Initialize NanoVG with platform-specific backend
-#if defined(__linux__) && !defined(__ANDROID__)
-    nvgContext_ = nvgCreateGLES2(NVG_ANTIALIAS | NVG_STENCIL_STROKES);
-#else
     nvgContext_ = nvgCreateGL2(NVG_ANTIALIAS | NVG_STENCIL_STROKES);
-#endif
-    
+
     if (!nvgContext_) {
         std::cerr << "[NanoVGRenderer] Failed to initialize NanoVG\n";
         return false;
     }
 
-    // Create render context
     renderContext_ = std::make_unique<NanoVGRenderContext>(nvgContext_, width_, height_, dpiScaleX_, dpiScaleY_);
 
     std::cout << "[NanoVGRenderer] Initialized with size " << width_ << "x" << height_
@@ -53,11 +45,7 @@ void NanoVGRenderer::cleanup() {
     renderContext_.reset();
 
     if (nvgContext_) {
-#if defined(__linux__) && !defined(__ANDROID__)
-        nvgDeleteGLES2(nvgContext_);
-#else
         nvgDeleteGL2(nvgContext_);
-#endif
         nvgContext_ = nullptr;
     }
 }
@@ -98,7 +86,6 @@ void NanoVGRenderer::updateDPIScale(float dpiScaleX, float dpiScaleY) {
 }
 
 void NanoVGRenderer::swapBuffers() {
-    // Buffer swapping is handled by GLFW
 }
 
 } // namespace flux
