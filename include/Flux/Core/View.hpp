@@ -227,7 +227,10 @@ struct has_init {
 template<ViewComponent T>
 class ViewAdapter : public ViewInterface {
 private:
-    mutable T component;  // mutable because layout() needs to modify children
+    mutable T component;
+    mutable std::unique_ptr<View> cachedBody_;
+
+    const View& getCachedBody() const;
 
 public:
     ViewAdapter(const T& comp) : component(comp) {
@@ -456,9 +459,8 @@ inline LayoutNode ViewAdapter<T>::layout(RenderContext& ctx, const Rect& bounds)
         // Default layout: resolve body() and children, store results in LayoutNode
         LayoutNode node(View(component), bounds);
 
-        // Resolve body() if present and store result
         if constexpr (has_body<T>::value) {
-            node.resolvedBody = component.body();
+            node.resolvedBody = getCachedBody();
         }
 
         // Resolve children property if present and store result
@@ -500,20 +502,25 @@ inline LayoutNode ViewAdapter<T>::layout(RenderContext& ctx, const Rect& bounds)
 }
 
 template<ViewComponent T>
-inline View ViewAdapter<T>::body() const {
-    if constexpr (has_body<T>::value) {
-        return component.body();
-    } else {
-        // Default: no children (return empty view)
-        return View{};
+inline const View& ViewAdapter<T>::getCachedBody() const {
+    if (!cachedBody_) {
+        if constexpr (has_body<T>::value)
+            cachedBody_ = std::make_unique<View>(component.body());
+        else
+            cachedBody_ = std::make_unique<View>();
     }
+    return *cachedBody_;
+}
+
+template<ViewComponent T>
+inline View ViewAdapter<T>::body() const {
+    return getCachedBody();
 }
 
 template<ViewComponent T>
 inline void ViewAdapter<T>::render(RenderContext& ctx, const Rect& bounds) const {
     if constexpr (has_body<T>::value) {
-        // If view has body(), render the body recursively (no parent decorations)
-        View bodyView = component.body();
+        const View& bodyView = getCachedBody();
         if (bodyView.isValid()) {
             bodyView.render(ctx, bounds);
         }
@@ -532,7 +539,7 @@ inline Size ViewAdapter<T>::preferredSize(TextMeasurement& textMeasurer) const {
         return component.preferredSize(textMeasurer);
     } else if constexpr (has_body<T>::value) {
         // If component has body() but no preferredSize(), use preferredSize of body()
-        View bodyView = component.body();
+        const View& bodyView = getCachedBody();
         if (bodyView.isValid()) {
             return bodyView.preferredSize(textMeasurer);
         }
@@ -558,7 +565,7 @@ template<ViewComponent T>
 inline bool ViewAdapter<T>::isVisible() const {
     // If component has body(), inherit visible from body unless explicitly overridden
     if constexpr (has_body<T>::value) {
-        View bodyView = component.body();
+        const View& bodyView = getCachedBody();
         if (bodyView.isValid()) {
             // If component's visible is not the default (true), use component's value
             if (static_cast<bool>(component.visible) != true) {
@@ -575,7 +582,7 @@ template<ViewComponent T>
 inline bool ViewAdapter<T>::shouldClip() const {
     // If component has body(), inherit clip from body unless explicitly overridden
     if constexpr (has_body<T>::value) {
-        View bodyView = component.body();
+        const View& bodyView = getCachedBody();
         if (bodyView.isValid()) {
             // If component's clip is not the default (false), use component's value
             if (static_cast<bool>(component.clip) != false) {
@@ -592,7 +599,7 @@ template<ViewComponent T>
 inline float ViewAdapter<T>::getExpansionBias() const {
     // If component has body(), inherit expansionBias from body unless explicitly overridden
     if constexpr (has_body<T>::value) {
-        View bodyView = component.body();
+        const View& bodyView = getCachedBody();
         if (bodyView.isValid()) {
             // If component's expansionBias is not the default (0.0f), use component's value
             if (static_cast<float>(component.expansionBias) != 0.0f) {
@@ -609,7 +616,7 @@ template<ViewComponent T>
 inline float ViewAdapter<T>::getCompressionBias() const {
     // If component has body(), inherit compressionBias from body unless explicitly overridden
     if constexpr (has_body<T>::value) {
-        View bodyView = component.body();
+        const View& bodyView = getCachedBody();
         if (bodyView.isValid()) {
             // If component's compressionBias is not the default (1.0f), use component's value
             if (static_cast<float>(component.compressionBias) != 1.0f) {
@@ -626,7 +633,7 @@ template<ViewComponent T>
 inline std::optional<float> ViewAdapter<T>::getMinWidth() const {
     // If component has body(), inherit minWidth from body unless explicitly overridden
     if constexpr (has_body<T>::value) {
-        View bodyView = component.body();
+        const View& bodyView = getCachedBody();
         if (bodyView.isValid()) {
             // If component's minWidth is set, use it
             auto minWidthVal = component.minWidth.get();
@@ -643,7 +650,7 @@ inline std::optional<float> ViewAdapter<T>::getMinWidth() const {
 template<ViewComponent T>
 inline std::optional<float> ViewAdapter<T>::getMaxWidth() const {
     if constexpr (has_body<T>::value) {
-        View bodyView = component.body();
+        const View& bodyView = getCachedBody();
         if (bodyView.isValid()) {
             auto maxWidthVal = component.maxWidth.get();
             if (maxWidthVal) {
@@ -658,7 +665,7 @@ inline std::optional<float> ViewAdapter<T>::getMaxWidth() const {
 template<ViewComponent T>
 inline std::optional<float> ViewAdapter<T>::getMinHeight() const {
     if constexpr (has_body<T>::value) {
-        View bodyView = component.body();
+        const View& bodyView = getCachedBody();
         if (bodyView.isValid()) {
             auto minHeightVal = component.minHeight.get();
             if (minHeightVal) {
@@ -673,7 +680,7 @@ inline std::optional<float> ViewAdapter<T>::getMinHeight() const {
 template<ViewComponent T>
 inline std::optional<float> ViewAdapter<T>::getMaxHeight() const {
     if constexpr (has_body<T>::value) {
-        View bodyView = component.body();
+        const View& bodyView = getCachedBody();
         if (bodyView.isValid()) {
             auto maxHeightVal = component.maxHeight.get();
             if (maxHeightVal) {
@@ -689,7 +696,7 @@ template<ViewComponent T>
 inline int ViewAdapter<T>::getColspan() const {
     // If component has body(), inherit colspan from body unless explicitly overridden
     if constexpr (has_body<T>::value) {
-        View bodyView = component.body();
+        const View& bodyView = getCachedBody();
         if (bodyView.isValid()) {
             // If component's colspan is not the default (1), use component's value
             if (static_cast<int>(component.colspan) != 1) {
@@ -706,7 +713,7 @@ template<ViewComponent T>
 inline int ViewAdapter<T>::getRowspan() const {
     // If component has body(), inherit rowspan from body unless explicitly overridden
     if constexpr (has_body<T>::value) {
-        View bodyView = component.body();
+        const View& bodyView = getCachedBody();
         if (bodyView.isValid()) {
             // If component's rowspan is not the default (1), use component's value
             if (static_cast<int>(component.rowspan) != 1) {
