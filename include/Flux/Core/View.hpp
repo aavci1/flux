@@ -100,7 +100,6 @@ public:
 
     virtual Size preferredSize(TextMeasurement& textMeasurer) const = 0;
 
-    virtual std::unique_ptr<ViewInterface> clone() const = 0;
 
     // Access to common properties (all components have these via FLUX_VIEW_PROPERTIES macro)
     virtual bool isVisible() const = 0;
@@ -251,10 +250,6 @@ public:
     bool hasChildrenProperty() const override;
     std::vector<View> getChildren() const override;
 
-    std::unique_ptr<ViewInterface> clone() const override {
-        return std::make_unique<ViewAdapter<T>>(component);
-    }
-
     bool isVisible() const override;
     bool shouldClip() const override;
     float getExpansionBias() const override;
@@ -295,32 +290,20 @@ public:
 // Type-erased view container that supports any component type
 class View {
 private:
-    std::unique_ptr<ViewInterface> component_;
+    std::shared_ptr<ViewInterface> component_;
 
 public:
-    // Default constructor
     View() : component_(nullptr) {}
 
-    // Constructor from any component type that satisfies ViewComponent
     template<typename T>
     requires ViewComponent<std::remove_cvref_t<T>>
     View(T&& component)
-        : component_(std::make_unique<ViewAdapter<std::remove_cvref_t<T>>>(std::forward<T>(component))) {}
+        : component_(std::make_shared<ViewAdapter<std::remove_cvref_t<T>>>(std::forward<T>(component))) {}
 
-    // Move constructor and assignment
+    View(const View&) = default;
+    View& operator=(const View&) = default;
     View(View&&) = default;
     View& operator=(View&&) = default;
-
-    // Copy constructor and assignment
-    View(const View& other)
-        : component_(other.component_ ? other.component_->clone() : nullptr) {}
-
-    View& operator=(const View& other) {
-        if (this != &other) {
-            component_ = other.component_ ? other.component_->clone() : nullptr;
-        }
-        return *this;
-    }
 
     // Delegate methods to wrapped component
     LayoutNode layout(RenderContext& ctx, const Rect& bounds) const;
