@@ -52,9 +52,12 @@ SDLWindow::SDLWindow(const std::string& title, const Size& size, bool resizable,
     }
 
     windowMap_[SDL_GetWindowID(window_)] = this;
+
+    SDL_AddEventWatch(liveResizeWatcher, this);
 }
 
 SDLWindow::~SDLWindow() {
+    SDL_RemoveEventWatch(liveResizeWatcher, this);
     if (window_) {
         windowMap_.erase(SDL_GetWindowID(window_));
     }
@@ -375,6 +378,18 @@ int SDLWindow::sdlButtonToFluxButton(Uint8 button) {
         case SDL_BUTTON_MIDDLE: return 2;
         default: return button;
     }
+}
+
+bool SDLCALL SDLWindow::liveResizeWatcher(void* userdata, SDL_Event* event) {
+    if (event->type == SDL_EVENT_WINDOW_RESIZED) {
+        auto* self = static_cast<SDLWindow*>(userdata);
+        if (event->window.windowID == SDL_GetWindowID(self->window_) && self->fluxWindow_) {
+            self->size_ = {static_cast<float>(event->window.data1),
+                           static_cast<float>(event->window.data2)};
+            self->fluxWindow_->handleResize(self->size_);
+        }
+    }
+    return true;
 }
 
 SDL_SystemCursor SDLWindow::fluxCursorToSDL(CursorType cursor) {

@@ -59,6 +59,8 @@ private:
     static KeyModifier sdlModToFluxMod(SDL_Keymod mod);
     static int sdlButtonToFluxButton(Uint8 button);
     static SDL_SystemCursor fluxCursorToSDL(CursorType cursor);
+
+    static bool SDLCALL liveResizeWatcher(void* userdata, SDL_Event* event);
 };
 
 } // namespace flux
