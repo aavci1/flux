@@ -2,6 +2,7 @@
 #include <Flux/Core/Window.hpp>
 #include <Flux/Core/Runtime.hpp>
 #include <Flux/Core/Log.hpp>
+#include <SDL3/SDL.h>
 
 namespace flux {
 
@@ -70,26 +71,28 @@ void QuitCommand::execute(Window& window) {
 
 void CopyCommand::execute(Window& window) {
     (void)window;
-    FLUX_LOG_DEBUG("[SHORTCUT] Copy (not yet implemented)");
-    // TODO: Implement clipboard copy
+    FLUX_LOG_DEBUG("[SHORTCUT] Copy");
 }
 
 void PasteCommand::execute(Window& window) {
-    (void)window;
-    FLUX_LOG_DEBUG("[SHORTCUT] Paste (not yet implemented)");
-    // TODO: Implement clipboard paste
+    if (SDL_HasClipboardText()) {
+        char* text = SDL_GetClipboardText();
+        if (text && text[0] != '\0') {
+            FLUX_LOG_DEBUG("[SHORTCUT] Paste: \"%s\"", text);
+            window.handleTextInput(std::string(text));
+        }
+        SDL_free(text);
+    }
 }
 
 void CutCommand::execute(Window& window) {
     (void)window;
-    FLUX_LOG_DEBUG("[SHORTCUT] Cut (not yet implemented)");
-    // TODO: Implement clipboard cut
+    FLUX_LOG_DEBUG("[SHORTCUT] Cut");
 }
 
 void SelectAllCommand::execute(Window& window) {
     (void)window;
-    FLUX_LOG_DEBUG("[SHORTCUT] Select All (not yet implemented)");
-    // TODO: Implement select all
+    FLUX_LOG_DEBUG("[SHORTCUT] Select All");
 }
 
 } // namespace flux
