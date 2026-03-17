@@ -223,6 +223,7 @@ if(BUILD_TESTS)
         tests/test_types.cpp
         tests/test_property.cpp
         tests/test_element.cpp
+        tests/test_layout.cpp
     )
     target_link_libraries(flux_tests PRIVATE flux Catch2::Catch2WithMain)
 

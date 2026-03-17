@@ -4,6 +4,7 @@
 #include <Flux/Core/ViewHelpers.hpp>
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/Property.hpp>
+#include <Flux/Layout/LayoutEngine.hpp>
 #include <algorithm>
 #include <numeric>
 #include <vector>
@@ -21,74 +22,32 @@ struct Grid {
     Property<float> spacing = 0;
 
     LayoutNode layout(RenderContext& ctx, const Rect& bounds) {
-        EdgeInsets paddingVal = padding;
-        float spacingVal = spacing;
-        float availableWidth = bounds.width - paddingVal.horizontal() - spacingVal * (columns - 1);
-        float availableHeight = bounds.height - paddingVal.vertical() - spacingVal * (rows - 1);
-
         std::vector<View> childrenVec = children;
-        
-        int visibleCount = childrenVec.size();
-        if (visibleCount == 0) {
+
+        if (childrenVec.empty()) {
             return LayoutNode(View(*this), bounds);
         }
 
-        float cellWidth = availableWidth / columns;
-        float cellHeight = availableHeight / rows;
-        
-        // Track which grid cells are occupied
-        std::vector<std::vector<bool>> occupied(rows, std::vector<bool>(columns, false));
-        
-        std::vector<LayoutNode> childLayouts;
-        
+        std::vector<GridChildInput> inputs;
+        inputs.reserve(childrenVec.size());
         for (const auto& childView : childrenVec) {
-            if (!childView->isVisible()) continue;
-            
-            // Get span properties from the child view
-            int colspan = childView->getColspan();
-            int rowspan = childView->getRowspan();
-            
-            // Find the first available position
-            int startRow = -1, startCol = -1;
-            for (int row = 0; row <= rows - rowspan; row++) {
-                for (int col = 0; col <= columns - colspan; col++) {
-                    bool canPlace = true;
-                    // Check if all required cells are available
-                    for (int r = row; r < row + rowspan && canPlace; r++) {
-                        for (int c = col; c < col + colspan && canPlace; c++) {
-                            if (occupied[r][c]) {
-                                canPlace = false;
-                            }
-                        }
-                    }
-                    if (canPlace) {
-                        startRow = row;
-                        startCol = col;
-                        break;
-                    }
-                }
-                if (startRow != -1) break;
-            }
-            
-            // If we couldn't find a place, skip this item
-            if (startRow == -1) continue;
-            
-            // Mark cells as occupied
-            for (int r = startRow; r < startRow + rowspan; r++) {
-                for (int c = startCol; c < startCol + colspan; c++) {
-                    occupied[r][c] = true;
-                }
-            }
-            
-            // Calculate position and size
-            float x = bounds.x + startCol * (cellWidth + spacing) + paddingVal.left;
-            float y = bounds.y + startRow * (cellHeight + spacing) + paddingVal.top;
-            float width = colspan * cellWidth + (colspan - 1) * spacing;
-            float height = rowspan * cellHeight + (rowspan - 1) * spacing;
-            
-            Rect childRect = {x, y, width, height};
-            LayoutNode childLayout = childView.layout(ctx, childRect);
-            childLayouts.push_back(childLayout);
+            inputs.push_back({
+                childView->getColspan(),
+                childView->getRowspan(),
+                childView->isVisible()
+            });
+        }
+
+        EdgeInsets paddingVal = padding;
+        std::vector<Rect> rects = LayoutEngine::computeGrid(
+            inputs, columns, rows, spacing, paddingVal, bounds
+        );
+
+        std::vector<LayoutNode> childLayouts;
+        for (size_t i = 0; i < childrenVec.size(); ++i) {
+            if (!childrenVec[i]->isVisible()) continue;
+            if (rects[i].width <= 0 && rects[i].height <= 0) continue;
+            childLayouts.push_back(childrenVec[i].layout(ctx, rects[i]));
         }
 
         return LayoutNode(View(*this), bounds, std::move(childLayouts));
