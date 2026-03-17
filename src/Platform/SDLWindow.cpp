@@ -205,12 +205,11 @@ void SDLWindow::handleSDLEvent(const SDL_Event& event) {
             shouldClose_ = true;
             break;
 
-        case SDL_EVENT_WINDOW_RESIZED: {
-            size_ = {static_cast<float>(event.window.data1),
-                     static_cast<float>(event.window.data2)};
-            fluxWindow_->handleResize(size_);
+        case SDL_EVENT_WINDOW_RESIZED:
+            // Handled by liveResizeWatcher for immediate response during
+            // modal resize loops. Processing stale queued events here would
+            // cause renders at old sizes, producing visible stuttering.
             break;
-        }
 
         case SDL_EVENT_WINDOW_EXPOSED:
             fluxWindow_->requestRedraw();

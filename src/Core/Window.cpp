@@ -239,13 +239,14 @@ void Window::handleTextInput(const std::string& text) {
 void Window::handleResize(const Size& newSize) {
     FLUX_LOG_DEBUG("Internal handleResize called with %gx%g", newSize.width, newSize.height);
     
-    resize(newSize);
+    impl_->currentSize = newSize;
     
     if (impl_->platformWindow) {
-        impl_->platformWindow->renderContext()->resize(
-            static_cast<int>(newSize.width),
-            static_cast<int>(newSize.height)
-        );
+        impl_->platformWindow->resize(newSize);
+    }
+    
+    if (impl_->renderer) {
+        impl_->renderer->invalidateLayoutCache();
     }
     
     impl_->notifyObservers(
