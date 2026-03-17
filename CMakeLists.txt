@@ -207,6 +207,10 @@ if(BUILD_EXAMPLES)
 
     add_executable(passwords examples/passwords/main.cpp)
     target_link_libraries(passwords PRIVATE flux)
+
+    add_executable(llm_studio examples/llm-studio/main.cpp)
+    target_include_directories(llm_studio PRIVATE ${CMAKE_SOURCE_DIR}/examples/llm-studio)
+    target_link_libraries(llm_studio PRIVATE flux)
 endif()
 
 # --- Tests ---
