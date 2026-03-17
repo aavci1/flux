@@ -203,18 +203,54 @@ void Renderer::handleEvent(const struct Event& event, const Rect& windowBounds) 
         layoutCacheValid_ = true;
     }
     
-    // For mouse move events, collect and set the cursor
-    if (event.type == Event::MouseMove && window_) {
-        // Traverse the view hierarchy once, collecting the cursor
-        // Start with Default as the root cursor
-        std::optional<CursorType> cursor = collectCursor(cachedLayoutTree_, eventPoint, CursorType::Default);
-        
-        // Set the resolved cursor (default to Default if no view specified)
-        window_->setCursor(cursor.value_or(CursorType::Default));
+    // For mouse move events, collect and set the cursor, and update hover state
+    if (event.type == Event::MouseMove) {
+        updateHoverState(eventPoint);
+        if (window_) {
+            std::optional<CursorType> cursor = collectCursor(cachedLayoutTree_, eventPoint, CursorType::Default);
+            window_->setCursor(cursor.value_or(CursorType::Default));
+        }
     }
     
     // Dispatch other events
     findAndDispatchEvent(cachedLayoutTree_, event, eventPoint);
+}
+
+void Renderer::collectHoverPath(const LayoutNode& node, const Point& point, std::vector<View>& path) {
+    if (!node.bounds.contains(point)) return;
+    path.push_back(node.view);
+    for (auto it = node.children.rbegin(); it != node.children.rend(); ++it) {
+        if (it->bounds.contains(point)) {
+            collectHoverPath(*it, point, path);
+            return;
+        }
+    }
+}
+
+void Renderer::updateHoverState(const Point& point) {
+    if (!layoutCacheValid_) return;
+
+    std::vector<View> newPath;
+    collectHoverPath(cachedLayoutTree_, point, newPath);
+
+    size_t commonLen = 0;
+    size_t minLen = std::min(hoveredViews_.size(), newPath.size());
+    while (commonLen < minLen &&
+           hoveredViews_[commonLen].getTypeName() == newPath[commonLen].getTypeName()) {
+        ++commonLen;
+    }
+
+    for (size_t i = hoveredViews_.size(); i > commonLen; --i) {
+        View v = hoveredViews_[i - 1];
+        v.handleMouseLeave();
+    }
+
+    for (size_t i = commonLen; i < newPath.size(); ++i) {
+        View v = newPath[i];
+        v.handleMouseEnter();
+    }
+
+    hoveredViews_ = std::move(newPath);
 }
 
 } // namespace flux

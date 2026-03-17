@@ -118,6 +118,8 @@ public:
     virtual bool handleMouseDown(float x, float y, int button) { (void)x; (void)y; (void)button; return false; }
     virtual bool handleMouseUp(float x, float y, int button) { (void)x; (void)y; (void)button; return false; }
     virtual bool handleMouseMove(float x, float y) { (void)x; (void)y; return false; }
+    virtual void handleMouseEnter() {}
+    virtual void handleMouseLeave() {}
     virtual bool handleMouseScroll(float x, float y, float deltaX, float deltaY) { (void)x; (void)y; (void)deltaX; (void)deltaY; return false; }
     virtual bool isInteractive() const { return false; }
     
@@ -302,6 +304,8 @@ public:
     bool handleMouseDown(float x, float y, int button) override;
     bool handleMouseUp(float x, float y, int button) override;
     bool handleMouseMove(float x, float y) override;
+    void handleMouseEnter() override;
+    void handleMouseLeave() override;
     bool handleMouseScroll(float x, float y, float deltaX, float deltaY) override;
     bool isInteractive() const override;
     
@@ -410,6 +414,14 @@ public:
 
     bool handleMouseMove(float x, float y) {
         return component_ ? component_->handleMouseMove(x, y) : false;
+    }
+
+    void handleMouseEnter() {
+        if (component_) component_->handleMouseEnter();
+    }
+
+    void handleMouseLeave() {
+        if (component_) component_->handleMouseLeave();
     }
 
     bool handleMouseScroll(float x, float y, float deltaX, float deltaY) {
@@ -807,6 +819,20 @@ inline bool ViewAdapter<T>::handleMouseMove(float x, float y) {
         if (component.onMouseMove) { component.onMouseMove(x, y); return true; }
     }
     return false;
+}
+
+template<ViewComponent T>
+inline void ViewAdapter<T>::handleMouseEnter() {
+    if constexpr (has_onMouseEnter<T>::value) {
+        if (component.onMouseEnter) component.onMouseEnter();
+    }
+}
+
+template<ViewComponent T>
+inline void ViewAdapter<T>::handleMouseLeave() {
+    if constexpr (has_onMouseLeave<T>::value) {
+        if (component.onMouseLeave) component.onMouseLeave();
+    }
 }
 
 template<ViewComponent T>

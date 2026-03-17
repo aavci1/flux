@@ -61,6 +61,9 @@ private:
     // Persistent element tree for identity and lifecycle
     std::unique_ptr<Element> rootElement_;
 
+    // Hover tracking: list of views currently under the pointer (root to deepest)
+    std::vector<View> hoveredViews_;
+
 public:
     Renderer(RenderContext* ctx)
         : renderContext_(ctx), rootView_(), window_(nullptr) {}
@@ -91,6 +94,10 @@ private:
     
     // Collect cursor by traversing view hierarchy
     std::optional<CursorType> collectCursor(const LayoutNode& node, const Point& point, std::optional<CursorType> inheritedCursor);
+
+    // Hover tracking
+    void collectHoverPath(const LayoutNode& node, const Point& point, std::vector<View>& path);
+    void updateHoverState(const Point& point);
 
     // Dispatch event to a specific view
     bool dispatchEventToView(const View& view, const Event& event, const Point& localPoint) {
