@@ -11,31 +11,15 @@
 #include <optional>
 #include <concepts>
 #include <typeinfo>
-#include <iostream>
 #include <string>
 #include <optional>
-#include <cxxabi.h>
 
 namespace flux {
 
-// Forward declarations
 class View;
 struct LayoutNode;
 
-// Helper function to demangle C++ type names
-inline std::string demangleTypeName(const char* mangledName) {
-    int status = 0;
-    char* demangled = abi::__cxa_demangle(mangledName, nullptr, nullptr, &status);
-
-    if (status == 0 && demangled) {
-        std::string result(demangled);
-        free(demangled);
-        return result;
-    }
-
-    // If demangling fails, return the mangled name
-    return std::string(mangledName);
-}
+std::string demangleTypeName(const char* mangledName);
 
 
 

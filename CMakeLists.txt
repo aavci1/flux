@@ -63,6 +63,7 @@ set(FLUX_SOURCES
     src/Core/FocusState.cpp
     src/Core/ShortcutManager.cpp
     src/Core/PlatformWindowFactory.cpp
+    src/Core/Demangle.cpp
 
     # Graphics
     src/Graphics/Path.cpp
