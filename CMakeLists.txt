@@ -207,6 +207,28 @@ if(BUILD_EXAMPLES)
     target_link_libraries(passwords PRIVATE flux)
 endif()
 
+# --- Tests ---
+option(BUILD_TESTS "Build tests" OFF)
+if(BUILD_TESTS)
+    include(FetchContent)
+    FetchContent_Declare(Catch2
+        GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+        GIT_TAG v3.7.1
+    )
+    FetchContent_MakeAvailable(Catch2)
+    enable_testing()
+
+    add_executable(flux_tests
+        tests/test_types.cpp
+        tests/test_property.cpp
+    )
+    target_link_libraries(flux_tests PRIVATE flux Catch2::Catch2WithMain)
+
+    include(CTest)
+    include(Catch)
+    catch_discover_tests(flux_tests)
+endif()
+
 # Installation rules
 install(TARGETS flux
     LIBRARY DESTINATION lib
