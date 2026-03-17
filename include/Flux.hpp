@@ -8,7 +8,7 @@
 #include <Flux/Core/View.hpp>
 #include <Flux/Core/ViewHelpers.hpp>
 #include <Flux/Core/Utilities.hpp>
-#include <Flux/Core/Application.hpp>
+#include <Flux/Core/Runtime.hpp>
 #include <Flux/Core/Window.hpp>
 
 #include <Flux/Platform/PlatformWindow.hpp>

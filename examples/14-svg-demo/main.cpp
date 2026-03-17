@@ -41,9 +41,9 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    Application app(argc, argv);
+    Runtime runtime(argc, argv);
 
-    Window window({
+    auto& window = runtime.createWindow({
         .size = {800, 600},
         .title = "SVG Demo - " + filename
     });
@@ -77,5 +77,5 @@ int main(int argc, char* argv[]) {
     std::cout << "SVG Demo started. Loading file: " << filename << std::endl;
     std::cout << "Press Ctrl+C to exit." << std::endl;
 
-    return app.exec();
+    return runtime.run();
 }

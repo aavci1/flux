@@ -1,6 +1,6 @@
 #include <Flux/Core/FocusState.hpp>
 #include <Flux/Core/LayoutTree.hpp>
-#include <Flux/Core/Application.hpp>
+#include <Flux/Core/Property.hpp>
 #include <Flux/Core/Log.hpp>
 #include <sstream>
 #include <algorithm>
@@ -59,7 +59,7 @@ void FocusState::focusNext() {
     FLUX_LOG_DEBUG("[FOCUS] Moving focus: index %d -> %d (key: '%s', total: %zu views)",
                    currentIndex, nextIndex, focusedKey_.c_str(), focusableViews_.size());
 
-    Application::instance().requestRedraw();
+    requestApplicationRedraw();
 }
 
 void FocusState::focusPrevious() {
@@ -85,7 +85,7 @@ void FocusState::focusPrevious() {
     FLUX_LOG_DEBUG("[FOCUS] Moving focus: index %d -> %d (key: '%s', total: %zu views)",
                    currentIndex, prevIndex, focusedKey_.c_str(), focusableViews_.size());
 
-    Application::instance().requestRedraw();
+    requestApplicationRedraw();
 }
 
 View* FocusState::getFocusedView() const {

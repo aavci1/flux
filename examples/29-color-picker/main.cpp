@@ -172,12 +172,12 @@ struct ColorCard {
 };
 
 int main(int argc, char* argv[]) {
-    Application app(argc, argv);
+    Runtime runtime(argc, argv);
 
     // State to track last copied color
     Property<std::string> lastCopied = std::string("");
 
-    Window window({
+    auto& window = runtime.createWindow({
         .size = {1200, 900},
         .title = "Color Picker - Click a color to copy its hex code"
     });
@@ -202,6 +202,6 @@ int main(int argc, char* argv[]) {
         }
     );
 
-    return app.exec();
+    return runtime.run();
 }
 

@@ -272,9 +272,9 @@ void timeout(std::function<void()> func, int interval) {
 }
 
 int main(int argc, char* argv[]) {
-    Application app(argc, argv);
+    Runtime runtime(argc, argv);
 
-    Window window({
+    auto& window = runtime.createWindow({
         .size = {1600, 1200},
         .title = "Automotive Dashboard"
     });
@@ -544,5 +544,5 @@ int main(int argc, char* argv[]) {
         }
     }, 1000);
 
-    return app.exec();
+    return runtime.run();
 }

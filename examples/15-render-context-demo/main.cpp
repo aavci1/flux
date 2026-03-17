@@ -311,11 +311,11 @@ struct RenderContextDemo {
 };
 
 int main(int argc, char* argv[]) {
-    Application app(argc, argv);
+    Runtime runtime(argc, argv);
 
     Property animationTime = 0.0f;
 
-    Window window({
+    auto& window = runtime.createWindow({
         .size = {800, 600},
         .title = "RenderContext Demo"
     });
@@ -328,5 +328,5 @@ int main(int argc, char* argv[]) {
         animationTime += 0.016f;
     }, 16);
 
-    return app.exec();
+    return runtime.run();
 }

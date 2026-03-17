@@ -5,7 +5,7 @@
 using namespace flux;
 
 int main(int argc, char* argv[]) {
-    Application app(argc, argv);
+    Runtime runtime(argc, argv);
 
     // State management
     Property<bool> checkbox1 = false;
@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
     // Auto-increment progress for demo
     Property<bool> animateProgress = true;
 
-    Window window({
+    auto& window = runtime.createWindow({
         .size = {1400, 900},
         .title = "Flux Component Showcase"
     });
@@ -504,6 +504,6 @@ int main(int argc, char* argv[]) {
         }
     );
 
-    return app.exec();
+    return runtime.run();
 }
 

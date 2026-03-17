@@ -147,7 +147,7 @@ struct PasswordDetails {
 };
 
 int main(int argc, char* argv[]) {
-    Application app(argc, argv);
+    Runtime runtime(argc, argv);
 
     Property<std::optional<PasswordItem>> selectedItem = std::nullopt;
     Property<std::vector<PasswordItem>> passwords = {
@@ -246,7 +246,7 @@ int main(int argc, char* argv[]) {
         );
     }
 
-    Window window({
+    auto& window = runtime.createWindow({
         .size = {1200, 900},
         .title = "Passwords"
     });
@@ -313,5 +313,5 @@ int main(int argc, char* argv[]) {
         }
     );
 
-    return app.exec();
+    return runtime.run();
 }

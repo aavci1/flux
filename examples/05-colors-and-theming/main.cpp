@@ -2,9 +2,9 @@
 using namespace flux;
 
 int main(int argc, char* argv[]) {
-    Application app(argc, argv);
+    Runtime runtime(argc, argv);
 
-    Window window({
+    auto& window = runtime.createWindow({
         .size = {1200, 1600},
         .title = "Colors and Theming - Flux Demo"
     });
@@ -425,5 +425,5 @@ int main(int argc, char* argv[]) {
         }
     );
 
-    return app.exec();
+    return runtime.run();
 }

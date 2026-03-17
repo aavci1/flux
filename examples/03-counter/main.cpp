@@ -3,11 +3,11 @@
 using namespace flux;
 
 int main(int argc, char* argv[]) {
-    Application app(argc, argv);
+    Runtime runtime(argc, argv);
 
     Property counter = 0;
 
-    Window window({
+    auto& window = runtime.createWindow({
         .size = {400, 300},
         .title = "Counter"
     });
@@ -51,5 +51,5 @@ int main(int argc, char* argv[]) {
         }
     );
 
-    return app.exec();
+    return runtime.run();
 }

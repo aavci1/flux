@@ -1,0 +1,57 @@
+#pragma once
+
+#include <Flux/Core/WindowEventObserver.hpp>
+#include <atomic>
+#include <vector>
+#include <memory>
+#include <chrono>
+#include <thread>
+
+namespace flux {
+
+class Window;
+struct WindowConfig;
+
+class Runtime : public WindowEventObserver {
+public:
+    explicit Runtime(int argc = 0, char** argv = nullptr);
+    ~Runtime();
+
+    Runtime(const Runtime&) = delete;
+    Runtime& operator=(const Runtime&) = delete;
+    Runtime(Runtime&&) = delete;
+    Runtime& operator=(Runtime&&) = delete;
+
+    Window& createWindow(const WindowConfig& config);
+
+    int run();
+    int exec() { return run(); }
+    void quit() { running_ = false; }
+
+    static Runtime& instance() {
+        if (!current_) throw std::runtime_error("Runtime not initialized");
+        return *current_;
+    }
+
+    void requestRedraw() {
+        needsRedraw_.store(true, std::memory_order_relaxed);
+    }
+
+    // WindowEventObserver
+    void onRedrawRequested(Window* window) override;
+    void onWindowClosing(Window* window) override;
+
+private:
+    void processEvents();
+
+    std::atomic<bool> needsRedraw_{false};
+    bool running_{true};
+    std::vector<std::unique_ptr<Window>> windows_;
+
+    static Runtime* current_;
+    friend void requestApplicationRedraw();
+};
+
+using Application = Runtime;
+
+} // namespace flux

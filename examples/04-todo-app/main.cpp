@@ -183,7 +183,7 @@ struct TodoItem {
 };
 
 int main(int argc, char* argv[]) {
-    Application app(argc, argv);
+    Runtime runtime(argc, argv);
 
     // Sample tasks matching the design
     Property<std::vector<TodoItem>> todos = std::vector<TodoItem>{
@@ -194,7 +194,7 @@ int main(int argc, char* argv[]) {
         {5, "Meeting with Investor", "10.00 AM - 12.00 AM", "Jul", 17, -1, TaskStatus::ongoing}
     };
 
-    Window window({
+    auto& window = runtime.createWindow({
         .size = {600, 1200},
         .title = "Task Manager"
     });
@@ -361,5 +361,5 @@ int main(int argc, char* argv[]) {
         }
     );
 
-    return app.exec();
+    return runtime.run();
 }

@@ -211,9 +211,9 @@ struct ActionButton {
 };
 
 int main(int argc, char* argv[]) {
-    Application app(argc, argv);
+    Runtime runtime(argc, argv);
 
-    Window window({
+    auto& window = runtime.createWindow({
         .size = {1920, 1080},
         .title = "WhiteSur Login Manager"
     });
@@ -315,5 +315,5 @@ int main(int argc, char* argv[]) {
 
     std::cout << "WhiteSur Login Manager started. Press Ctrl+C to exit." << std::endl;
 
-    return app.exec();
+    return runtime.run();
 }

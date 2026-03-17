@@ -3,9 +3,9 @@
 using namespace flux;
 
 int main(int argc, char* argv[]) {
-    Application app(argc, argv);
+    Runtime runtime(argc, argv);
 
-    Window window({
+    auto& window = runtime.createWindow({
         .size = {800, 600},
         .title = "Flux Spacer Grid Demo - Colspan & Rowspan"
     });
@@ -47,5 +47,5 @@ int main(int argc, char* argv[]) {
         }
     );
 
-    return app.exec();
+    return runtime.run();
 }

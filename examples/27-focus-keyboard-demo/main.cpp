@@ -2,10 +2,10 @@
 using namespace flux;
 
 int main(int argc, char* argv[]) {
-    Application app(argc, argv);
+    Runtime runtime(argc, argv);
 
     // Create window
-    Window window({
+    auto& window = runtime.createWindow({
         .size = {800, 600},
         .title = "Focus & Keyboard Demo"
     });
@@ -136,6 +136,6 @@ int main(int argc, char* argv[]) {
     std::cout << "- Global shortcuts are handled\n";
     std::cout << "- Tab navigation is implemented\n\n";
 
-    return app.exec();
+    return runtime.run();
 }
 

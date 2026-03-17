@@ -4,7 +4,7 @@
 using namespace flux;
 
 int main(int argc, char* argv[]) {
-    Application app(argc, argv);
+    Runtime runtime(argc, argv);
 
     Property<bool> checkbox1 = false;
     Property<bool> checkbox2 = false;
@@ -12,7 +12,7 @@ int main(int argc, char* argv[]) {
     Property<bool> toggle2 = false;
     Property<std::string> radio1 = "left";
 
-    Window window({
+    auto& window = runtime.createWindow({
         .size = {900, 600},
         .title = "Label Position Demo"
     });
@@ -224,6 +224,6 @@ int main(int argc, char* argv[]) {
     //     }
     // );
 
-    return app.exec();
+    return runtime.run();
 }
 

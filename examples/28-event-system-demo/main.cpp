@@ -4,7 +4,7 @@
 using namespace flux;
 
 int main(int argc, char* argv[]) {
-    Application app(argc, argv);
+    Runtime runtime(argc, argv);
 
     // State for various event tracking
     Property<std::string> mouseEventLog = "No mouse events yet";
@@ -14,7 +14,7 @@ int main(int argc, char* argv[]) {
     Property<std::string> textInput = "";
     Property<std::string> mousePosition = "0, 0";
 
-    Window window({
+    auto& window = runtime.createWindow({
         .size = {900, 700},
         .title = "Flux Event System Demo"
     });
@@ -321,6 +321,6 @@ int main(int argc, char* argv[]) {
         }
     );
 
-    return app.exec();
+    return runtime.run();
 }
 

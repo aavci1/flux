@@ -13,7 +13,7 @@ std::vector<U> map(const std::vector<T>& arr, F fn) {
 }
 
 int main(int argc, char* argv[]) {
-    Application app(argc, argv);
+    Runtime runtime(argc, argv);
 
     // Cursor types with names and colors
     struct CursorInfo {
@@ -42,7 +42,7 @@ int main(int argc, char* argv[]) {
         {CursorType::ZoomOut, "Zoom Out", 0xDCEDC8, 0x33691E},
     };
 
-    Window window({
+    auto& window = runtime.createWindow({
         .size = {700, 600},
         .title = "Cursor Demo"
     });
@@ -95,5 +95,5 @@ int main(int argc, char* argv[]) {
         }
     );
 
-    return app.exec();
+    return runtime.run();
 }

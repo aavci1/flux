@@ -1,5 +1,4 @@
 #include <Flux/Core/Window.hpp>
-#include <Flux/Core/Application.hpp>
 #include <Flux/Core/LayoutTree.hpp>
 #include <Flux/Core/KeyboardInputHandler.hpp>
 #include <Flux/Core/MouseInputHandler.hpp>
@@ -109,21 +108,11 @@ Window::Window(const WindowConfig& config)
 
 Window::Window(const WindowConfig& config, PlatformWindowFactory* factory)
     : impl_(std::make_unique<WindowImpl>(config, factory)) {
-    
-    // Set window reference for platform callbacks
     impl_->platformWindow->setFluxWindow(this);
-    
-    // Set window reference in renderer for cursor management
     impl_->renderer->setWindow(this);
-    
-    // Register with application
-    Application::instance().registerWindow(this);
 }
 
 Window::~Window() {
-    // Unregister from application
-    Application::instance().unregisterWindow(this);
-    
     FLUX_LOG_INFO("Destroyed window \"%s\"", impl_->config.title.c_str());
 }
 

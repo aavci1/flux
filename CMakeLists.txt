@@ -56,7 +56,7 @@ endif()
 # Flux library sources
 set(FLUX_SOURCES
     # Core
-    src/Core/Application.cpp
+    src/Core/Runtime.cpp
     src/Core/Window.cpp
     src/Core/KeyboardInputHandler.cpp
     src/Core/MouseInputHandler.cpp

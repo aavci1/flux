@@ -5,7 +5,7 @@
 using namespace flux;
 
 int main(int argc, char* argv[]) {
-    Application app(argc, argv);
+    Runtime runtime(argc, argv);
 
     // Calculator state
     Property<std::string> display = std::string("0");
@@ -85,7 +85,7 @@ int main(int argc, char* argv[]) {
         shouldResetDisplay = true;
     };
 
-    Window window({
+    auto& window = runtime.createWindow({
         .size = {320, 480},
         .title = "Calculator"
     });
@@ -242,5 +242,5 @@ int main(int argc, char* argv[]) {
         }
     );
 
-    return app.exec();
+    return runtime.run();
 }
