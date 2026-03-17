@@ -4,6 +4,7 @@
 #include <Flux/Core/View.hpp>
 #include <string>
 #include <memory>
+#include <functional>
 
 namespace flux {
 
@@ -178,6 +179,14 @@ public:
      * @brief Access shortcut manager subsystem
      */
     ShortcutManager& shortcuts();
+
+    // Hooks
+    
+    /**
+     * @brief Register a callback invoked after rendering but before buffer swap.
+     * Useful for capturing the framebuffer via glReadPixels.
+     */
+    void setPostRenderCallback(std::function<void()> callback);
 
     // Internal (used by subsystems)
     

@@ -36,6 +36,9 @@ struct Window::WindowImpl {
     // Observer pattern
     std::vector<WindowEventObserver*> observers;
     
+    // Post-render hook
+    std::function<void()> postRenderCallback;
+    
     // Constructor
     WindowImpl(const WindowConfig& cfg, PlatformWindowFactory* factory)
         : config(cfg)
@@ -129,6 +132,9 @@ void Window::render() {
     
     Rect windowBounds = {0, 0, impl_->currentSize.width, impl_->currentSize.height};
     impl_->renderer->renderFrame(windowBounds);
+    if (impl_->postRenderCallback) {
+        impl_->postRenderCallback();
+    }
     impl_->platformWindow->swapBuffers();
 }
 
@@ -317,6 +323,12 @@ FocusState& Window::focus() {
 
 ShortcutManager& Window::shortcuts() {
     return *impl_->shortcutManager;
+}
+
+// Hooks
+
+void Window::setPostRenderCallback(std::function<void()> callback) {
+    impl_->postRenderCallback = std::move(callback);
 }
 
 // Internal
