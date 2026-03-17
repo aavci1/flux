@@ -454,11 +454,6 @@ public:
      * Check if the currently rendering view has focus
      */
     virtual bool isCurrentViewFocused() const = 0;
-
-    // ============================================================================
-    // LEGACY COMPATIBILITY (deprecated but kept for transition)
-    // ============================================================================
-
 };
 
 } // namespace flux

@@ -40,7 +40,6 @@ Path buildPathFromSVG(NSVGpath* svgPath);
 float calculatePathArea(NSVGpath* path);
 Color nsvgColorToFluxColor(unsigned int color);
 FillStyle nsvgPaintToFillStyle(const NSVGpaint& paint);
-void drawCheckerboardBackground(RenderContext& ctx, const Rect& bounds);
 
 CachedSVGData parseSVGContent(const std::string& svgStr) {
     CachedSVGData result;
@@ -261,8 +260,6 @@ FillStyle nsvgPaintToFillStyle(const NSVGpaint& paint) {
 }
 
 void renderCachedSVG(RenderContext& ctx, const CachedSVGData& data, const Rect& bounds) {
-    // drawCheckerboardBackground(ctx, bounds);
-
     if (!data.isValid || data.paths.empty()) return;
 
     // Calculate scaling to fit within bounds
@@ -290,33 +287,6 @@ void renderCachedSVG(RenderContext& ctx, const CachedSVGData& data, const Rect& 
 
     // Restore transform
     ctx.restore();
-}
-
-void drawCheckerboardBackground(RenderContext& ctx, const Rect& bounds) {
-    // Draw checkerboard pattern
-    const int squareSize = 20;
-    const Color lightGray = Color(0.9f, 0.9f, 0.9f, 1.0f);
-    const Color darkGray = Color(0.7f, 0.7f, 0.7f, 1.0f);
-
-    ctx.setFillStyle(FillStyle::solid(lightGray));
-    ctx.setStrokeStyle(StrokeStyle::none());
-    ctx.drawRect(bounds);
-
-    Path darkRects;
-    for (int y = 0; y < bounds.height; y += squareSize) {
-        for (int x = 0; x < bounds.width; x += squareSize) {
-            bool isEven = ((x / squareSize) + (y / squareSize)) % 2 == 0;
-            if (isEven) {
-                continue;
-            }
-
-            darkRects.rect({static_cast<float>(x) + bounds.x, static_cast<float>(y) + bounds.y, static_cast<float>(squareSize), static_cast<float>(squareSize)});
-        }
-    }
-
-    ctx.setFillStyle(FillStyle::solid(darkGray));
-    ctx.setStrokeStyle(StrokeStyle::none());
-    ctx.drawPath(darkRects);
 }
 
 } // namespace svg_impl

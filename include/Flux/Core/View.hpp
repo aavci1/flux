@@ -12,7 +12,6 @@
 #include <concepts>
 #include <typeinfo>
 #include <string>
-#include <optional>
 
 namespace flux {
 

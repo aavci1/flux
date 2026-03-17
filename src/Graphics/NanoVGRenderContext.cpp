@@ -417,10 +417,6 @@ void NanoVGRenderContext::setTextStyle(const TextStyle& style) {
 
 void NanoVGRenderContext::drawText(const std::string& text, const Point& position, HorizontalAlignment hAlign, VerticalAlignment vAlign) {
     nvgTextAlign(nvgContext_, getNVGTextAlign(hAlign, vAlign));
-    // // Apply current fill style for text rendering
-    // if (currentFillStyle_.type != FillStyle::Type::None) {
-    //     nvgFill(nvgContext_);
-    // }
     nvgText(nvgContext_, position.x, position.y, text.c_str(), nullptr);
 }
 

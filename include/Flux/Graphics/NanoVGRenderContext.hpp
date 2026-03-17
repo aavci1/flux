@@ -1,3 +1,5 @@
+#pragma once
+
 #include <Flux/Graphics/RenderContext.hpp>
 #include <nanovg.h>
 
