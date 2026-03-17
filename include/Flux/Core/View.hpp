@@ -23,8 +23,7 @@ std::string demangleTypeName(const char* mangledName);
 
 
 
-// Macro to inject common view properties into components
-// This allows designated initializers to work while maintaining code reuse
+// Tier 1: Visual + layout essentials (every component gets these)
 #define FLUX_VIEW_PROPERTIES \
     Property<EdgeInsets> padding = {}; \
     Property<Color> backgroundColor = Colors::transparent; \
@@ -35,10 +34,6 @@ std::string demangleTypeName(const char* mangledName);
     Property<float> opacity = 1.0; \
     Property<bool> visible = true; \
     Property<bool> clip = false; \
-    Property<float> rotation = 0; \
-    Property<float> scaleX = 1.0; \
-    Property<float> scaleY = 1.0; \
-    Property<Point> offset = Point{0, 0}; \
     Property<float> expansionBias = 0.0f; \
     Property<float> compressionBias = 1.0f; \
     Property<std::optional<float>> minWidth = std::nullopt; \
@@ -49,7 +44,10 @@ std::string demangleTypeName(const char* mangledName);
     Property<int> rowspan = 1; \
     Property<std::optional<CursorType>> cursor = std::nullopt; \
     Property<bool> focusable = false; \
-    Property<std::string> focusKey = ""; \
+    Property<std::string> focusKey = ""
+
+// Tier 2: Interactive components add these event callbacks
+#define FLUX_INTERACTIVE_PROPERTIES \
     std::function<void()> onClick = nullptr; \
     std::function<void(float, float, int)> onMouseDown = nullptr; \
     std::function<void(float, float, int)> onMouseUp = nullptr; \
@@ -64,6 +62,13 @@ std::string demangleTypeName(const char* mangledName);
     std::function<void(const std::string&)> onTextInput = nullptr; \
     std::function<void()> onChange = nullptr; \
     std::function<void(float, float, float, float)> onScroll = nullptr
+
+// Tier 3: Transform properties (most components don't need these)
+#define FLUX_TRANSFORM_PROPERTIES \
+    Property<float> rotation = 0; \
+    Property<float> scaleX = 1.0; \
+    Property<float> scaleY = 1.0; \
+    Property<Point> offset = Point{0, 0}
 
 // Concept for what makes a View component
 // All methods are now optional - if not defined, default implementations will be used
@@ -167,13 +172,29 @@ struct has_children_property {
     static constexpr bool value = decltype(test(std::declval<const T&>()))::value;
 };
 
-template<typename T>
-struct has_onClick {
-    template<typename U>
-    static auto test(const U& u) -> decltype(u.onClick, std::true_type{});
-    static std::false_type test(...);
-    static constexpr bool value = decltype(test(std::declval<const T&>()))::value;
+#define FLUX_DEFINE_HAS_FIELD(name) \
+template<typename T> struct has_##name { \
+    template<typename U> static auto test(const U& u) -> decltype(u.name, std::true_type{}); \
+    static std::false_type test(...); \
+    static constexpr bool value = decltype(test(std::declval<const T&>()))::value; \
 };
+
+FLUX_DEFINE_HAS_FIELD(onClick)
+FLUX_DEFINE_HAS_FIELD(onMouseDown)
+FLUX_DEFINE_HAS_FIELD(onMouseUp)
+FLUX_DEFINE_HAS_FIELD(onMouseMove)
+FLUX_DEFINE_HAS_FIELD(onMouseEnter)
+FLUX_DEFINE_HAS_FIELD(onMouseLeave)
+FLUX_DEFINE_HAS_FIELD(onDoubleClick)
+FLUX_DEFINE_HAS_FIELD(onFocus)
+FLUX_DEFINE_HAS_FIELD(onBlur)
+FLUX_DEFINE_HAS_FIELD(onKeyDown)
+FLUX_DEFINE_HAS_FIELD(onKeyUp)
+FLUX_DEFINE_HAS_FIELD(onTextInput)
+FLUX_DEFINE_HAS_FIELD(onChange)
+FLUX_DEFINE_HAS_FIELD(onScroll)
+
+#undef FLUX_DEFINE_HAS_FIELD
 
 template<typename T>
 struct has_handleKeyDown {
@@ -722,64 +743,55 @@ inline std::vector<View> ViewAdapter<T>::getChildren() const {
 template<ViewComponent T>
 inline bool ViewAdapter<T>::handleMouseDown(float x, float y, int button) {
     bool handled = false;
-
-    if (component.onMouseDown) {
-        component.onMouseDown(x, y, button);
-        handled = true;
+    if constexpr (has_onMouseDown<T>::value) {
+        if (component.onMouseDown) { component.onMouseDown(x, y, button); handled = true; }
     }
-
-    if (button == 0 && component.onClick) {
-        handled = true;
+    if constexpr (has_onClick<T>::value) {
+        if (button == 0 && component.onClick) handled = true;
     }
-
     return handled;
 }
 
 template<ViewComponent T>
 inline bool ViewAdapter<T>::handleMouseUp(float x, float y, int button) {
     bool handled = false;
-
-    if (component.onMouseUp) {
-        component.onMouseUp(x, y, button);
-        handled = true;
+    if constexpr (has_onMouseUp<T>::value) {
+        if (component.onMouseUp) { component.onMouseUp(x, y, button); handled = true; }
     }
-
-    if (button == 0 && component.onClick) {
-        component.onClick();
-        handled = true;
+    if constexpr (has_onClick<T>::value) {
+        if (button == 0 && component.onClick) { component.onClick(); handled = true; }
     }
-
     return handled;
 }
 
 template<ViewComponent T>
 inline bool ViewAdapter<T>::handleMouseMove(float x, float y) {
-    if (component.onMouseMove) {
-        component.onMouseMove(x, y);
-        return true;
+    if constexpr (has_onMouseMove<T>::value) {
+        if (component.onMouseMove) { component.onMouseMove(x, y); return true; }
     }
     return false;
 }
 
 template<ViewComponent T>
 inline bool ViewAdapter<T>::handleMouseScroll(float x, float y, float deltaX, float deltaY) {
-    if (component.onScroll) {
-        component.onScroll(x, y, deltaX, deltaY);
-        return true;
+    if constexpr (has_onScroll<T>::value) {
+        if (component.onScroll) { component.onScroll(x, y, deltaX, deltaY); return true; }
     }
     return false;
 }
 
 template<ViewComponent T>
 inline bool ViewAdapter<T>::isInteractive() const {
-    return component.onClick != nullptr || 
-           component.onMouseDown != nullptr ||
-           component.onMouseUp != nullptr ||
-           component.onMouseMove != nullptr ||
-           component.onMouseEnter != nullptr ||
-           component.onMouseLeave != nullptr ||
-           component.onDoubleClick != nullptr ||
-           component.onScroll != nullptr;
+    bool result = false;
+    if constexpr (has_onClick<T>::value) result = result || component.onClick != nullptr;
+    if constexpr (has_onMouseDown<T>::value) result = result || component.onMouseDown != nullptr;
+    if constexpr (has_onMouseUp<T>::value) result = result || component.onMouseUp != nullptr;
+    if constexpr (has_onMouseMove<T>::value) result = result || component.onMouseMove != nullptr;
+    if constexpr (has_onMouseEnter<T>::value) result = result || component.onMouseEnter != nullptr;
+    if constexpr (has_onMouseLeave<T>::value) result = result || component.onMouseLeave != nullptr;
+    if constexpr (has_onDoubleClick<T>::value) result = result || component.onDoubleClick != nullptr;
+    if constexpr (has_onScroll<T>::value) result = result || component.onScroll != nullptr;
+    return result;
 }
 
 template<ViewComponent T>
@@ -795,44 +807,33 @@ inline bool ViewAdapter<T>::handleKeyDown(const KeyEvent& event) {
         if (handled) return true;
     }
     
-    // Then check for onKeyDown callback
-    if (component.onKeyDown) {
-        return component.onKeyDown(event);
+    if constexpr (has_onKeyDown<T>::value) {
+        if (component.onKeyDown) return component.onKeyDown(event);
     }
-    
     return false;
 }
 
 template<ViewComponent T>
 inline bool ViewAdapter<T>::handleKeyUp(const KeyEvent& event) {
-    // First check if component has custom handleKeyUp method
     if constexpr (has_handleKeyUp<T>::value) {
         bool handled = component.handleKeyUp(event);
         if (handled) return true;
     }
-    
-    // Then check for onKeyUp callback
-    if (component.onKeyUp) {
-        return component.onKeyUp(event);
+    if constexpr (has_onKeyUp<T>::value) {
+        if (component.onKeyUp) return component.onKeyUp(event);
     }
-    
     return false;
 }
 
 template<ViewComponent T>
 inline bool ViewAdapter<T>::handleTextInput(const TextInputEvent& event) {
-    // First check if component has custom handleTextInput method
     if constexpr (has_handleTextInput<T>::value) {
         bool handled = component.handleTextInput(event);
         if (handled) return true;
     }
-    
-    // Then check for onTextInput callback
-    if (component.onTextInput) {
-        component.onTextInput(event.text);
-        return true;
+    if constexpr (has_onTextInput<T>::value) {
+        if (component.onTextInput) { component.onTextInput(event.text); return true; }
     }
-    
     return false;
 }
 
@@ -848,15 +849,15 @@ inline std::string ViewAdapter<T>::getFocusKey() const {
 
 template<ViewComponent T>
 inline void ViewAdapter<T>::notifyFocusGained() {
-    if (component.onFocus) {
-        component.onFocus();
+    if constexpr (has_onFocus<T>::value) {
+        if (component.onFocus) component.onFocus();
     }
 }
 
 template<ViewComponent T>
 inline void ViewAdapter<T>::notifyFocusLost() {
-    if (component.onBlur) {
-        component.onBlur();
+    if constexpr (has_onBlur<T>::value) {
+        if (component.onBlur) component.onBlur();
     }
 }
 

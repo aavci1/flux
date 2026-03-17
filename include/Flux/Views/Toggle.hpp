@@ -37,6 +37,7 @@ void drawToggle(RenderContext& ctx, const Rect& bounds, bool isOn) {
 // ToggleAccessory - Just the switch part
 struct ToggleAccessory {
     FLUX_VIEW_PROPERTIES;
+    FLUX_INTERACTIVE_PROPERTIES;
 
     Property<bool> isOn = false;
     Property<float> width = 36.0f;
@@ -71,6 +72,7 @@ struct ToggleAccessory {
 
 struct Toggle {
     FLUX_VIEW_PROPERTIES;
+    FLUX_INTERACTIVE_PROPERTIES;
 
     Property<bool> isOn = false;
     Property<std::string> label = "";

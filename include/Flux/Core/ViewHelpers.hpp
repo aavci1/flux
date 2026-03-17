@@ -3,14 +3,11 @@
 #include <Flux/Core/View.hpp>
 #include <Flux/Core/Types.hpp>
 #include <Flux/Graphics/RenderContext.hpp>
-#include <iostream>
 
 namespace flux {
 
-// ViewHelpers namespace for view rendering utilities
 namespace ViewHelpers {
 
-// Forward declarations for background image helper functions
 inline void drawBackgroundImageWithSizing(RenderContext& ctx, const BackgroundImage& bgImage, const Rect& bounds);
 inline void drawBackgroundImageAtPosition(RenderContext& ctx, const std::string& imagePath, const Rect& bounds,
                                         BackgroundPosition position, const Point& customPosition);
@@ -19,24 +16,32 @@ inline void drawBackgroundImageScaledToCover(RenderContext& ctx, const std::stri
 inline void drawBackgroundImageScaledToContain(RenderContext& ctx, const std::string& imagePath, const Rect& bounds,
                                              BackgroundPosition position, const Point& customPosition);
 
-// Unified render function that handles decorations only
-// Framework handles children rendering through layout tree
+namespace detail {
+template<typename V> auto hasOffset(int) -> decltype(V::offset, std::true_type{});
+template<typename V> auto hasOffset(...) -> std::false_type;
+template<typename V> auto hasRotation(int) -> decltype(V::rotation, std::true_type{});
+template<typename V> auto hasRotation(...) -> std::false_type;
+template<typename V> auto hasScaleX(int) -> decltype(V::scaleX, std::true_type{});
+template<typename V> auto hasScaleX(...) -> std::false_type;
+}
+
 template<typename ViewType>
 inline void renderView(const ViewType& view, RenderContext& ctx, const Rect& bounds) {
     ctx.save();
 
-    // Apply transforms
-    Point offsetPt = view.offset;
-    ctx.translate(offsetPt.x, offsetPt.y);
-
-    float rot = view.rotation;
-    if (rot != 0) {
-        ctx.rotate(rot);
+    if constexpr (decltype(detail::hasOffset<ViewType>(0))::value) {
+        Point offsetPt = view.offset;
+        ctx.translate(offsetPt.x, offsetPt.y);
     }
 
-    float sx = view.scaleX, sy = view.scaleY;
-    if (sx != 1.0f || sy != 1.0f) {
-        ctx.scale(sx, sy);
+    if constexpr (decltype(detail::hasRotation<ViewType>(0))::value) {
+        float rot = view.rotation;
+        if (rot != 0) ctx.rotate(rot);
+    }
+
+    if constexpr (decltype(detail::hasScaleX<ViewType>(0))::value) {
+        float sx = view.scaleX, sy = view.scaleY;
+        if (sx != 1.0f || sy != 1.0f) ctx.scale(sx, sy);
     }
 
     float opacityVal = view.opacity;

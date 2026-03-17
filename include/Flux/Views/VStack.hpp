@@ -13,6 +13,8 @@ namespace flux {
 
 struct VStack {
     FLUX_VIEW_PROPERTIES;
+    FLUX_INTERACTIVE_PROPERTIES;
+    FLUX_TRANSFORM_PROPERTIES;
 
     Property<std::vector<View>> children = {};
     Property<float> spacing = 0;

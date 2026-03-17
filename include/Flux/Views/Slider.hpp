@@ -10,6 +10,7 @@ namespace flux {
 
 struct Slider {
     FLUX_VIEW_PROPERTIES;
+    FLUX_INTERACTIVE_PROPERTIES;
 
     Property<float> value = 0.5f;
     Property<float> minValue = 0.0f;

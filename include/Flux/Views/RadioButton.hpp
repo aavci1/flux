@@ -14,6 +14,7 @@ namespace flux {
 // TODO: make size of the accessory calculated based on the font size of the label
 struct RadioButtonAccessory {
     FLUX_VIEW_PROPERTIES;
+    FLUX_INTERACTIVE_PROPERTIES;
 
     Property<bool> selected = false;
 
@@ -48,6 +49,7 @@ struct RadioButtonAccessory {
 
 struct RadioButton {
     FLUX_VIEW_PROPERTIES;
+    FLUX_INTERACTIVE_PROPERTIES;
 
     Property<bool> selected = false;
     Property<std::string> value = "";

@@ -51,6 +51,7 @@ void drawCheckbox(RenderContext& ctx, const Rect& bounds, bool isChecked) {
 // CheckboxAccessory - Just the checkbox box part
 struct CheckboxAccessory {
     FLUX_VIEW_PROPERTIES;
+    FLUX_INTERACTIVE_PROPERTIES;
 
     Property<bool> checked = false;
     Property<float> size = 20.0f;
@@ -80,6 +81,7 @@ struct CheckboxAccessory {
 
 struct Checkbox {
     FLUX_VIEW_PROPERTIES;
+    FLUX_INTERACTIVE_PROPERTIES;
 
     Property<bool> checked = false;
     Property<std::string> label = "";

@@ -13,6 +13,7 @@ namespace flux {
 // Helper to create an invisible clipping container
 struct ClipContainer {
     FLUX_VIEW_PROPERTIES;
+    FLUX_INTERACTIVE_PROPERTIES;
     
     void init() {
         clip = true;
@@ -25,6 +26,7 @@ struct ClipContainer {
 
 struct ScrollArea {
     FLUX_VIEW_PROPERTIES;
+    FLUX_INTERACTIVE_PROPERTIES;
 
     // Content to scroll
     Property<std::vector<View>> children = {};

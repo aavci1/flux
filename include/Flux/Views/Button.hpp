@@ -11,6 +11,7 @@ namespace flux {
 
 struct Button {
     FLUX_VIEW_PROPERTIES;
+    FLUX_INTERACTIVE_PROPERTIES;
 
     Property<std::string> text;
     

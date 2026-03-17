@@ -13,6 +13,8 @@ namespace flux {
 
 struct Grid {
     FLUX_VIEW_PROPERTIES;
+    FLUX_INTERACTIVE_PROPERTIES;
+    FLUX_TRANSFORM_PROPERTIES;
 
     Property<std::vector<View>> children = {};
     Property<int> columns = 1;
