@@ -1,4 +1,5 @@
 #include <Flux.hpp>
+#include <iostream>
 using namespace flux;
 
 int main(int argc, char* argv[]) {

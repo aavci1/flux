@@ -1,6 +1,7 @@
 #include <Flux.hpp>
 #include <chrono>
 #include <iomanip>
+#include <iostream>
 #include <sstream>
 #include <cmath>
 

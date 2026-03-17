@@ -3,7 +3,6 @@
 #include <Flux/Platform/PlatformRenderer.hpp>
 #include <Flux/Graphics/RenderContext.hpp>
 #include <nanovg.h>
-#include <iostream>
 #include <stdexcept>
 
 namespace flux {

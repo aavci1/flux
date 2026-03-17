@@ -1,5 +1,4 @@
 #include <Flux.hpp>
-#include <iostream>
 
 using namespace flux;
 

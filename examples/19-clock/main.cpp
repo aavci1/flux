@@ -1,6 +1,5 @@
 #include <Flux.hpp>
 #include <iomanip>
-#include <iostream>
 #include <chrono>
 #include <thread>
 

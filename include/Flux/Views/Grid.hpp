@@ -4,7 +4,6 @@
 #include <Flux/Core/ViewHelpers.hpp>
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/Property.hpp>
-#include <iostream>
 #include <algorithm>
 #include <numeric>
 #include <vector>

@@ -5,7 +5,6 @@
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/Property.hpp>
 #include <Flux/Views/StackLayout.hpp>
-#include <iostream>
 #include <algorithm>
 #include <numeric>
 

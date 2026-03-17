@@ -4,7 +4,6 @@
 #include <Flux/Graphics/Path.hpp>
 #include <Flux/Core/ViewHelpers.hpp>
 
-#include <iostream>
 #include <algorithm>
 #include <cmath>
 #include <nanosvg.h>

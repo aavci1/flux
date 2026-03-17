@@ -1,7 +1,6 @@
 #include <Flux/Platform/SDLWindow.hpp>
 #include <Flux/Core/Window.hpp>
 #include <stdexcept>
-#include <iostream>
 
 namespace flux {
 

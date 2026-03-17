@@ -1,5 +1,4 @@
 #include <Flux/Core/MouseInputHandler.hpp>
-#include <iostream>
 
 namespace flux {
 

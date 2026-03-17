@@ -1,7 +1,6 @@
 #include <Flux/Graphics/RenderContext.hpp>
 #include <nanovg.h>
 
-#include <iostream>
 #include <stack>
 #include <unordered_map>
 #include <memory>
