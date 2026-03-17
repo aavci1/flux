@@ -85,6 +85,17 @@ void Element::reconcileChildren(const std::vector<LayoutNode>& newChildren) {
     children = std::move(result);
 }
 
+Element* Element::findByFocusKey(const std::string& key) {
+    if (description && description->isValid() && description->getFocusKey() == key) {
+        return this;
+    }
+    for (auto& child : children) {
+        Element* found = child->findByFocusKey(key);
+        if (found) return found;
+    }
+    return nullptr;
+}
+
 void Element::mountSubtree() {
     if (!isMounted) {
         isMounted = true;

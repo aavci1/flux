@@ -41,6 +41,8 @@ public:
 
     void reconcile(const LayoutNode& newNode);
 
+    Element* findByFocusKey(const std::string& key);
+
 private:
     void reconcileChildren(const std::vector<LayoutNode>& newChildren);
     void mountSubtree();
