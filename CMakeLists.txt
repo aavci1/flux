@@ -71,6 +71,7 @@ set(FLUX_SOURCES
     src/Graphics/Renderer.cpp
     src/Graphics/NanoVGRenderer.cpp
     src/Graphics/NanoVGRenderContext.cpp
+    src/Graphics/NanoVGBackend.cpp
 
     # Views
     src/Views/SVG.cpp
