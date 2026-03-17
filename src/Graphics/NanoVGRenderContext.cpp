@@ -547,11 +547,9 @@ void NanoVGRenderContext::drawImage(int imageId, const Rect& rect, ImageFit fit,
             break;
         }
             
-        case ImageFit::None:
-            // Use original size, centered
+        case ImageFit::None: {
             float offsetX = (rect.width - imageSize.width) / 2;
             float offsetY = (rect.height - imageSize.height) / 2;
-            
             imageRect = Rect{
                 rect.x + offsetX,
                 rect.y + offsetY,
@@ -559,6 +557,7 @@ void NanoVGRenderContext::drawImage(int imageId, const Rect& rect, ImageFit fit,
                 imageSize.height
             };
             break;
+        }
     }
 
     // Create fill style with image pattern

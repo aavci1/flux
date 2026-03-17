@@ -163,9 +163,6 @@ struct Slider {
 
 private:
     void updateValueFromPosition(float x, float /* y */) {
-        std::cout << "updateValueFromPosition: " << x << std::endl;
-        std::cout << "lastSliderX: " << lastSliderX << std::endl;
-        std::cout << "lastSliderWidth: " << lastSliderWidth << std::endl;
         float minVal = minValue;
         float maxVal = maxValue;
         

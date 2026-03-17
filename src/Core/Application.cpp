@@ -65,8 +65,10 @@ void Application::onRedrawRequested(Window* window) {
 }
 
 void Application::onWindowClosing(Window* window) {
-    (void)window;
-    // Could handle cleanup here if needed
+    unregisterWindow(window);
+    if (windows_.empty()) {
+        quit();
+    }
 }
 
 void Application::processEvents() {

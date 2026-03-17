@@ -79,10 +79,6 @@ inline std::string demangleTypeName(const char* mangledName) {
     std::function<bool(const KeyEvent&)> onKeyUp = nullptr; \
     std::function<void(const std::string&)> onTextInput = nullptr; \
     std::function<void()> onChange = nullptr; \
-    std::function<void(float, float)> onDragStart = nullptr; \
-    std::function<void(float, float)> onDrag = nullptr; \
-    std::function<void(float, float)> onDragEnd = nullptr; \
-    std::function<void(float, float)> onDrop = nullptr; \
     std::function<void(float, float, float, float)> onScroll = nullptr
 
 // Concept for what makes a View component
@@ -752,29 +748,34 @@ inline std::vector<View> ViewAdapter<T>::getChildren() const {
 template<ViewComponent T>
 inline bool ViewAdapter<T>::handleMouseDown(float x, float y, int button) {
     bool handled = false;
-    
-    // Call onMouseDown callback if present
+
     if (component.onMouseDown) {
         component.onMouseDown(x, y, button);
         handled = true;
     }
-    
-    // Also call onClick for convenience (primary mouse button)
+
     if (button == 0 && component.onClick) {
-        component.onClick();
         handled = true;
     }
-    
+
     return handled;
 }
 
 template<ViewComponent T>
 inline bool ViewAdapter<T>::handleMouseUp(float x, float y, int button) {
+    bool handled = false;
+
     if (component.onMouseUp) {
         component.onMouseUp(x, y, button);
-        return true;
+        handled = true;
     }
-    return false;
+
+    if (button == 0 && component.onClick) {
+        component.onClick();
+        handled = true;
+    }
+
+    return handled;
 }
 
 template<ViewComponent T>

@@ -95,7 +95,7 @@ std::optional<CursorType> Renderer::collectCursor(const LayoutNode& node, const 
     return std::nullopt;  // Point not in this node
 }
 
-bool Renderer::findAndDispatchEvent(const LayoutNode& node, const Event& event, const Point& point) {
+bool Renderer::findAndDispatchEvent(LayoutNode& node, const Event& event, const Point& point) {
     // Search children first (reverse order so topmost views are checked first)
     for (auto it = node.children.rbegin(); it != node.children.rend(); ++it) {
         if (it->bounds.contains(point)) {
@@ -118,11 +118,11 @@ bool Renderer::findAndDispatchEvent(const LayoutNode& node, const Event& event, 
     return false;
 }
 
-void Renderer::renderTree(const LayoutNode& node, Point parentOrigin) {
+void Renderer::renderTree(LayoutNode& node, Point parentOrigin) {
     // Register focusable views with FocusState
     if (window_ && node.view.canBeFocused()) {
         window_->focus().registerFocusableView(
-            const_cast<View*>(&node.view), 
+            &node.view,
             node.bounds
         );
     }
@@ -155,7 +155,7 @@ void Renderer::renderTree(const LayoutNode& node, Point parentOrigin) {
 
     // Recursively render children with current view's position as their parent origin
     Point currentOrigin = {node.bounds.x, node.bounds.y};
-    for (const auto& child : node.children) {
+    for (auto& child : node.children) {
         renderTree(child, currentOrigin);
     }
 

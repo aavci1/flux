@@ -80,10 +80,9 @@ public:
     }
 
 private:
-    void renderTree(const LayoutNode& node, Point parentOrigin = {0, 0});
+    void renderTree(LayoutNode& node, Point parentOrigin = {0, 0});
 
-    // Find and dispatch event to the deepest interactive view in the layout tree
-    bool findAndDispatchEvent(const LayoutNode& node, const Event& event, const Point& point);
+    bool findAndDispatchEvent(LayoutNode& node, const Event& event, const Point& point);
     
     // Collect cursor by traversing view hierarchy
     std::optional<CursorType> collectCursor(const LayoutNode& node, const Point& point, std::optional<CursorType> inheritedCursor);
