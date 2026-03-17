@@ -64,6 +64,7 @@ set(FLUX_SOURCES
     src/Core/ShortcutManager.cpp
     src/Core/PlatformWindowFactory.cpp
     src/Core/Demangle.cpp
+    src/Core/Element.cpp
 
     # Graphics
     src/Graphics/Path.cpp
@@ -221,6 +222,7 @@ if(BUILD_TESTS)
     add_executable(flux_tests
         tests/test_types.cpp
         tests/test_property.cpp
+        tests/test_element.cpp
     )
     target_link_libraries(flux_tests PRIVATE flux Catch2::Catch2WithMain)
 

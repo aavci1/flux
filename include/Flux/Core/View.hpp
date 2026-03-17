@@ -134,6 +134,10 @@ public:
     
     // Cursor management
     virtual std::optional<CursorType> getCursor() const = 0;
+
+    // Lifecycle
+    virtual void onMounted() {}
+    virtual void onUnmounted() {}
 };
 
 // SFINAE helpers to detect if methods exist
@@ -233,6 +237,22 @@ struct has_init {
     static constexpr bool value = decltype(test(std::declval<T>()))::value;
 };
 
+template<typename T>
+struct has_onMount {
+    template<typename U>
+    static auto test(U&& u) -> decltype(u.onMount(), std::true_type{});
+    static std::false_type test(...);
+    static constexpr bool value = decltype(test(std::declval<T>()))::value;
+};
+
+template<typename T>
+struct has_onUnmount {
+    template<typename U>
+    static auto test(U&& u) -> decltype(u.onUnmount(), std::true_type{});
+    static std::false_type test(...);
+    static constexpr bool value = decltype(test(std::declval<T>()))::value;
+};
+
 // Template wrapper that adapts ViewComponent to ViewInterface
 template<ViewComponent T>
 class ViewAdapter : public ViewInterface {
@@ -298,6 +318,10 @@ public:
     
     // Cursor management
     std::optional<CursorType> getCursor() const override;
+
+    // Lifecycle
+    void onMounted() override;
+    void onUnmounted() override;
 };
 
 // Type-erased view container that supports any component type
@@ -428,6 +452,14 @@ public:
 
     std::optional<CursorType> getCursor() const {
         return component_ ? component_->getCursor() : std::nullopt;
+    }
+
+    void onMounted() {
+        if (component_) component_->onMounted();
+    }
+
+    void onUnmounted() {
+        if (component_) component_->onUnmounted();
     }
 
     ViewInterface* operator->() { return component_.get(); }
@@ -863,6 +895,20 @@ template<ViewComponent T>
 inline void ViewAdapter<T>::notifyFocusLost() {
     if constexpr (has_onBlur<T>::value) {
         if (component.onBlur) component.onBlur();
+    }
+}
+
+template<ViewComponent T>
+inline void ViewAdapter<T>::onMounted() {
+    if constexpr (has_onMount<T>::value) {
+        component.onMount();
+    }
+}
+
+template<ViewComponent T>
+inline void ViewAdapter<T>::onUnmounted() {
+    if constexpr (has_onUnmount<T>::value) {
+        component.onUnmount();
     }
 }
 

@@ -2,6 +2,7 @@
 #include <Flux/Graphics/NanoVGRenderContext.hpp>
 #include <Flux/Core/Window.hpp>
 #include <Flux/Core/FocusState.hpp>
+#include <Flux/Core/Element.hpp>
 #include <Flux/Core/LayoutTree.hpp>
 #include <optional>
 
@@ -31,10 +32,12 @@ void Renderer::renderFrame(const Rect& bounds) {
         cachedBounds_ = bounds;
         layoutCacheValid_ = true;
 
-        // Debug printing removed - extremely expensive with many views
-        // std::cout << "\n=== Layout Tree ===" << std::endl;
-        // printLayoutTree(layoutTree);
-        // std::cout << "==================\n" << std::endl;
+        // Reconcile persistent element tree
+        if (!rootElement_) {
+            rootElement_ = Element::buildTree(layoutTree);
+        } else {
+            rootElement_->reconcile(layoutTree);
+        }
 
         // Set the global focused key in the render context for this frame
         // This allows views to check if they have focus during rendering

@@ -2,6 +2,7 @@
 
 #include <Flux/Core/View.hpp>
 #include <Flux/Core/LayoutTree.hpp>
+#include <Flux/Core/Element.hpp>
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/Log.hpp>
 #include <Flux/Graphics/RenderContext.hpp>
@@ -56,6 +57,9 @@ private:
     mutable LayoutNode cachedLayoutTree_;
     mutable Rect cachedBounds_ = {0, 0, 0, 0};
     mutable bool layoutCacheValid_ = false;
+
+    // Persistent element tree for identity and lifecycle
+    std::unique_ptr<Element> rootElement_;
 
 public:
     Renderer(RenderContext* ctx)
