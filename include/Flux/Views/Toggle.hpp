@@ -81,7 +81,7 @@ struct Toggle {
     Property<Color> onColor = Colors::green;
     Property<Color> offColor = Colors::gray;
     Property<Color> labelColor = Colors::black;
-    Property<float> labelFontSize = 14.0f;
+    Property<float> labelFontSize = 13.0f;
     Property<LabelPosition> labelPosition = LabelPosition::trailing;
     Property<JustifyContent> justifyContent = JustifyContent::start;
     Property<float> spacing = 8.0f;

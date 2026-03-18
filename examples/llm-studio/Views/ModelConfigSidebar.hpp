@@ -93,7 +93,7 @@ struct ModelConfigSidebar {
                     .children = {
                         Text{
                             .value = std::string("Configuration"),
-                            .fontSize = Theme::FontCaption,
+                            .fontSize = Theme::FontSubheadline,
                             .fontWeight = FontWeight::semibold,
                             .color = Theme::TextMuted,
                             .horizontalAlignment = HorizontalAlignment::leading
@@ -153,14 +153,14 @@ struct ModelConfigSidebar {
                                     .children = {
                                         Text{
                                             .value = std::string("System Prompt"),
-                                            .fontSize = Theme::FontCaption,
+                                            .fontSize = Theme::FontSubheadline,
                                             .color = Theme::TextMuted,
                                             .horizontalAlignment = HorizontalAlignment::leading
                                         },
                                         TextArea{
                                             .value = params.systemPrompt,
                                             .placeholder = std::string("You are a helpful assistant..."),
-                                            .fontSize = Theme::FontCaption,
+                                            .fontSize = Theme::FontCallout,
                                             .areaMinHeight = 80.0f,
                                             .areaMaxHeight = 200.0f,
                                             .bgColor = Theme::Background,
@@ -206,13 +206,13 @@ private:
                     .children = {
                         Text{
                             .value = label,
-                            .fontSize = Theme::FontCaption,
+                            .fontSize = Theme::FontSubheadline,
                             .color = Theme::TextMuted,
                             .horizontalAlignment = HorizontalAlignment::leading
                         },
                         Text{
                             .value = valStr,
-                            .fontSize = Theme::FontCaption,
+                            .fontSize = Theme::FontSubheadline,
                             .fontWeight = FontWeight::medium,
                             .color = Theme::Accent,
                             .horizontalAlignment = HorizontalAlignment::trailing,

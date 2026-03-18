@@ -170,7 +170,7 @@ struct SidebarView {
                     },
                     Text{
                         .value = std::string("Start a new chat to begin."),
-                        .fontSize = Theme::FontCaption,
+                        .fontSize = Theme::FontSubheadline,
                         .color = Theme::TextMuted.opacity(0.3f)
                     }
                 }
@@ -196,7 +196,7 @@ struct SidebarView {
                     .children = {
                         Text{
                             .value = std::string("Chats"),
-                            .fontSize = Theme::FontCaption,
+                            .fontSize = Theme::FontSubheadline,
                             .fontWeight = FontWeight::semibold,
                             .color = Theme::TextMuted,
                             .horizontalAlignment = HorizontalAlignment::leading

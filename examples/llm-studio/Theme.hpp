@@ -16,12 +16,17 @@ namespace Theme {
     constexpr flux::Color Destructive   = {0.90f, 0.30f, 0.30f};
     constexpr flux::Color Success       = {0.35f, 0.75f, 0.50f};
 
-    constexpr float FontH1       = 18.0f;
-    constexpr float FontH2       = 14.0f;
-    constexpr float FontBody     = 14.0f;
-    constexpr float FontCaption  = 12.0f;
-    constexpr float FontCode     = 13.0f;
-    constexpr float FontBadge    = 11.0f;
+    // Typography — macOS Human Interface Guidelines (default size category)
+    constexpr float FontLargeTitle = 26.0f;
+    constexpr float FontTitle1     = 22.0f;
+    constexpr float FontTitle2     = 17.0f;
+    constexpr float FontTitle3     = 15.0f;
+    constexpr float FontHeadline   = 13.0f;
+    constexpr float FontBody       = 13.0f;
+    constexpr float FontCallout    = 12.0f;
+    constexpr float FontSubheadline = 11.0f;
+    constexpr float FontFootnote   = 10.0f;
+    constexpr float FontCaption    = 10.0f;
 
     constexpr float RadiusSmall  = 4.0f;
     constexpr float RadiusCard   = 8.0f;

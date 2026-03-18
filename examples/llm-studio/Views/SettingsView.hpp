@@ -46,7 +46,7 @@ struct SettingsRow {
         if (!desc.empty()) {
             labelChildren.push_back(Text{
                 .value = desc,
-                .fontSize = Theme::FontCaption,
+                .fontSize = Theme::FontSubheadline,
                 .color = Theme::TextMuted,
                 .horizontalAlignment = HorizontalAlignment::leading
             });
@@ -94,7 +94,7 @@ struct SettingsView {
                     .children = {
                         Text{
                             .value = std::string("Settings"),
-                            .fontSize = Theme::FontH1,
+                            .fontSize = Theme::FontTitle1,
                             .fontWeight = FontWeight::bold,
                             .color = Theme::TextPrimary
                         },

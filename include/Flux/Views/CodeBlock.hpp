@@ -25,7 +25,7 @@ struct CodeBlock {
     Property<Color> headerBgColor = Color(0.08f, 0.08f, 0.08f);
     Property<Color> headerTextColor = Color(0.48f, 0.48f, 0.48f);
     Property<float> headerFontSize = 12.0f;
-    Property<float> codeFontSize = 13.0f;
+    Property<float> codeFontSize = 12.0f;
     Property<float> codePadding = 12.0f;
     Property<float> codeCornerRadius = 6.0f;
 

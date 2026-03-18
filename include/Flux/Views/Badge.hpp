@@ -14,7 +14,7 @@ struct Badge {
     Property<std::string> text = "";
     Property<Color> badgeColor = Colors::red;
     Property<Color> textColor = Colors::white;
-    Property<float> fontSize = 12.0f;
+    Property<float> fontSize = 10.0f;
     Property<float> paddingHorizontal = 8.0f;
     Property<float> paddingVertical = 4.0f;
 

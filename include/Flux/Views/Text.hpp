@@ -13,7 +13,7 @@ struct Text {
     FLUX_VIEW_PROPERTIES;
 
     Property<std::string> value = "";
-    Property<float> fontSize = 16;
+    Property<float> fontSize = 13;
     Property<FontWeight> fontWeight = FontWeight::regular;
     Property<Color> color = Colors::black;
     Property<HorizontalAlignment> horizontalAlignment = HorizontalAlignment::center;

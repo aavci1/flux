@@ -22,7 +22,7 @@ struct TextArea {
     Property<std::string> value = std::string("");
     Property<std::string> placeholder = std::string("");
     Property<bool> readOnly = false;
-    Property<float> fontSize = 14.0f;
+    Property<float> fontSize = 13.0f;
     Property<float> areaMinHeight = 72.0f;
     Property<float> areaMaxHeight = 200.0f;
     Property<bool> autoExpand = true;

@@ -87,7 +87,7 @@ struct Checkbox {
     Property<std::string> label = "";
     Property<float> size = 20.0f;
     Property<Color> labelColor = Colors::black;
-    Property<float> labelFontSize = 14.0f;
+    Property<float> labelFontSize = 13.0f;
     Property<LabelPosition> labelPosition = LabelPosition::trailing;
     Property<JustifyContent> justifyContent = JustifyContent::start;
     Property<float> spacing = 8.0f;

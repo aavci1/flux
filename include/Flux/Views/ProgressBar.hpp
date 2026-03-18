@@ -26,7 +26,7 @@ struct ProgressBar {
     Property<Color> fillColor = Colors::blue;
     Property<Color> trackColor = Colors::lightGray;
     Property<bool> showLabel = false;
-    Property<float> labelFontSize = 12.0f;
+    Property<float> labelFontSize = 10.0f;
     
     // Animation property for indeterminate mode
     Property<float> animationPhase = 0.0f;

@@ -29,7 +29,7 @@ struct SelectInput {
     Property<Color> textColor_ = Color(0.92f, 0.92f, 0.92f);
     Property<Color> mutedColor = Color(0.48f, 0.48f, 0.48f);
     Property<Color> accentColor = Colors::blue;
-    Property<float> itemFontSize = 14.0f;
+    Property<float> itemFontSize = 13.0f;
 
     mutable bool isOpen = false;
 

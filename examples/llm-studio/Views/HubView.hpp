@@ -57,19 +57,19 @@ struct ModelCardView {
                             .text = likesStr,
                             .badgeColor = Color(0.3f, 0.3f, 0.1f),
                             .textColor = Color(1.0f, 0.85f, 0.0f),
-                            .fontSize = Theme::FontBadge
+                            .fontSize = Theme::FontCaption
                         },
                         Badge{
                             .text = c.format,
                             .badgeColor = Theme::Accent.opacity(0.2f),
                             .textColor = Theme::Accent,
-                            .fontSize = Theme::FontBadge
+                            .fontSize = Theme::FontCaption
                         },
                         Badge{
                             .text = c.parameterSize,
                             .badgeColor = Theme::Surface,
                             .textColor = Theme::TextMuted,
-                            .fontSize = Theme::FontBadge
+                            .fontSize = Theme::FontCaption
                         },
                         Text{
                             .value = sizeStr,
@@ -218,19 +218,19 @@ struct HubView {
                     .text = std::string("Text Gen"),
                     .badgeColor = Theme::Accent.opacity(0.2f),
                     .textColor = Theme::Accent,
-                    .fontSize = Theme::FontBadge
+                    .fontSize = Theme::FontCaption
                 },
                 Badge{
                     .text = std::string("GGUF"),
                     .badgeColor = Theme::SurfaceRaised,
                     .textColor = Theme::TextMuted,
-                    .fontSize = Theme::FontBadge
+                    .fontSize = Theme::FontCaption
                 },
                 Badge{
                     .text = std::string("\xE2\x89\xA4 7B"),
                     .badgeColor = Theme::SurfaceRaised,
                     .textColor = Theme::TextMuted,
-                    .fontSize = Theme::FontBadge
+                    .fontSize = Theme::FontCaption
                 }
             }
         });
@@ -262,7 +262,7 @@ struct HubView {
                         .children = {
                             Text{
                                 .value = std::string("Downloading: ") + dl->modelId + " " + dl->variant,
-                                .fontSize = Theme::FontCaption,
+                                .fontSize = Theme::FontSubheadline,
                                 .fontWeight = FontWeight::medium,
                                 .color = Theme::TextPrimary,
                                 .horizontalAlignment = HorizontalAlignment::leading,
@@ -270,7 +270,7 @@ struct HubView {
                             },
                             Text{
                                 .value = std::format("{:.0f}%", dl->progress * 100),
-                                .fontSize = Theme::FontCaption,
+                                .fontSize = Theme::FontSubheadline,
                                 .fontWeight = FontWeight::bold,
                                 .color = Theme::Accent
                             },

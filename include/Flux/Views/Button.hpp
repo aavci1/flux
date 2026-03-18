@@ -72,7 +72,7 @@ struct Button {
         std::string buttonText = text;
 
         // Use accurate measurement from renderer
-        Size textSize = textMeasurer.measureText(buttonText, TextStyle::regular("default", 16));
+        Size textSize = textMeasurer.measureText(buttonText, TextStyle::regular("default", 13));
         return {textSize.width + paddingVal.horizontal(),
                 textSize.height + paddingVal.vertical()};
     }

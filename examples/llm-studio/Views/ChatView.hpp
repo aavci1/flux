@@ -128,7 +128,7 @@ struct ChatView {
                 .children = {
                     Text{
                         .value = std::string("LLM Studio"),
-                        .fontSize = 28.0f,
+                        .fontSize = Theme::FontLargeTitle,
                         .fontWeight = FontWeight::bold,
                         .color = Theme::TextMuted.opacity(0.3f)
                     },
@@ -216,7 +216,7 @@ private:
                 Spacer{},
                 Text{
                     .value = std::string("LLM Studio"),
-                    .fontSize = 32.0f,
+                    .fontSize = Theme::FontLargeTitle,
                     .fontWeight = FontWeight::bold,
                     .color = Theme::TextMuted.opacity(0.3f)
                 },
@@ -274,7 +274,7 @@ private:
                 Spacer{},
                 Text{
                     .value = std::string("Select a Model"),
-                    .fontSize = 24.0f,
+                    .fontSize = Theme::FontTitle1,
                     .fontWeight = FontWeight::bold,
                     .color = Theme::TextPrimary
                 },

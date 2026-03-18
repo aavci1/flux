@@ -41,8 +41,8 @@ struct Dialog {
     Property<Color> primaryColor = Colors::blue;
     Property<Color> destructiveColor = Colors::red;
     Property<Color> defaultButtonColor = Color(0.16f, 0.16f, 0.16f);
-    Property<float> titleFontSize = 18.0f;
-    Property<float> messageFontSize = 14.0f;
+    Property<float> titleFontSize = 15.0f;
+    Property<float> messageFontSize = 13.0f;
 
     void init() {
         focusable = true;

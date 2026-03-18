@@ -23,7 +23,7 @@ struct TextInput {
     Property<bool> readOnly = false;
     Property<int> maxLength = -1;
 
-    Property<float> fontSize = 14.0f;
+    Property<float> fontSize = 13.0f;
     Property<Color> textColor = Color(0.92f, 0.92f, 0.92f);
     Property<Color> placeholderColor = Color(0.48f, 0.48f, 0.48f);
     Property<Color> bgColor = Color(0.12f, 0.12f, 0.12f);

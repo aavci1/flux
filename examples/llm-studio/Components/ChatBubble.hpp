@@ -44,7 +44,7 @@ struct ChatBubble {
             .children = {
                 Text{
                     .value = roleLabel,
-                    .fontSize = Theme::FontCaption,
+                    .fontSize = Theme::FontSubheadline,
                     .fontWeight = FontWeight::semibold,
                     .color = isUser ? Theme::Accent : Theme::TextMuted,
                     .horizontalAlignment = HorizontalAlignment::leading

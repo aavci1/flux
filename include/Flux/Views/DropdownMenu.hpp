@@ -35,8 +35,8 @@ struct DropdownMenu {
     Property<Color> borderColor_ = Color(0.22f, 0.22f, 0.22f);
     Property<Color> textColor_ = Color(0.92f, 0.92f, 0.92f);
     Property<Color> mutedColor = Color(0.48f, 0.48f, 0.48f);
-    Property<float> itemFontSize = 14.0f;
-    Property<float> subtitleFontSize = 12.0f;
+    Property<float> itemFontSize = 13.0f;
+    Property<float> subtitleFontSize = 11.0f;
 
     void init() {
         focusable = true;

@@ -78,7 +78,7 @@ struct AppSettings {
     int gpuLayers = 0;
     int threads = 4;
     std::string theme = "dark";
-    float fontSize = 14.0f;
+    float fontSize = 13.0f;
     std::filesystem::path modelDirectory = "~/.local/share/llm-studio/models";
     std::string hfToken;
 };
