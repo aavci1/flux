@@ -556,12 +556,10 @@ inline LayoutNode ViewAdapter<T>::layout(RenderContext& ctx, const Rect& bounds)
 
 template<ViewComponent T>
 inline const View& ViewAdapter<T>::getCachedBody() const {
-    if (!cachedBody_) {
-        if constexpr (has_body<T>::value)
-            cachedBody_ = std::make_unique<View>(component.body());
-        else
-            cachedBody_ = std::make_unique<View>();
-    }
+    if constexpr (has_body<T>::value)
+        cachedBody_ = std::make_unique<View>(component.body());
+    else if (!cachedBody_)
+        cachedBody_ = std::make_unique<View>();
     return *cachedBody_;
 }
 

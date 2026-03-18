@@ -15,7 +15,6 @@
 #include "../AppState.hpp"
 #include "../Components/TextArea.hpp"
 #include "../Components/ChatBubble.hpp"
-#include "../Components/Dialog.hpp"
 #include <chrono>
 
 namespace llm_studio {
@@ -83,7 +82,7 @@ struct ChatView {
 
         AppSettings settings = state->settings;
 
-        return View(VStack{
+        View chatContent = View(VStack{
             .spacing = 0.0f,
             .expansionBias = 1.0f,
             .children = {
@@ -181,26 +180,79 @@ struct ChatView {
                             }
                         })
                     }
-                }),
+                })
+            }
+        });
 
-                View(Dialog{
-                    .isVisible = state->showClearDialog,
-                    .title = std::string("Clear Conversation"),
-                    .message = std::string("Are you sure you want to clear all messages?"),
-                    .expansionBias = 0.0f,
-                    .buttons = {
-                        DialogButton{
-                            .label = "Cancel",
-                            .onClick = [this]() { state->showClearDialog = false; }
-                        },
-                        DialogButton{
-                            .label = "Clear",
-                            .isDestructive = true,
-                            .onClick = [this]() {
-                                state->messages = std::vector<ChatMessage>{};
-                                state->showClearDialog = false;
+        if (!showClear) return chatContent;
+
+        return View(VStack{
+            .spacing = 0.0f,
+            .expansionBias = 1.0f,
+            .children = {
+                View(VStack{
+                    .backgroundColor = Color(0.0f, 0.0f, 0.0f, 0.5f),
+                    .expansionBias = 1.0f,
+                    .children = {
+                        View(Spacer{}),
+                        View(HStack{
+                            .justifyContent = JustifyContent::center,
+                            .children = {
+                                View(Spacer{}),
+                                View(VStack{
+                                    .spacing = Theme::Space2,
+                                    .backgroundColor = Theme::Surface,
+                                    .padding = Theme::Space6,
+                                    .cornerRadius = Theme::RadiusDialog,
+                                    .borderColor = Theme::Border,
+                                    .borderWidth = 1.0f,
+                                    .minWidth = 400.0f,
+                                    .maxWidth = 400.0f,
+                                    .children = {
+                                        View(Text{
+                                            .value = std::string("Clear Conversation"),
+                                            .fontSize = Theme::FontH1,
+                                            .fontWeight = FontWeight::bold,
+                                            .color = Theme::TextPrimary,
+                                            .horizontalAlignment = HorizontalAlignment::leading
+                                        }),
+                                        View(Text{
+                                            .value = std::string("Are you sure you want to clear all messages?"),
+                                            .fontSize = Theme::FontBody,
+                                            .color = Theme::TextMuted,
+                                            .horizontalAlignment = HorizontalAlignment::leading,
+                                            .padding = EdgeInsets(4, 0, 12, 0)
+                                        }),
+                                        View(HStack{
+                                            .spacing = Theme::Space2,
+                                            .justifyContent = JustifyContent::end,
+                                            .children = {
+                                                View(Spacer{}),
+                                                View(Button{
+                                                    .text = std::string("Cancel"),
+                                                    .backgroundColor = Theme::SurfaceRaised,
+                                                    .padding = EdgeInsets(8, 16, 8, 16),
+                                                    .cornerRadius = Theme::RadiusSmall,
+                                                    .onClick = [this]() { state->showClearDialog = false; }
+                                                }),
+                                                View(Button{
+                                                    .text = std::string("Clear"),
+                                                    .backgroundColor = Theme::Destructive,
+                                                    .padding = EdgeInsets(8, 16, 8, 16),
+                                                    .cornerRadius = Theme::RadiusSmall,
+                                                    .onClick = [this]() {
+                                                        state->messages = std::vector<ChatMessage>{};
+                                                        state->showClearDialog = false;
+                                                    }
+                                                })
+                                            }
+                                        })
+                                    }
+                                }),
+                                View(Spacer{})
                             }
-                        }
+                        }),
+                        View(Spacer{})
                     }
                 })
             }

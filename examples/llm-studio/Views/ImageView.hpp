@@ -259,7 +259,8 @@ private:
                     .fontSize = Theme::FontCaption,
                     .color = Theme::TextMuted,
                     .horizontalAlignment = HorizontalAlignment::leading,
-                    .minWidth = 70.0f
+                    .minWidth = 65.0f,
+                    .maxWidth = 65.0f
                 }),
                 View(Slider{
                     .value = val,
@@ -268,7 +269,8 @@ private:
                     .step = (maxV - minV) > 50 ? 1.0f : 0.1f,
                     .activeColor = Theme::Accent,
                     .inactiveColor = Theme::Border,
-                    .expansionBias = 1.0f
+                    .minWidth = 120.0f,
+                    .maxWidth = 120.0f
                 }),
                 View(Text{
                     .value = (maxV > 50)
@@ -277,7 +279,8 @@ private:
                     .fontSize = Theme::FontCaption,
                     .fontWeight = FontWeight::medium,
                     .color = Theme::Accent,
-                    .minWidth = 36.0f
+                    .minWidth = 40.0f,
+                    .maxWidth = 40.0f
                 })
             }
         });

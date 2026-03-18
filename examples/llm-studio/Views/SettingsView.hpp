@@ -29,12 +29,12 @@ struct SettingsRow {
     Property<std::string> label = std::string("");
     Property<std::string> description = std::string("");
 
-    Property<std::vector<View>> children = {};
+    Property<std::vector<View>> controls = {};
 
     View body() const {
         std::string lbl = label;
         std::string desc = description;
-        std::vector<View> controls = children;
+        std::vector<View> controlVec = controls;
 
         std::vector<View> labelChildren;
         labelChildren.push_back(View(Text{
@@ -65,7 +65,7 @@ struct SettingsRow {
                 View(HStack{
                     .spacing = Theme::Space2,
                     .alignItems = AlignItems::center,
-                    .children = std::move(controls)
+                    .children = std::move(controlVec)
                 })
             }
         });
@@ -108,7 +108,7 @@ struct SettingsView {
                         View(SettingsRow{
                             .label = std::string("Backend path"),
                             .description = std::string("Path to llama-server binary"),
-                            .children = {
+                            .controls = {
                                 View(TextInput{
                                     .value = settings.backendPath,
                                     .inputWidth = 250.0f
@@ -118,7 +118,7 @@ struct SettingsView {
 
                         View(SettingsRow{
                             .label = std::string("Context length"),
-                            .children = {
+                            .controls = {
                                 View(TextInput{
                                     .value = std::to_string(settings.contextLength),
                                     .inputWidth = 100.0f
@@ -129,7 +129,7 @@ struct SettingsView {
                         View(SettingsRow{
                             .label = std::string("GPU layers"),
                             .description = std::string("Number of layers to offload to GPU (0 = CPU only)"),
-                            .children = {
+                            .controls = {
                                 View(Slider{
                                     .value = static_cast<float>(settings.gpuLayers),
                                     .minValue = 0.0f,
@@ -151,7 +151,7 @@ struct SettingsView {
 
                         View(SettingsRow{
                             .label = std::string("Threads"),
-                            .children = {
+                            .controls = {
                                 View(Slider{
                                     .value = static_cast<float>(settings.threads),
                                     .minValue = 1.0f,
@@ -176,7 +176,7 @@ struct SettingsView {
 
                         View(SettingsRow{
                             .label = std::string("Theme"),
-                            .children = {
+                            .controls = {
                                 View(SelectInput{
                                     .options = std::vector<std::string>{"Dark", "Light", "System"},
                                     .selectWidth = 140.0f
@@ -186,7 +186,7 @@ struct SettingsView {
 
                         View(SettingsRow{
                             .label = std::string("Font size"),
-                            .children = {
+                            .controls = {
                                 View(Slider{
                                     .value = settings.fontSize,
                                     .minValue = 10.0f,
@@ -207,7 +207,7 @@ struct SettingsView {
 
                         View(SettingsRow{
                             .label = std::string("Sidebar visible on start"),
-                            .children = {
+                            .controls = {
                                 View(Toggle{
                                     .isOn = settings.sidebarDefault,
                                     .onColor = Theme::Accent,
@@ -221,7 +221,7 @@ struct SettingsView {
 
                         View(SettingsRow{
                             .label = std::string("Model directory"),
-                            .children = {
+                            .controls = {
                                 View(TextInput{
                                     .value = settings.modelDirectory.string(),
                                     .inputWidth = 280.0f
@@ -231,7 +231,7 @@ struct SettingsView {
 
                         View(SettingsRow{
                             .label = std::string("Image output directory"),
-                            .children = {
+                            .controls = {
                                 View(TextInput{
                                     .value = settings.imageDirectory.string(),
                                     .inputWidth = 280.0f
@@ -245,7 +245,7 @@ struct SettingsView {
                         View(SettingsRow{
                             .label = std::string("API Token"),
                             .description = std::string("Required for gated models"),
-                            .children = {
+                            .controls = {
                                 View(TextInput{
                                     .value = settings.hfToken.empty()
                                         ? std::string("")
