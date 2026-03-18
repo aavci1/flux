@@ -41,6 +41,7 @@ public:
 
     // Event processing
     virtual void processEvents() = 0;
+    virtual void waitForEvents(int timeoutMs = -1) = 0;
     virtual bool shouldClose() const = 0;
 
     // Cursor management

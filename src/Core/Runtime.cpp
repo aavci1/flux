@@ -58,7 +58,13 @@ Window& Runtime::createWindow(const WindowConfig& config) {
 
 int Runtime::run() {
     while (running_) {
-        processEvents();
+        bool redrawPending = needsRedraw_.load(std::memory_order_relaxed);
+
+        if (redrawPending) {
+            processEvents();
+        } else {
+            waitForEvents();
+        }
 
         for (auto& window : windows_) {
             window->processSyntheticEvents();
@@ -69,8 +75,6 @@ int Runtime::run() {
                 window->render();
             }
         }
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
     return 0;
 }
@@ -99,6 +103,23 @@ void Runtime::processEvents() {
             if (platformWindow->shouldClose()) {
                 quit();
                 break;
+            }
+        }
+    }
+}
+
+void Runtime::waitForEvents() {
+    if (windows_.empty()) return;
+    if (auto* platformWindow = static_cast<PlatformWindow*>(windows_.front()->platformWindow())) {
+        platformWindow->waitForEvents(-1);
+        if (platformWindow->shouldClose()) {
+            quit();
+            return;
+        }
+        for (size_t i = 1; i < windows_.size(); ++i) {
+            if (auto* pw = static_cast<PlatformWindow*>(windows_[i]->platformWindow())) {
+                pw->processEvents();
+                if (pw->shouldClose()) { quit(); return; }
             }
         }
     }

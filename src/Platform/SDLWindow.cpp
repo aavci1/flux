@@ -150,24 +150,41 @@ CursorType SDLWindow::currentCursor() const {
 
 // --- Event Processing ---
 
+void SDLWindow::dispatchSDLEvent(const SDL_Event& event) {
+    if (event.type == SDL_EVENT_QUIT) {
+        for (auto& [id, win] : windowMap_) {
+            win->shouldClose_ = true;
+        }
+        return;
+    }
+
+    SDL_WindowID wid = getWindowIDFromEvent(event);
+    if (wid != 0) {
+        auto it = windowMap_.find(wid);
+        if (it != windowMap_.end()) {
+            it->second->handleSDLEvent(event);
+        }
+    } else {
+        handleSDLEvent(event);
+    }
+}
+
 void SDLWindow::processEvents() {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
-        if (event.type == SDL_EVENT_QUIT) {
-            for (auto& [id, win] : windowMap_) {
-                win->shouldClose_ = true;
-            }
-            return;
-        }
+        dispatchSDLEvent(event);
+    }
+}
 
-        SDL_WindowID wid = getWindowIDFromEvent(event);
-        if (wid != 0) {
-            auto it = windowMap_.find(wid);
-            if (it != windowMap_.end()) {
-                it->second->handleSDLEvent(event);
-            }
-        } else {
-            handleSDLEvent(event);
+void SDLWindow::waitForEvents(int timeoutMs) {
+    SDL_Event event;
+    bool got = (timeoutMs < 0)
+        ? SDL_WaitEvent(&event)
+        : SDL_WaitEventTimeout(&event, timeoutMs);
+    if (got) {
+        dispatchSDLEvent(event);
+        while (SDL_PollEvent(&event)) {
+            dispatchSDLEvent(event);
         }
     }
 }

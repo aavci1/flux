@@ -32,6 +32,7 @@ public:
     bool isFullscreen() const override;
 
     void processEvents() override;
+    void waitForEvents(int timeoutMs = -1) override;
     bool shouldClose() const override;
 
     void setCursor(CursorType cursor) override;
@@ -54,6 +55,7 @@ private:
     static std::unordered_map<SDL_WindowID, SDLWindow*> windowMap_;
 
     void handleSDLEvent(const SDL_Event& event);
+    void dispatchSDLEvent(const SDL_Event& event);
     static SDL_WindowID getWindowIDFromEvent(const SDL_Event& event);
     static Key sdlScancodeToFluxKey(SDL_Scancode scancode);
     static KeyModifier sdlModToFluxMod(SDL_Keymod mod);

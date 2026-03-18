@@ -4,8 +4,6 @@
 #include <atomic>
 #include <vector>
 #include <memory>
-#include <chrono>
-#include <thread>
 
 namespace flux {
 
@@ -46,6 +44,7 @@ public:
 
 private:
     void processEvents();
+    void waitForEvents();
 
     std::atomic<bool> needsRedraw_{false};
     bool running_{true};
