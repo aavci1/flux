@@ -12,15 +12,15 @@ FocusState::FocusState()
     FLUX_LOG_DEBUG("[FOCUS] Focus management initialized (key-based tracking)");
 }
 
-void FocusState::registerFocusableView(View* view, const Rect& bounds) {
+std::string FocusState::registerFocusableView(View* view, const Rect& bounds) {
     if (!view) {
         FLUX_LOG_WARN("[FOCUS] Attempted to register null view");
-        return;
+        return "";
     }
 
     if (bounds.width <= 0 || bounds.height <= 0) {
         FLUX_LOG_WARN("[FOCUS] Skipping view with invalid bounds");
-        return;
+        return "";
     }
 
     std::string key = view->getFocusKey();
@@ -33,6 +33,7 @@ void FocusState::registerFocusableView(View* view, const Rect& bounds) {
                    bounds.x, bounds.y, bounds.width, bounds.height);
 
     focusableViews_.push_back({view, bounds, key});
+    return key;
 }
 
 void FocusState::clearFocusableViews() {

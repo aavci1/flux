@@ -27,8 +27,9 @@ public:
 
     /**
      * @brief Register a view as focusable
+     * @return The focus key assigned to the view (auto-generated if not set)
      */
-    void registerFocusableView(View* view, const Rect& bounds);
+    std::string registerFocusableView(View* view, const Rect& bounds);
     
     /**
      * @brief Clear all registered focusable views

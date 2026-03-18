@@ -137,36 +137,31 @@ bool Renderer::findAndDispatchEvent(LayoutNode& node, const Event& event, const 
 }
 
 void Renderer::renderTree(LayoutNode& node, Point parentOrigin) {
-    // Register focusable views with FocusState
+    // Register focusable views and capture the assigned key
+    std::string assignedFocusKey;
     if (window_ && node.view.canBeFocused()) {
-        window_->focus().registerFocusableView(
+        assignedFocusKey = window_->focus().registerFocusableView(
             &node.view,
             node.bounds
         );
     }
 
-    // Save the current rendering state
     renderContext_->save();
 
-    // Calculate position relative to parent
     float relX = node.bounds.x - parentOrigin.x;
     float relY = node.bounds.y - parentOrigin.y;
-
-    // Translate coordinate system to the view's position
     renderContext_->translate(relX, relY);
 
-    // Create local bounds (view renders in its own coordinate system)
     Rect localBounds = {0, 0, node.bounds.width, node.bounds.height};
 
-    // Clip rendering to the view's bounds if the view has clipping enabled
     if (node.view.shouldClip()) {
         Path clipPath;
         clipPath.rect(localBounds);
         renderContext_->clipPath(clipPath);
     }
 
-    // Set the current view's identity so it can check focus/hover/press state during rendering
-    renderContext_->setCurrentFocusKey(node.view.getFocusKey());
+    // Use the key returned by registerFocusableView (includes auto-generated keys)
+    renderContext_->setCurrentFocusKey(assignedFocusKey.empty() ? node.view.getFocusKey() : assignedFocusKey);
     renderContext_->setCurrentViewGlobalBounds(node.bounds);
 
     // Render the view with local coordinates
@@ -183,14 +178,12 @@ void Renderer::renderTree(LayoutNode& node, Point parentOrigin) {
 }
 
 void Renderer::handleEvent(const struct Event& event, const Rect& windowBounds) {
-    // Handle input events by finding the target view and dispatching to it
     if (!rootView_.isValid()) {
         return;
     }
 
     Point eventPoint;
     
-    // Extract coordinates based on event type
     switch (event.type) {
         case Event::MouseMove:
             eventPoint = {event.mouseMove.x, event.mouseMove.y};
@@ -203,15 +196,13 @@ void Renderer::handleEvent(const struct Event& event, const Rect& windowBounds) 
             eventPoint = {event.mouseScroll.x, event.mouseScroll.y};
             break;
         default:
-            return;  // Don't process events without coordinates
+            return;
     }
 
-    // Check if the event point is within window bounds
     if (!windowBounds.contains(eventPoint)) {
-        return;  // Event is outside the window
+        return;
     }
 
-    // Use cached layout tree if valid and bounds match, otherwise rebuild
     if (!layoutCacheValid_ || 
         cachedBounds_.x != windowBounds.x || cachedBounds_.y != windowBounds.y ||
         cachedBounds_.width != windowBounds.width || cachedBounds_.height != windowBounds.height) {
@@ -220,7 +211,6 @@ void Renderer::handleEvent(const struct Event& event, const Rect& windowBounds) 
         layoutCacheValid_ = true;
     }
     
-    // For mouse move events, collect and set the cursor, and update hover state
     if (event.type == Event::MouseMove) {
         updateHoverState(eventPoint);
         if (window_) {
@@ -229,13 +219,21 @@ void Renderer::handleEvent(const struct Event& event, const Rect& windowBounds) 
         }
     }
     
-    // On MouseDown, update focus to the clicked component
     if (event.type == Event::MouseDown && window_) {
         window_->focus().focusViewAtPoint(eventPoint);
     }
 
-    // Dispatch other events
+    // Clear pressed state unconditionally on mouse release (even if
+    // the pointer is no longer over the originally-pressed view).
+    if (event.type == Event::MouseUp) {
+        hasPressedView_ = false;
+    }
+
     findAndDispatchEvent(cachedLayoutTree_, event, eventPoint);
+
+    // Every mouse event can change visual state (hover, press, focus),
+    // so request a redraw to reflect it on screen.
+    requestApplicationRedraw();
 }
 
 void Renderer::collectHoverPath(const LayoutNode& node, const Point& point, std::vector<View>& path) {

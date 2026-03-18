@@ -130,7 +130,6 @@ private:
                 {
                     View mutableView = view;
                     handled = mutableView.handleMouseUp(localPoint.x, localPoint.y, event.mouseButton.button);
-                    hasPressedView_ = false;
                 }
                 break;
                 

@@ -5,6 +5,7 @@
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/Property.hpp>
 #include <Flux/Core/KeyEvent.hpp>
+#include <Flux/Core/Runtime.hpp>
 
 namespace flux {
 
@@ -161,6 +162,7 @@ struct Slider {
         }
 
         if (changed) {
+            requestApplicationRedraw();
             if (onValueChange) {
                 onValueChange(static_cast<float>(value));
                 return true;
@@ -198,6 +200,7 @@ private:
         } else if (onChange) {
             onChange();
         }
+        requestApplicationRedraw();
     }
 };
 
