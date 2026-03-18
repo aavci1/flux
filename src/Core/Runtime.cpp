@@ -11,7 +11,13 @@ Runtime* Runtime::current_ = nullptr;
 
 static std::atomic<uint64_t> bodyGeneration_{0};
 
+static thread_local int suppressRedrawRequests_ = 0;
+
+void suppressRedrawRequests() { ++suppressRedrawRequests_; }
+void resumeRedrawRequests()   { --suppressRedrawRequests_; }
+
 void requestApplicationRedraw() {
+    if (suppressRedrawRequests_ > 0) return;
     bodyGeneration_.fetch_add(1, std::memory_order_relaxed);
     if (Runtime::current_) {
         Runtime::current_->requestRedraw();

@@ -4,6 +4,7 @@
 #include <variant>
 #include <memory>
 #include <type_traits>
+#include <concepts>
 #include <atomic>
 #include <mutex>
 #include <shared_mutex>
@@ -14,6 +15,8 @@ namespace flux {
 
 // Forward declarations
 void requestApplicationRedraw();
+void suppressRedrawRequests();
+void resumeRedrawRequests();
 uint64_t currentBodyGeneration();
 
 // Property - A flexible wrapper that can be:
@@ -123,6 +126,9 @@ public:
         if (isPropertyful()) {
             auto stateful = getPropertyful();
             std::unique_lock lock(stateful->mutex);
+            if constexpr (requires { stateful->value == newValue; }) {
+                if (stateful->value == newValue) return *this;
+            }
             stateful->value = std::move(newValue);
             lock.unlock();
             stateful->notifyChange();
@@ -405,6 +411,9 @@ public:
         if (isPropertyful()) {
             auto stateful = getPropertyful();
             std::unique_lock lock(stateful->mutex);
+            if constexpr (std::equality_comparable<T>) {
+                if (stateful->value == value) return *this;
+            }
             stateful->value = value;
             lock.unlock();
             stateful->notifyChange();
@@ -418,6 +427,9 @@ public:
         if (isPropertyful()) {
             auto stateful = getPropertyful();
             std::unique_lock lock(stateful->mutex);
+            if constexpr (std::equality_comparable<T>) {
+                if (stateful->value == value) return *this;
+            }
             stateful->value = std::move(value);
             lock.unlock();
             stateful->notifyChange();

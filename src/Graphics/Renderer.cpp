@@ -5,6 +5,7 @@
 #include <Flux/Core/Element.hpp>
 #include <Flux/Core/LayoutTree.hpp>
 #include <Flux/Core/Runtime.hpp>
+#include <Flux/Core/Property.hpp>
 #include <optional>
 
 namespace flux {
@@ -12,23 +13,17 @@ namespace flux {
 void Renderer::renderFrame(const Rect& bounds) {
     if (!renderContext_) return;
 
-    // Begin the frame
     renderContext_->beginFrame();
-
-    // Clear the frame buffer
     renderContext_->clear(Color(1, 1, 1, 1));
 
-    // Build layout tree and render using framework approach
     if (rootView_.operator->()) {
-        // Clear focusable views from previous frame
         if (window_) {
             window_->focus().clearFocusableViews();
         }
 
-        // Layout the root view with RenderContext for accurate measurements
-        // Store directly in the cache so View* pointers registered during
-        // renderTree remain valid between frames.
+        suppressRedrawRequests();
         cachedLayoutTree_ = rootView_->layout(*renderContext_, bounds);
+        resumeRedrawRequests();
         cachedBounds_ = bounds;
         layoutCacheValid_ = true;
 
@@ -217,7 +212,9 @@ void Renderer::handleEvent(const struct Event& event, const Rect& windowBounds) 
     if (!layoutCacheValid_ || 
         cachedBounds_.x != windowBounds.x || cachedBounds_.y != windowBounds.y ||
         cachedBounds_.width != windowBounds.width || cachedBounds_.height != windowBounds.height) {
+        suppressRedrawRequests();
         cachedLayoutTree_ = rootView_.layout(*renderContext_, windowBounds);
+        resumeRedrawRequests();
         cachedBounds_ = windowBounds;
         layoutCacheValid_ = true;
     }
