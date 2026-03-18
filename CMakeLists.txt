@@ -99,6 +99,13 @@ foreach(_flux_stb_shim_h IN LISTS _flux_stb_shim_headers)
     configure_file("${_flux_stb_shim_h}" "${FLUX_STB_SHIM_DIR}/stb/${_flux_stb_shim_name}" COPYONLY)
 endforeach()
 
+# NanoVG includes <GL/gl.h>; macOS provides OpenGL via framework headers
+if(APPLE)
+    set(FLUX_GL_SHIM_DIR "${CMAKE_BINARY_DIR}/flux_gl_shim")
+    file(MAKE_DIRECTORY "${FLUX_GL_SHIM_DIR}/GL")
+    file(WRITE "${FLUX_GL_SHIM_DIR}/GL/gl.h" "#include <OpenGL/gl.h>\n")
+endif()
+
 # Flux library sources
 set(FLUX_SOURCES
     # Core
@@ -141,6 +148,9 @@ target_include_directories(nanovg PUBLIC
     ${NANOVG_SOURCE_DIR}/src
     ${FLUX_STB_SHIM_DIR}
 )
+if(APPLE)
+    target_include_directories(nanovg PRIVATE ${FLUX_GL_SHIM_DIR})
+endif()
 
 target_link_libraries(nanovg PUBLIC
     Freetype::Freetype
