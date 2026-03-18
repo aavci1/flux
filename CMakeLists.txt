@@ -73,6 +73,9 @@ set(FLUX_SOURCES
     src/Graphics/NanoVGRenderContext.cpp
     src/Graphics/NanoVGBackend.cpp
 
+    # Testing
+    src/Testing/ScreenCaptureImpl.cpp
+
     # Views
     src/Views/SVG.cpp
     src/Views/NanoSVG.cpp

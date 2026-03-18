@@ -84,8 +84,11 @@ public:
 
     void setRootView(View component) {
         rootView_ = std::move(component);
-        layoutCacheValid_ = false;  // Invalidate cache when root view changes
+        layoutCacheValid_ = false;
     }
+
+    const LayoutNode& getCachedLayoutTree() const { return cachedLayoutTree_; }
+    bool hasValidLayout() const { return layoutCacheValid_; }
 
 private:
     void renderTree(LayoutNode& node, Point parentOrigin = {0, 0});

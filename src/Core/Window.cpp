@@ -10,6 +10,8 @@
 #include <Flux/Graphics/RenderContext.hpp>
 #include <Flux/Graphics/NanoVGRenderContext.hpp>
 #include <Flux/Platform/PlatformWindow.hpp>
+#include <Flux/Testing/TestServer.hpp>
+#include <Flux/Testing/ScreenCapture.hpp>
 
 #include <Flux/Core/Log.hpp>
 #include <algorithm>
@@ -38,6 +40,10 @@ struct Window::WindowImpl {
     
     // Post-render hook
     std::function<void()> postRenderCallback;
+
+    // Test mode
+    std::unique_ptr<TestServer> testServer;
+    std::unique_ptr<ScreenCapture> testCapture;
     
     // Constructor
     WindowImpl(const WindowConfig& cfg, PlatformWindowFactory* factory)
@@ -135,6 +141,19 @@ void Window::render() {
     if (impl_->postRenderCallback) {
         impl_->postRenderCallback();
     }
+
+    if (impl_->testServer) {
+        if (impl_->testCapture) {
+            impl_->testCapture->capture(*this);
+            impl_->testServer->updateScreenshot(impl_->testCapture->getPng());
+        }
+        if (impl_->renderer->hasValidLayout()) {
+            std::string json = TestServer::serializeUITree(impl_->renderer->getCachedLayoutTree());
+            impl_->testServer->updateUITreeJSON(json);
+        }
+        impl_->testServer->signalFrameComplete();
+    }
+
     impl_->platformWindow->swapBuffers();
 }
 
@@ -339,6 +358,45 @@ void* Window::platformWindow() {
 
 void Window::processPendingEvents(LayoutNode& layoutTree) {
     impl_->keyboardHandler.processPendingEvents(layoutTree, impl_->focusState);
+}
+
+// Testing support
+
+void Window::enableTestMode(int port) {
+    impl_->testCapture = std::make_unique<ScreenCapture>();
+    impl_->testServer = std::make_unique<TestServer>(*this, port);
+    impl_->testServer->start();
+}
+
+void Window::processSyntheticEvents() {
+    if (!impl_->testServer) return;
+
+    auto events = impl_->testServer->drainEvents();
+    for (auto& e : events) {
+        switch (e.type) {
+            case TestServer::SyntheticEvent::Click:
+                handleMouseDown(0, e.x, e.y);
+                handleMouseUp(0, e.x, e.y);
+                break;
+            case TestServer::SyntheticEvent::TextInput:
+                handleTextInput(e.text);
+                break;
+            case TestServer::SyntheticEvent::KeyPress:
+                handleKeyDown(e.keyCode);
+                handleKeyUp(e.keyCode);
+                break;
+            case TestServer::SyntheticEvent::Scroll:
+                handleMouseScroll(e.x, e.y, e.deltaX, e.deltaY);
+                break;
+            case TestServer::SyntheticEvent::Hover:
+                handleMouseMove(e.x, e.y);
+                break;
+        }
+    }
+
+    if (!events.empty()) {
+        requestRedraw();
+    }
 }
 
 } // namespace flux

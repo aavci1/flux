@@ -5,6 +5,8 @@
 #include <string>
 #include <memory>
 #include <functional>
+#include <vector>
+#include <cstdint>
 
 namespace flux {
 
@@ -187,6 +189,21 @@ public:
      * Useful for capturing the framebuffer via glReadPixels.
      */
     void setPostRenderCallback(std::function<void()> callback);
+
+    // Testing support
+
+    /**
+     * @brief Enable test mode with an HTTP test server on the given port.
+     * Provides endpoints for UI tree introspection, screenshot capture,
+     * and synthetic event injection. Works with any Flux application.
+     */
+    void enableTestMode(int port = 8435);
+
+    /**
+     * @brief Process queued synthetic events from the test server.
+     * Called automatically by Runtime in the main loop.
+     */
+    void processSyntheticEvents();
 
     // Internal (used by subsystems)
     

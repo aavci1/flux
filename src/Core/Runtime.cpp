@@ -3,6 +3,7 @@
 #include <Flux/Platform/PlatformWindow.hpp>
 #include <Flux/Core/Log.hpp>
 #include <algorithm>
+#include <cstring>
 
 namespace flux {
 
@@ -15,12 +16,18 @@ void requestApplicationRedraw() {
 }
 
 Runtime::Runtime(int argc, char** argv) {
-    (void)argc;
-    (void)argv;
     if (current_) {
         throw std::runtime_error("Only one Runtime instance allowed");
     }
     current_ = this;
+
+    for (int i = 1; i < argc; i++) {
+        if (std::strcmp(argv[i], "--test-mode") == 0) {
+            testMode_ = true;
+        } else if (std::strcmp(argv[i], "--test-port") == 0 && i + 1 < argc) {
+            testPort_ = std::atoi(argv[++i]);
+        }
+    }
 }
 
 Runtime::~Runtime() {
@@ -34,12 +41,21 @@ Window& Runtime::createWindow(const WindowConfig& config) {
     Window& ref = *window;
     windows_.push_back(std::move(window));
     needsRedraw_.store(true, std::memory_order_relaxed);
+
+    if (testMode_) {
+        ref.enableTestMode(testPort_);
+    }
+
     return ref;
 }
 
 int Runtime::run() {
     while (running_) {
         processEvents();
+
+        for (auto& window : windows_) {
+            window->processSyntheticEvents();
+        }
 
         if (needsRedraw_.load(std::memory_order_relaxed)) {
             for (auto& window : windows_) {

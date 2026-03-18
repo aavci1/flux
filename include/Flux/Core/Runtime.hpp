@@ -37,6 +37,9 @@ public:
         needsRedraw_.store(true, std::memory_order_relaxed);
     }
 
+    bool isTestMode() const { return testMode_; }
+    int testPort() const { return testPort_; }
+
     // WindowEventObserver
     void onRedrawRequested(Window* window) override;
     void onWindowClosing(Window* window) override;
@@ -47,6 +50,9 @@ private:
     std::atomic<bool> needsRedraw_{false};
     bool running_{true};
     std::vector<std::unique_ptr<Window>> windows_;
+
+    bool testMode_ = false;
+    int testPort_ = 8435;
 
     static Runtime* current_;
     friend void requestApplicationRedraw();

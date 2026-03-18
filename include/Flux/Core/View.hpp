@@ -139,6 +139,10 @@ public:
     // Lifecycle
     virtual void onMounted() {}
     virtual void onUnmounted() {}
+
+    // Testing/accessibility introspection
+    virtual std::string getTextContent() const { return ""; }
+    virtual std::string getAccessibleValue() const { return ""; }
 };
 
 // SFINAE helpers to detect if methods exist
@@ -254,6 +258,64 @@ struct has_onUnmount {
     static constexpr bool value = decltype(test(std::declval<T>()))::value;
 };
 
+// SFINAE traits for testing/accessibility introspection of component properties
+template<typename T, typename = void>
+struct has_text_string : std::false_type {};
+template<typename T>
+struct has_text_string<T, std::void_t<
+    decltype(std::string{static_cast<std::string>(std::declval<const T&>().text)})
+>> : std::true_type {};
+
+template<typename T, typename = void>
+struct has_value_string : std::false_type {};
+template<typename T>
+struct has_value_string<T, std::void_t<
+    decltype(std::string{static_cast<std::string>(std::declval<const T&>().value)})
+>> : std::true_type {};
+
+template<typename T, typename = void>
+struct has_value_float : std::false_type {};
+template<typename T>
+struct has_value_float<T, std::void_t<
+    decltype(static_cast<float>(std::declval<const T&>().value)),
+    std::enable_if_t<!has_value_string<T>::value>
+>> : std::true_type {};
+
+template<typename T, typename = void>
+struct has_label_string : std::false_type {};
+template<typename T>
+struct has_label_string<T, std::void_t<
+    decltype(std::string{static_cast<std::string>(std::declval<const T&>().label)})
+>> : std::true_type {};
+
+template<typename T, typename = void>
+struct has_checked_bool : std::false_type {};
+template<typename T>
+struct has_checked_bool<T, std::void_t<
+    decltype(static_cast<bool>(std::declval<const T&>().checked))
+>> : std::true_type {};
+
+template<typename T, typename = void>
+struct has_isOn_bool : std::false_type {};
+template<typename T>
+struct has_isOn_bool<T, std::void_t<
+    decltype(static_cast<bool>(std::declval<const T&>().isOn))
+>> : std::true_type {};
+
+template<typename T, typename = void>
+struct has_placeholder_string : std::false_type {};
+template<typename T>
+struct has_placeholder_string<T, std::void_t<
+    decltype(std::string{static_cast<std::string>(std::declval<const T&>().placeholder)})
+>> : std::true_type {};
+
+template<typename T, typename = void>
+struct has_selected_bool : std::false_type {};
+template<typename T>
+struct has_selected_bool<T, std::void_t<
+    decltype(static_cast<bool>(std::declval<const T&>().selected))
+>> : std::true_type {};
+
 // Template wrapper that adapts ViewComponent to ViewInterface
 template<ViewComponent T>
 class ViewAdapter : public ViewInterface {
@@ -325,6 +387,10 @@ public:
     // Lifecycle
     void onMounted() override;
     void onUnmounted() override;
+
+    // Testing/accessibility introspection
+    std::string getTextContent() const override;
+    std::string getAccessibleValue() const override;
 };
 
 // Type-erased view container that supports any component type
@@ -471,6 +537,15 @@ public:
 
     void onUnmounted() {
         if (component_) component_->onUnmounted();
+    }
+
+    // Testing/accessibility introspection delegation
+    std::string getTextContent() const {
+        return component_ ? component_->getTextContent() : "";
+    }
+
+    std::string getAccessibleValue() const {
+        return component_ ? component_->getAccessibleValue() : "";
     }
 
     ViewInterface* operator->() { return component_.get(); }
@@ -933,6 +1008,51 @@ inline void ViewAdapter<T>::onUnmounted() {
     if constexpr (has_onUnmount<T>::value) {
         component.onUnmount();
     }
+}
+
+template<ViewComponent T>
+inline std::string ViewAdapter<T>::getTextContent() const {
+    std::string result;
+    if constexpr (has_text_string<T>::value) {
+        result = static_cast<std::string>(component.text);
+    }
+    if constexpr (has_value_string<T>::value) {
+        if (result.empty()) result = static_cast<std::string>(component.value);
+    }
+    if constexpr (has_label_string<T>::value) {
+        std::string lbl = static_cast<std::string>(component.label);
+        if (!lbl.empty()) {
+            if (!result.empty()) result = lbl + ": " + result;
+            else result = lbl;
+        }
+    }
+    if constexpr (has_placeholder_string<T>::value) {
+        if (result.empty()) {
+            std::string ph = static_cast<std::string>(component.placeholder);
+            if (!ph.empty()) result = ph;
+        }
+    }
+    return result;
+}
+
+template<ViewComponent T>
+inline std::string ViewAdapter<T>::getAccessibleValue() const {
+    if constexpr (has_value_float<T>::value) {
+        float v = static_cast<float>(component.value);
+        char buf[32];
+        std::snprintf(buf, sizeof(buf), "%.4g", v);
+        return std::string(buf);
+    }
+    if constexpr (has_checked_bool<T>::value) {
+        return static_cast<bool>(component.checked) ? "true" : "false";
+    }
+    if constexpr (has_isOn_bool<T>::value) {
+        return static_cast<bool>(component.isOn) ? "true" : "false";
+    }
+    if constexpr (has_selected_bool<T>::value) {
+        return static_cast<bool>(component.selected) ? "true" : "false";
+    }
+    return "";
 }
 
 } // namespace flux
