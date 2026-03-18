@@ -8,14 +8,11 @@
 #include <Flux/Views/VStack.hpp>
 #include <Flux/Views/HStack.hpp>
 #include <Flux/Views/Text.hpp>
-#include "../Theme.hpp"
 #include <string>
 #include <vector>
 #include <functional>
 
-namespace llm_studio {
-
-using namespace flux;
+namespace flux {
 
 struct SelectInput {
     FLUX_VIEW_PROPERTIES;
@@ -25,6 +22,14 @@ struct SelectInput {
     Property<std::vector<std::string>> options;
     Property<float> selectWidth = 200.0f;
     std::function<void(int, const std::string&)> onSelect;
+
+    Property<Color> bgColor = Color(0.16f, 0.16f, 0.16f);
+    Property<Color> dropdownBgColor = Color(0.12f, 0.12f, 0.12f);
+    Property<Color> borderColor_ = Color(0.22f, 0.22f, 0.22f);
+    Property<Color> textColor_ = Color(0.92f, 0.92f, 0.92f);
+    Property<Color> mutedColor = Color(0.48f, 0.48f, 0.48f);
+    Property<Color> accentColor = Colors::blue;
+    Property<float> itemFontSize = 14.0f;
 
     mutable bool isOpen = false;
 
@@ -77,24 +82,24 @@ struct SelectInput {
         children.push_back(View(HStack{
             .spacing = 4.0f,
             .alignItems = AlignItems::center,
-            .backgroundColor = Theme::SurfaceRaised,
+            .backgroundColor = bgColor,
             .padding = EdgeInsets(8, 12, 8, 12),
-            .cornerRadius = Theme::RadiusSmall,
-            .borderColor = Theme::Border,
+            .cornerRadius = 4.0f,
+            .borderColor = borderColor_,
             .borderWidth = 1.0f,
             .minWidth = w,
             .children = {
                 View(Text{
                     .value = currentLabel,
-                    .fontSize = Theme::FontBody,
-                    .color = Theme::TextPrimary,
+                    .fontSize = itemFontSize,
+                    .color = textColor_,
                     .horizontalAlignment = HorizontalAlignment::leading,
                     .expansionBias = 1.0f
                 }),
                 View(Text{
                     .value = std::string(isOpen ? "\xE2\x96\xB4" : "\xE2\x96\xBE"),
                     .fontSize = 10.0f,
-                    .color = Theme::TextMuted
+                    .color = mutedColor
                 })
             }
         }));
@@ -103,7 +108,7 @@ struct SelectInput {
             std::vector<View> optViews;
             for (int i = 0; i < static_cast<int>(opts.size()); i++) {
                 bool selected = (i == idx);
-                Color bg = selected ? Theme::Accent.opacity(0.15f) : Theme::SurfaceRaised;
+                Color bg = selected ? static_cast<Color>(accentColor).opacity(0.15f) : static_cast<Color>(bgColor);
                 int capturedIdx = i;
                 std::string capturedLabel = opts[i];
 
@@ -111,19 +116,19 @@ struct SelectInput {
                 if (selected) {
                     itemContent.push_back(View(Text{
                         .value = std::string("\xE2\x9C\x93"),
-                        .fontSize = Theme::FontCaption,
-                        .color = Theme::Accent
+                        .fontSize = 12.0f,
+                        .color = accentColor
                     }));
                 }
                 itemContent.push_back(View(Text{
                     .value = capturedLabel,
-                    .fontSize = Theme::FontBody,
-                    .color = Theme::TextPrimary,
+                    .fontSize = itemFontSize,
+                    .color = textColor_,
                     .horizontalAlignment = HorizontalAlignment::leading
                 }));
 
                 optViews.push_back(View(HStack{
-                    .spacing = Theme::Space2,
+                    .spacing = 8.0f,
                     .alignItems = AlignItems::center,
                     .backgroundColor = bg,
                     .padding = EdgeInsets(6, 10, 6, 10),
@@ -139,9 +144,9 @@ struct SelectInput {
 
             children.push_back(View(VStack{
                 .spacing = 1.0f,
-                .backgroundColor = Theme::Surface,
-                .cornerRadius = Theme::RadiusSmall,
-                .borderColor = Theme::Border,
+                .backgroundColor = dropdownBgColor,
+                .cornerRadius = 4.0f,
+                .borderColor = borderColor_,
                 .borderWidth = 1.0f,
                 .minWidth = w,
                 .children = std::move(optViews)
@@ -155,4 +160,4 @@ struct SelectInput {
     }
 };
 
-} // namespace llm_studio
+} // namespace flux

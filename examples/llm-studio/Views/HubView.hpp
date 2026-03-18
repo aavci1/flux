@@ -14,8 +14,8 @@
 #include <Flux/Views/Badge.hpp>
 #include "../Theme.hpp"
 #include "../AppState.hpp"
-#include "../Components/TextInput.hpp"
-#include "../Components/DropdownMenu.hpp"
+#include <Flux/Views/TextInput.hpp>
+#include <Flux/Views/DropdownMenu.hpp>
 #include <format>
 
 namespace llm_studio {

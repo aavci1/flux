@@ -13,7 +13,7 @@
 #include <Flux/Views/Divider.hpp>
 #include "../Theme.hpp"
 #include "../AppState.hpp"
-#include "../Components/TextArea.hpp"
+#include <Flux/Views/TextArea.hpp>
 #include "../Components/ChatBubble.hpp"
 #include <chrono>
 

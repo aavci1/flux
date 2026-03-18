@@ -14,9 +14,9 @@
 #include <Flux/Views/ScrollArea.hpp>
 #include "../Theme.hpp"
 #include "../AppState.hpp"
-#include "../Components/TextInput.hpp"
-#include "../Components/SectionHeader.hpp"
-#include "../Components/SelectInput.hpp"
+#include <Flux/Views/TextInput.hpp>
+#include <Flux/Views/SectionHeader.hpp>
+#include <Flux/Views/SelectInput.hpp>
 #include <format>
 
 namespace llm_studio {

@@ -7,20 +7,18 @@
 #include <Flux/Views/VStack.hpp>
 #include <Flux/Views/Text.hpp>
 #include <Flux/Views/Divider.hpp>
-#include "../Theme.hpp"
 #include <string>
 #include <algorithm>
 
-namespace llm_studio {
-
-using namespace flux;
+namespace flux {
 
 struct SectionHeader {
     FLUX_VIEW_PROPERTIES;
 
     Property<std::string> title = std::string("");
     Property<float> fontSize = 11.0f;
-    Property<Color> color = Theme::TextMuted;
+    Property<Color> color = Color(0.48f, 0.48f, 0.48f);
+    Property<Color> dividerColor = Color(0.22f, 0.22f, 0.22f);
     Property<float> topPad = 20.0f;
     Property<float> bottomPad = 8.0f;
     Property<bool> showRule = true;
@@ -42,12 +40,12 @@ struct SectionHeader {
 
         if (static_cast<bool>(showRule)) {
             children.push_back(View(Divider{
-                .borderColor = Theme::Border
+                .borderColor = dividerColor
             }));
         }
 
         return View(VStack{
-            .spacing = Theme::Space1,
+            .spacing = 4.0f,
             .padding = EdgeInsets(static_cast<float>(topPad), 0,
                                   static_cast<float>(bottomPad), 0),
             .children = std::move(children)
@@ -55,4 +53,4 @@ struct SectionHeader {
     }
 };
 
-} // namespace llm_studio
+} // namespace flux

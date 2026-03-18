@@ -5,7 +5,6 @@
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/Property.hpp>
 #include <Flux/Core/KeyEvent.hpp>
-#include "../Theme.hpp"
 #include <string>
 #include <functional>
 #include <vector>
@@ -16,9 +15,7 @@
 #include <thread>
 #include <atomic>
 
-namespace llm_studio {
-
-using namespace flux;
+namespace flux {
 
 struct TextArea {
     FLUX_VIEW_PROPERTIES;
@@ -31,12 +28,12 @@ struct TextArea {
     Property<float> areaMinHeight = 72.0f;
     Property<float> areaMaxHeight = 200.0f;
     Property<bool> autoExpand = true;
-    Property<Color> textColor = Theme::TextPrimary;
-    Property<Color> bgColor = Theme::Surface;
-    Property<Color> borderCol = Theme::Border;
-    Property<Color> focusBorderColor = Theme::Accent;
-    Property<Color> placeholderColor = Theme::TextMuted;
-    Property<float> areaCornerRadius = Theme::RadiusSmall;
+    Property<Color> textColor = Color(0.92f, 0.92f, 0.92f);
+    Property<Color> bgColor = Color(0.12f, 0.12f, 0.12f);
+    Property<Color> borderCol = Color(0.22f, 0.22f, 0.22f);
+    Property<Color> focusBorderColor = Colors::blue;
+    Property<Color> placeholderColor = Color(0.48f, 0.48f, 0.48f);
+    Property<float> areaCornerRadius = 4.0f;
     Property<float> areaPadding = 10.0f;
     Property<float> areaWidth = 400.0f;
 
@@ -188,7 +185,7 @@ struct TextArea {
             if (isFocused) {
                 float phase = std::fmod(blinkTimer * 2.0f, 2.0f);
                 if (phase < 1.0f) {
-                    ctx.setStrokeStyle(StrokeStyle::solid(Theme::TextPrimary, 1.5f));
+                    ctx.setStrokeStyle(StrokeStyle::solid(static_cast<Color>(textColor), 1.5f));
                     ctx.drawLine({textX, bounds.y + pad}, {textX, bounds.y + pad + fs});
                 }
             }
@@ -219,7 +216,7 @@ struct TextArea {
                 Size cs = ctx.measureText(beforeCaret, TextStyle::regular("default", fs));
                 float cx = textX + cs.width;
                 float cy = bounds.y + pad + lineIdx * lineHeight - scrollY;
-                ctx.setStrokeStyle(StrokeStyle::solid(Theme::TextPrimary, 1.5f));
+                ctx.setStrokeStyle(StrokeStyle::solid(static_cast<Color>(textColor), 1.0f));
                 ctx.drawLine({cx, cy}, {cx, cy + fs});
             }
         }
@@ -276,4 +273,4 @@ private:
     }
 };
 
-} // namespace llm_studio
+} // namespace flux

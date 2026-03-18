@@ -10,14 +10,11 @@
 #include <Flux/Views/Text.hpp>
 #include <Flux/Views/Button.hpp>
 #include <Flux/Views/Spacer.hpp>
-#include "../Theme.hpp"
 #include <string>
 #include <vector>
 #include <functional>
 
-namespace llm_studio {
-
-using namespace flux;
+namespace flux {
 
 struct DialogButton {
     std::string label;
@@ -36,9 +33,19 @@ struct Dialog {
     Property<float> dialogWidth = 400.0f;
     std::vector<DialogButton> buttons;
 
+    Property<Color> overlayColor = Color(0.0f, 0.0f, 0.0f, 0.6f);
+    Property<Color> dialogBgColor = Color(0.12f, 0.12f, 0.12f);
+    Property<Color> dialogBorderColor = Color(0.22f, 0.22f, 0.22f);
+    Property<Color> titleColor = Color(0.92f, 0.92f, 0.92f);
+    Property<Color> messageColor = Color(0.48f, 0.48f, 0.48f);
+    Property<Color> primaryColor = Colors::blue;
+    Property<Color> destructiveColor = Colors::red;
+    Property<Color> defaultButtonColor = Color(0.16f, 0.16f, 0.16f);
+    Property<float> titleFontSize = 18.0f;
+    Property<float> messageFontSize = 14.0f;
+
     void init() {
         focusable = true;
-
         onMouseDown = [](float, float, int) {};
     }
 
@@ -68,15 +75,15 @@ struct Dialog {
         std::vector<View> btnViews;
         btnViews.push_back(View(Spacer{}));
         for (const auto& btn : buttons) {
-            Color bg = Theme::SurfaceRaised;
-            if (btn.isPrimary) bg = Theme::Accent;
-            if (btn.isDestructive) bg = Theme::Destructive;
+            Color bg = defaultButtonColor;
+            if (btn.isPrimary) bg = primaryColor;
+            if (btn.isDestructive) bg = destructiveColor;
 
             btnViews.push_back(View(Button{
                 .text = btn.label,
                 .backgroundColor = bg,
                 .padding = EdgeInsets(8, 16, 8, 16),
-                .cornerRadius = Theme::RadiusSmall,
+                .cornerRadius = 4.0f,
                 .onClick = btn.onClick
             }));
         }
@@ -88,29 +95,29 @@ struct Dialog {
         if (!titleStr.empty()) {
             contentViews.push_back(View(Text{
                 .value = titleStr,
-                .fontSize = Theme::FontH1,
+                .fontSize = titleFontSize,
                 .fontWeight = FontWeight::bold,
-                .color = Theme::TextPrimary,
+                .color = titleColor,
                 .horizontalAlignment = HorizontalAlignment::leading
             }));
         }
         if (!msgStr.empty()) {
             contentViews.push_back(View(Text{
                 .value = msgStr,
-                .fontSize = Theme::FontBody,
-                .color = Theme::TextMuted,
+                .fontSize = messageFontSize,
+                .color = messageColor,
                 .horizontalAlignment = HorizontalAlignment::leading,
                 .padding = EdgeInsets(4, 0, 12, 0)
             }));
         }
         contentViews.push_back(View(HStack{
-            .spacing = Theme::Space2,
+            .spacing = 8.0f,
             .justifyContent = JustifyContent::end,
             .children = std::move(btnViews)
         }));
 
         return View(VStack{
-            .backgroundColor = Color(0.0f, 0.0f, 0.0f, 0.6f),
+            .backgroundColor = overlayColor,
             .children = {
                 View(Spacer{}),
                 View(HStack{
@@ -118,11 +125,11 @@ struct Dialog {
                     .children = {
                         View(Spacer{}),
                         View(VStack{
-                            .spacing = Theme::Space2,
-                            .backgroundColor = Theme::Surface,
-                            .padding = Theme::Space6,
-                            .cornerRadius = Theme::RadiusDialog,
-                            .borderColor = Theme::Border,
+                            .spacing = 8.0f,
+                            .backgroundColor = dialogBgColor,
+                            .padding = 24.0f,
+                            .cornerRadius = 10.0f,
+                            .borderColor = dialogBorderColor,
                             .borderWidth = 1.0f,
                             .minWidth = static_cast<float>(dialogWidth),
                             .maxWidth = static_cast<float>(dialogWidth),
@@ -137,4 +144,4 @@ struct Dialog {
     }
 };
 
-} // namespace llm_studio
+} // namespace flux

@@ -4,22 +4,19 @@
 #include <Flux/Core/ViewHelpers.hpp>
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/Property.hpp>
-#include "../Theme.hpp"
 #include <cmath>
 #include <chrono>
 #include <thread>
 #include <atomic>
 #include <memory>
 
-namespace llm_studio {
-
-using namespace flux;
+namespace flux {
 
 struct TypingIndicator {
     FLUX_VIEW_PROPERTIES;
 
     Property<bool> isVisible = true;
-    Property<Color> dotColor = Theme::TextMuted;
+    Property<Color> dotColor = Colors::gray;
     Property<float> dotRadius = 4.0f;
     Property<float> dotSpacing = 6.0f;
     Property<float> animationSpeed = 1.2f;
@@ -71,4 +68,4 @@ struct TypingIndicator {
     }
 };
 
-} // namespace llm_studio
+} // namespace flux

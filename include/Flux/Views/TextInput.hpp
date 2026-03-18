@@ -5,16 +5,13 @@
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/Property.hpp>
 #include <Flux/Core/KeyEvent.hpp>
-#include "../Theme.hpp"
 #include <string>
 #include <functional>
 #include <chrono>
 #include <algorithm>
 #include <cmath>
 
-namespace llm_studio {
-
-using namespace flux;
+namespace flux {
 
 struct TextInput {
     FLUX_VIEW_PROPERTIES;
@@ -27,12 +24,13 @@ struct TextInput {
     Property<int> maxLength = -1;
 
     Property<float> fontSize = 14.0f;
-    Property<Color> textColor = Theme::TextPrimary;
-    Property<Color> placeholderColor = Theme::TextMuted;
-    Property<Color> bgColor = Theme::Surface;
-    Property<Color> borderCol = Theme::Border;
-    Property<Color> focusBorderColor = Theme::Accent;
-    Property<float> inputCornerRadius = Theme::RadiusSmall;
+    Property<Color> textColor = Color(0.92f, 0.92f, 0.92f);
+    Property<Color> placeholderColor = Color(0.48f, 0.48f, 0.48f);
+    Property<Color> bgColor = Color(0.12f, 0.12f, 0.12f);
+    Property<Color> borderCol = Color(0.22f, 0.22f, 0.22f);
+    Property<Color> focusBorderColor = Colors::blue;
+    Property<Color> selectionColor = Colors::blue;
+    Property<float> inputCornerRadius = 4.0f;
     Property<float> inputPadding = 8.0f;
     Property<float> inputWidth = 200.0f;
     Property<float> inputHeight = 36.0f;
@@ -75,7 +73,7 @@ struct TextInput {
             selStart = selEnd = caretPos;
         };
 
-        onMouseDown = [this](float x, float /*y*/, int button) {
+        onMouseDown = [this](float x, float, int button) {
             if (button == 0) {
                 selStart = selEnd = caretPos;
             }
@@ -196,7 +194,7 @@ struct TextInput {
         std::string displayText;
 
         if (static_cast<bool>(password)) {
-            displayText = std::string(val.size(), '\xE2');  // bullet char approximation
+            displayText = std::string(val.size(), '\xE2');
         } else {
             displayText = val;
         }
@@ -222,7 +220,6 @@ struct TextInput {
             }
         }
 
-        // Draw selection highlight
         if (selStart != selEnd && isFocused) {
             size_t sMin = std::min(selStart, selEnd);
             size_t sMax = std::max(selStart, selEnd);
@@ -232,7 +229,7 @@ struct TextInput {
             Size selSize = ctx.measureText(selText, TextStyle::regular("default", fs));
             Rect selRect = {textArea.x + beforeSize.width, bounds.y + 4,
                            selSize.width, bounds.height - 8};
-            ctx.setFillStyle(FillStyle::solid(static_cast<Color>(Theme::Accent).opacity(0.3f)));
+            ctx.setFillStyle(FillStyle::solid(static_cast<Color>(selectionColor).opacity(0.3f)));
             ctx.setStrokeStyle(StrokeStyle::none());
             ctx.drawRect(selRect, CornerRadius(2));
         }
@@ -241,7 +238,6 @@ struct TextInput {
         ctx.drawText(displayText, {textArea.x, bounds.center().y},
             HorizontalAlignment::leading, VerticalAlignment::center);
 
-        // Draw cursor
         if (isFocused) {
             float phase = std::fmod(blinkTimer * 2.0f, 2.0f);
             if (phase < 1.0f) {
@@ -249,7 +245,7 @@ struct TextInput {
                 Size caretSize = ctx.measureText(beforeCaret, TextStyle::regular("default", fs));
                 float cx = textArea.x + caretSize.width;
                 ctx.setFillStyle(FillStyle::none());
-                ctx.setStrokeStyle(StrokeStyle::solid(Theme::TextPrimary, 1.5f));
+                ctx.setStrokeStyle(StrokeStyle::solid(static_cast<Color>(textColor), 1.5f));
                 ctx.drawLine({cx, bounds.y + 6}, {cx, bounds.y + bounds.height - 6});
             }
         }
@@ -270,4 +266,4 @@ private:
     }
 };
 
-} // namespace llm_studio
+} // namespace flux

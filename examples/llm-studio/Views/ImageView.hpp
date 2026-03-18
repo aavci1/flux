@@ -14,8 +14,8 @@
 #include <Flux/Views/ScrollArea.hpp>
 #include "../Theme.hpp"
 #include "../AppState.hpp"
-#include "../Components/TextArea.hpp"
-#include "../Components/TextInput.hpp"
+#include <Flux/Views/TextArea.hpp>
+#include <Flux/Views/TextInput.hpp>
 #include <format>
 
 namespace llm_studio {

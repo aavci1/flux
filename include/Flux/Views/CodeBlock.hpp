@@ -9,13 +9,10 @@
 #include <Flux/Views/Text.hpp>
 #include <Flux/Views/Button.hpp>
 #include <Flux/Views/Spacer.hpp>
-#include "../Theme.hpp"
 #include <string>
 #include <sstream>
 
-namespace llm_studio {
-
-using namespace flux;
+namespace flux {
 
 struct CodeBlock {
     FLUX_VIEW_PROPERTIES;
@@ -25,7 +22,10 @@ struct CodeBlock {
     Property<std::string> language = std::string("");
     Property<Color> codeBgColor = Color(0.1f, 0.1f, 0.1f);
     Property<Color> codeTextColor = Color(0.85f, 0.85f, 0.85f);
-    Property<float> codeFontSize = Theme::FontCode;
+    Property<Color> headerBgColor = Color(0.08f, 0.08f, 0.08f);
+    Property<Color> headerTextColor = Color(0.48f, 0.48f, 0.48f);
+    Property<float> headerFontSize = 12.0f;
+    Property<float> codeFontSize = 13.0f;
     Property<float> codePadding = 12.0f;
     Property<float> codeCornerRadius = 6.0f;
 
@@ -45,16 +45,16 @@ struct CodeBlock {
         if (!lang.empty()) {
             headerH = 24.0f;
             Rect headerRect = {bounds.x, bounds.y, bounds.width, headerH};
-            ctx.setFillStyle(FillStyle::solid(Color(0.08f, 0.08f, 0.08f)));
+            ctx.setFillStyle(FillStyle::solid(headerBgColor));
             ctx.drawRect(headerRect, CornerRadius(rad, rad, 0, 0));
 
-            ctx.setTextStyle(TextStyle::regular("default", Theme::FontCaption));
-            ctx.setFillStyle(FillStyle::solid(Theme::TextMuted));
+            ctx.setTextStyle(TextStyle::regular("default", static_cast<float>(headerFontSize)));
+            ctx.setFillStyle(FillStyle::solid(headerTextColor));
             ctx.drawText(lang, {bounds.x + pad, bounds.y + headerH / 2},
                 HorizontalAlignment::leading, VerticalAlignment::center);
 
             std::string copyLabel = copied ? "Copied!" : "Copy";
-            ctx.setFillStyle(FillStyle::solid(Theme::TextMuted));
+            ctx.setFillStyle(FillStyle::solid(headerTextColor));
             ctx.drawText(copyLabel,
                 {bounds.x + bounds.width - pad, bounds.y + headerH / 2},
                 HorizontalAlignment::trailing, VerticalAlignment::center);
@@ -102,4 +102,4 @@ struct CodeBlock {
     }
 };
 
-} // namespace llm_studio
+} // namespace flux

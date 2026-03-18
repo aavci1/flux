@@ -9,8 +9,8 @@
 #include <Flux/Views/Spacer.hpp>
 #include "../Theme.hpp"
 #include "../AppState.hpp"
-#include "TypingIndicator.hpp"
-#include "CodeBlock.hpp"
+#include <Flux/Views/TypingIndicator.hpp>
+#include <Flux/Views/CodeBlock.hpp>
 #include <string>
 #include <vector>
 #include <regex>
