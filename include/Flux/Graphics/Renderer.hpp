@@ -65,6 +65,14 @@ private:
     // Hover tracking: list of views currently under the pointer (root to deepest)
     std::vector<View> hoveredViews_;
 
+    // Bounds of the deepest hovered interactive view (for render-time queries)
+    Rect hoveredBounds_{};
+    bool hasHoveredView_ = false;
+
+    // Bounds of the currently pressed view (mouseDown → set, mouseUp → clear)
+    Rect pressedBounds_{};
+    bool hasPressedView_ = false;
+
 public:
     Renderer(RenderContext* ctx)
         : renderContext_(ctx), rootView_(), window_(nullptr) {}
@@ -109,7 +117,6 @@ private:
         
         switch (event.type) {
             case Event::MouseDown:
-                // Need to make a mutable copy to call the handler
                 {
                     View mutableView = view;
                     handled = mutableView.handleMouseDown(localPoint.x, localPoint.y, event.mouseButton.button);
@@ -123,6 +130,7 @@ private:
                 {
                     View mutableView = view;
                     handled = mutableView.handleMouseUp(localPoint.x, localPoint.y, event.mouseButton.button);
+                    hasPressedView_ = false;
                 }
                 break;
                 

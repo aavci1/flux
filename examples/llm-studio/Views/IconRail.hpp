@@ -27,6 +27,8 @@ struct IconRailButton {
 
     void render(RenderContext& ctx, const Rect& bounds) const {
         bool isActive = active;
+        bool isHovered = ctx.isCurrentViewHovered();
+        bool isPressed = ctx.isCurrentViewPressed();
 
         if (isActive) {
             Rect indicator = {bounds.x, bounds.y + 6, 3, bounds.height - 12};
@@ -34,7 +36,17 @@ struct IconRailButton {
             ctx.drawRect(indicator, CornerRadius(1.5f));
         }
 
-        Color iconColor = isActive ? Theme::Accent : Theme::TextMuted;
+        if (isPressed) {
+            ctx.setFillStyle(FillStyle::solid(Theme::SurfaceRaised.darken(0.1f)));
+            ctx.drawRect(bounds, CornerRadius(Theme::RadiusSmall));
+        } else if (isHovered) {
+            ctx.setFillStyle(FillStyle::solid(Theme::SurfaceRaised));
+            ctx.drawRect(bounds, CornerRadius(Theme::RadiusSmall));
+        }
+
+        Color iconColor = isActive ? Theme::Accent
+                        : isHovered ? Theme::TextPrimary
+                        : Theme::TextMuted;
         ctx.setTextStyle(TextStyle::regular("default", 20.0f));
         ctx.setFillStyle(FillStyle::solid(iconColor));
         ctx.drawText(static_cast<std::string>(icon), bounds.center(),

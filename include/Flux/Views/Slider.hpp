@@ -57,6 +57,7 @@ struct Slider {
         ViewHelpers::renderView(*this, ctx, bounds);
 
         bool hasFocus = ctx.isCurrentViewFocused();
+        bool isHovered = ctx.isCurrentViewHovered();
         EdgeInsets paddingVal = padding;
 
         float trackH = trackHeight;
@@ -108,10 +109,13 @@ struct Slider {
         ctx.setStrokeStyle(StrokeStyle::none());
         ctx.drawCircle({thumbX, sliderY + 1}, thumbR);
 
-        // Draw thumb
-        ctx.setFillStyle(FillStyle::solid(isDragging || hasFocus ? 
-            static_cast<Color>(activeColor).darken(0.1f) : 
-            static_cast<Color>(activeColor)));
+        Color thumbColor = static_cast<Color>(activeColor);
+        if (isDragging) {
+            thumbColor = thumbColor.darken(0.15f);
+        } else if (isHovered) {
+            thumbColor = thumbColor.lighten(0.15f);
+        }
+        ctx.setFillStyle(FillStyle::solid(thumbColor));
         ctx.drawCircle({thumbX, sliderY}, thumbR);
 
         // Draw focus ring if focused

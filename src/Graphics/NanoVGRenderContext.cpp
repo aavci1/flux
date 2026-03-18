@@ -848,4 +848,43 @@ bool NanoVGRenderContext::isCurrentViewFocused() const {
            currentViewFocusKey_ == globalFocusedKey_;
 }
 
+// ============================================================================
+// HOVER / PRESS STATE
+// ============================================================================
+
+void NanoVGRenderContext::setHoveredBounds(const Rect& bounds) {
+    hoveredBounds_ = bounds;
+    hasHovered_ = (bounds.width > 0 && bounds.height > 0);
+}
+
+void NanoVGRenderContext::setCurrentViewGlobalBounds(const Rect& bounds) {
+    currentViewBounds_ = bounds;
+}
+
+bool NanoVGRenderContext::isCurrentViewHovered() const {
+    if (!hasHovered_) return false;
+    return std::abs(currentViewBounds_.x - hoveredBounds_.x) < 0.5f &&
+           std::abs(currentViewBounds_.y - hoveredBounds_.y) < 0.5f &&
+           std::abs(currentViewBounds_.width - hoveredBounds_.width) < 0.5f &&
+           std::abs(currentViewBounds_.height - hoveredBounds_.height) < 0.5f;
+}
+
+void NanoVGRenderContext::setPressedBounds(const Rect& bounds) {
+    pressedBounds_ = bounds;
+    hasPressed_ = true;
+}
+
+void NanoVGRenderContext::clearPressedBounds() {
+    pressedBounds_ = {};
+    hasPressed_ = false;
+}
+
+bool NanoVGRenderContext::isCurrentViewPressed() const {
+    if (!hasPressed_) return false;
+    return std::abs(currentViewBounds_.x - pressedBounds_.x) < 0.5f &&
+           std::abs(currentViewBounds_.y - pressedBounds_.y) < 0.5f &&
+           std::abs(currentViewBounds_.width - pressedBounds_.width) < 0.5f &&
+           std::abs(currentViewBounds_.height - pressedBounds_.height) < 0.5f;
+}
+
 } // namespace flux

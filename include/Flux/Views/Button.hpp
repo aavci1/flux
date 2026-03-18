@@ -17,51 +17,49 @@ struct Button {
     
     // Focus state is now tracked by Window, no need for local state
     
-    // Initialize default properties
     void init() {
-        backgroundColor = Colors::blue;
-        focusable = true;  // Buttons are focusable by default
-        
-        // Set up focus callbacks to track focus state
-        onFocus = [this]() {
-            // Use a safer approach - don't modify member variables in callbacks
-            // The focus state will be tracked by the Window
-        };
-        onBlur = [this]() {
-            // Use a safer approach - don't modify member variables in callbacks
-            // The focus state will be tracked by the Window
-        };
+        focusable = true;
     }
 
+    Property<Color> textColor = Colors::white;
+
     void render(RenderContext& ctx, const Rect& bounds) const {
-        // Check if this button has focus
         bool hasFocus = ctx.isCurrentViewFocused();
-        
-        // Render background with focus indicator
-        if (hasFocus) {
-            // Draw a lighter background when focused (add 0.2 to RGB values)
-            Color bgColor = static_cast<Color>(backgroundColor);
-            Color focusColor(
-                std::min(bgColor.r + 0.2f, 1.0f),
-                std::min(bgColor.g + 0.2f, 1.0f),
-                std::min(bgColor.b + 0.2f, 1.0f),
-                bgColor.a
-            );
-            ctx.setFillStyle(FillStyle::solid(focusColor));
-            ctx.drawRect(bounds, cornerRadius);
-            
-            // Draw focus ring
-            Path focusRing;
-            focusRing.rect(bounds, cornerRadius);
-            ctx.setStrokeStyle(StrokeStyle::solid(Colors::white, 3.0f));
-            ctx.drawPath(focusRing);
-        } else {
-            // Normal rendering
-            ViewHelpers::renderView(*this, ctx, bounds);
+        bool isHovered = ctx.isCurrentViewHovered();
+        bool isPressed = ctx.isCurrentViewPressed();
+
+        Color bgColor = static_cast<Color>(backgroundColor);
+
+        if (isPressed) {
+            bgColor = bgColor.darken(0.15f);
+        } else if (isHovered) {
+            bgColor = bgColor.lighten(0.12f);
         }
 
-        // Render button text
-        ctx.setFillStyle(FillStyle::solid(Colors::white));
+        ctx.setFillStyle(FillStyle::solid(bgColor));
+        ctx.setStrokeStyle(StrokeStyle::none());
+        ctx.drawRect(bounds, cornerRadius);
+
+        float bw = static_cast<float>(borderWidth);
+        if (bw > 0) {
+            Color bcVal = borderColor;
+            Path border;
+            border.rect(bounds, cornerRadius);
+            ctx.setFillStyle(FillStyle::none());
+            ctx.setStrokeStyle(StrokeStyle::solid(isHovered ? bcVal.lighten(0.2f) : bcVal, bw));
+            ctx.drawPath(border);
+        }
+
+        if (hasFocus && !isHovered) {
+            Path focusRing;
+            Rect focusRect = {bounds.x - 1, bounds.y - 1, bounds.width + 2, bounds.height + 2};
+            focusRing.rect(focusRect, cornerRadius);
+            ctx.setFillStyle(FillStyle::none());
+            ctx.setStrokeStyle(StrokeStyle::solid(Colors::blue, 2.0f));
+            ctx.drawPath(focusRing);
+        }
+
+        ctx.setFillStyle(FillStyle::solid(textColor));
         ctx.drawText(static_cast<std::string>(text), bounds.center(), HorizontalAlignment::center, VerticalAlignment::center);
     }
 

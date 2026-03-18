@@ -4,6 +4,7 @@
 #include <Flux/Core/FocusState.hpp>
 #include <Flux/Core/Element.hpp>
 #include <Flux/Core/LayoutTree.hpp>
+#include <Flux/Core/Runtime.hpp>
 #include <optional>
 
 namespace flux {
@@ -38,10 +39,20 @@ void Renderer::renderFrame(const Rect& bounds) {
             rootElement_->reconcile(cachedLayoutTree_);
         }
 
-        // Set the global focused key in the render context for this frame
+        // Set the global focused/hovered/pressed keys in the render context
         if (window_) {
             auto* nvgContext = static_cast<NanoVGRenderContext*>(renderContext_);
             nvgContext->globalFocusedKey_ = window_->focus().getFocusedKey();
+        }
+        if (hasHoveredView_) {
+            renderContext_->setHoveredBounds(hoveredBounds_);
+        } else {
+            renderContext_->setHoveredBounds({});
+        }
+        if (hasPressedView_) {
+            renderContext_->setPressedBounds(pressedBounds_);
+        } else {
+            renderContext_->clearPressedBounds();
         }
 
         // Render the tree (this also registers focusable views)
@@ -55,6 +66,11 @@ void Renderer::renderFrame(const Rect& bounds) {
 
     // Present the frame
     renderContext_->present();
+
+    // If a text input/area is focused, keep redrawing for cursor blink
+    if (window_ && !window_->focus().getFocusedKey().empty()) {
+        requestApplicationRedraw();
+    }
 }
 
 // Helper to collect the cursor during traversal
@@ -106,11 +122,14 @@ bool Renderer::findAndDispatchEvent(LayoutNode& node, const Event& event, const 
 
     // Check if the current view contains the point
     if (node.bounds.contains(point)) {
-        // Dispatch click events to interactive views
         if (node.view.isInteractive()) {
-            // Convert point to local coordinates (relative to view's origin)
             Point localPoint = {point.x - node.bounds.x, point.y - node.bounds.y};
-            return dispatchEventToView(node.view, event, localPoint);
+            bool handled = dispatchEventToView(node.view, event, localPoint);
+            if (handled && event.type == Event::MouseDown) {
+                pressedBounds_ = node.bounds;
+                hasPressedView_ = true;
+            }
+            return handled;
         }
     }
 
@@ -146,8 +165,9 @@ void Renderer::renderTree(LayoutNode& node, Point parentOrigin) {
         renderContext_->clipPath(clipPath);
     }
 
-    // Set the current view's focus key so it can check if it's focused
+    // Set the current view's identity so it can check focus/hover/press state during rendering
     renderContext_->setCurrentFocusKey(node.view.getFocusKey());
+    renderContext_->setCurrentViewGlobalBounds(node.bounds);
 
     // Render the view with local coordinates
     node.view->render(*renderContext_, localBounds);
@@ -221,6 +241,10 @@ void Renderer::handleEvent(const struct Event& event, const Rect& windowBounds) 
 void Renderer::collectHoverPath(const LayoutNode& node, const Point& point, std::vector<View>& path) {
     if (!node.bounds.contains(point)) return;
     path.push_back(node.view);
+    if (node.view.isInteractive()) {
+        hoveredBounds_ = node.bounds;
+        hasHoveredView_ = true;
+    }
     for (auto it = node.children.rbegin(); it != node.children.rend(); ++it) {
         if (it->bounds.contains(point)) {
             collectHoverPath(*it, point, path);
@@ -232,6 +256,7 @@ void Renderer::collectHoverPath(const LayoutNode& node, const Point& point, std:
 void Renderer::updateHoverState(const Point& point) {
     if (!layoutCacheValid_) return;
 
+    hasHoveredView_ = false;
     std::vector<View> newPath;
     collectHoverPath(cachedLayoutTree_, point, newPath);
 

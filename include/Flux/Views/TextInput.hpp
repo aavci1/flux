@@ -7,8 +7,8 @@
 #include <Flux/Core/KeyEvent.hpp>
 #include <string>
 #include <functional>
-#include <chrono>
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 
 namespace flux {
@@ -41,39 +41,13 @@ struct TextInput {
     mutable size_t caretPos = 0;
     mutable size_t selStart = 0;
     mutable size_t selEnd = 0;
-    mutable bool focused = false;
-    mutable float blinkTimer = 0.0f;
     mutable float scrollOffset = 0.0f;
-    mutable std::shared_ptr<std::atomic<bool>> blinkRunning =
-        std::make_shared<std::atomic<bool>>(false);
 
     void init() {
         focusable = true;
         cursor = CursorType::Text;
 
-        onFocus = [this]() {
-            focused = true;
-            blinkTimer = 0.0f;
-            if (!blinkRunning->exchange(true)) {
-                std::thread([this]() {
-                    while (*blinkRunning) {
-                        auto now = std::chrono::steady_clock::now();
-                        blinkTimer = std::chrono::duration<float>(
-                            now.time_since_epoch()).count();
-                        requestApplicationRedraw();
-                        std::this_thread::sleep_for(std::chrono::milliseconds(500));
-                    }
-                }).detach();
-            }
-        };
-
-        onBlur = [this]() {
-            focused = false;
-            *blinkRunning = false;
-            selStart = selEnd = caretPos;
-        };
-
-        onMouseDown = [this](float x, float, int button) {
+        onMouseDown = [this](float, float, int button) {
             if (button == 0) {
                 selStart = selEnd = caretPos;
             }
@@ -175,12 +149,15 @@ struct TextInput {
         float pad = inputPadding;
         float rad = inputCornerRadius;
         bool isFocused = ctx.isCurrentViewFocused();
+        bool isHovered = ctx.isCurrentViewHovered();
 
         ctx.setFillStyle(FillStyle::solid(bgColor));
         ctx.setStrokeStyle(StrokeStyle::none());
         ctx.drawRect(bounds, CornerRadius(rad));
 
-        Color bc = isFocused ? static_cast<Color>(focusBorderColor) : static_cast<Color>(borderCol);
+        Color bc = isFocused ? static_cast<Color>(focusBorderColor)
+                 : isHovered ? static_cast<Color>(borderCol).lighten(0.3f)
+                 : static_cast<Color>(borderCol);
         float bw = isFocused ? 2.0f : 1.0f;
         Path border;
         border.rect(bounds, CornerRadius(rad));
@@ -239,8 +216,10 @@ struct TextInput {
             HorizontalAlignment::leading, VerticalAlignment::center);
 
         if (isFocused) {
-            float phase = std::fmod(blinkTimer * 2.0f, 2.0f);
-            if (phase < 1.0f) {
+            auto now = std::chrono::steady_clock::now();
+            float secs = std::chrono::duration<float>(now.time_since_epoch()).count();
+            bool caretVisible = std::fmod(secs, 1.0f) < 0.5f;
+            if (caretVisible) {
                 std::string beforeCaret = displayText.substr(0, caretPos);
                 Size caretSize = ctx.measureText(beforeCaret, TextStyle::regular("default", fs));
                 float cx = textArea.x + caretSize.width;

@@ -12,8 +12,6 @@
 #include <algorithm>
 #include <cmath>
 #include <sstream>
-#include <thread>
-#include <atomic>
 
 namespace flux {
 
@@ -41,35 +39,11 @@ struct TextArea {
     std::function<void()> onSubmit;
 
     mutable size_t caretPos = 0;
-    mutable bool focused = false;
-    mutable float blinkTimer = 0.0f;
     mutable float scrollY = 0.0f;
-    mutable std::shared_ptr<std::atomic<bool>> blinkRunning =
-        std::make_shared<std::atomic<bool>>(false);
 
     void init() {
         focusable = true;
         cursor = CursorType::Text;
-
-        onFocus = [this]() {
-            focused = true;
-            blinkTimer = 0.0f;
-            if (!blinkRunning->exchange(true)) {
-                std::thread([this]() {
-                    while (*blinkRunning) {
-                        blinkTimer = std::chrono::duration<float>(
-                            std::chrono::steady_clock::now().time_since_epoch()).count();
-                        requestApplicationRedraw();
-                        std::this_thread::sleep_for(std::chrono::milliseconds(500));
-                    }
-                }).detach();
-            }
-        };
-
-        onBlur = [this]() {
-            focused = false;
-            *blinkRunning = false;
-        };
 
         onScroll = [this](float, float, float, float dy) {
             scrollY = std::max(0.0f, scrollY + dy);
@@ -154,12 +128,15 @@ struct TextArea {
         float pad = areaPadding;
         float rad = areaCornerRadius;
         bool isFocused = ctx.isCurrentViewFocused();
+        bool isHovered = ctx.isCurrentViewHovered();
 
         ctx.setFillStyle(FillStyle::solid(bgColor));
         ctx.setStrokeStyle(StrokeStyle::none());
         ctx.drawRect(bounds, CornerRadius(rad));
 
-        Color bc = isFocused ? static_cast<Color>(focusBorderColor) : static_cast<Color>(borderCol);
+        Color bc = isFocused ? static_cast<Color>(focusBorderColor)
+                 : isHovered ? static_cast<Color>(borderCol).lighten(0.3f)
+                 : static_cast<Color>(borderCol);
         float bw = isFocused ? 2.0f : 1.0f;
         Path border;
         border.rect(bounds, CornerRadius(rad));
@@ -183,8 +160,9 @@ struct TextArea {
                     HorizontalAlignment::leading, VerticalAlignment::bottom);
             }
             if (isFocused) {
-                float phase = std::fmod(blinkTimer * 2.0f, 2.0f);
-                if (phase < 1.0f) {
+                auto now = std::chrono::steady_clock::now();
+                float secs = std::chrono::duration<float>(now.time_since_epoch()).count();
+                if (std::fmod(secs, 1.0f) < 0.5f) {
                     ctx.setStrokeStyle(StrokeStyle::solid(static_cast<Color>(textColor), 1.5f));
                     ctx.drawLine({textX, bounds.y + pad}, {textX, bounds.y + pad + fs});
                 }
@@ -207,8 +185,9 @@ struct TextArea {
         }
 
         if (isFocused) {
-            float phase = std::fmod(blinkTimer * 2.0f, 2.0f);
-            if (phase < 1.0f) {
+            auto now = std::chrono::steady_clock::now();
+            float secs = std::chrono::duration<float>(now.time_since_epoch()).count();
+            if (std::fmod(secs, 1.0f) < 0.5f) {
                 size_t lineIdx = 0, col = 0;
                 getLineCol(val, caretPos, lineIdx, col);
                 std::string beforeCaret = (lineIdx < lines.size() && col <= lines[lineIdx].size())

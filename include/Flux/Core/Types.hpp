@@ -117,6 +117,15 @@ struct Color {
         return Color(r * factor, g * factor, b * factor, a);
     }
 
+    constexpr Color lighten(float amount) const {
+        return Color(
+            r + (1.0f - r) * amount,
+            g + (1.0f - g) * amount,
+            b + (1.0f - b) * amount,
+            a
+        );
+    }
+
     constexpr bool operator==(const Color& other) const = default;
     constexpr bool operator!=(const Color& other) const = default;
 };

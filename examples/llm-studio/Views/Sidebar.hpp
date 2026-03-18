@@ -29,6 +29,22 @@ struct ChatHistoryItem {
         cursor = CursorType::Pointer;
     }
 
+    void render(RenderContext& ctx, const Rect& bounds) const {
+        bool isHovered = ctx.isCurrentViewHovered();
+        bool isPressed = ctx.isCurrentViewPressed();
+        bool active = isActive;
+
+        if (!active) {
+            if (isPressed) {
+                ctx.setFillStyle(FillStyle::solid(Theme::SurfaceRaised.darken(0.05f)));
+                ctx.drawRect(bounds, CornerRadius(0));
+            } else if (isHovered) {
+                ctx.setFillStyle(FillStyle::solid(Theme::SurfaceRaised));
+                ctx.drawRect(bounds, CornerRadius(0));
+            }
+        }
+    }
+
     View body() const {
         ChatSession s = session;
         bool active = isActive;

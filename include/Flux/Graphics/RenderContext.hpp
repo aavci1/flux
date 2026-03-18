@@ -454,6 +454,28 @@ public:
      * Check if the currently rendering view has focus
      */
     virtual bool isCurrentViewFocused() const = 0;
+
+    /**
+     * Set the global bounds of the deepest hovered interactive view
+     */
+    virtual void setHoveredBounds(const Rect& bounds) = 0;
+
+    /**
+     * Set the global bounds of the view currently being rendered
+     */
+    virtual void setCurrentViewGlobalBounds(const Rect& bounds) = 0;
+
+    /**
+     * Check if the currently rendering view is hovered
+     */
+    virtual bool isCurrentViewHovered() const = 0;
+
+    /**
+     * Set/get pressed state using bounds of the pressed interactive view
+     */
+    virtual void setPressedBounds(const Rect& bounds) = 0;
+    virtual void clearPressedBounds() = 0;
+    virtual bool isCurrentViewPressed() const = 0;
 };
 
 } // namespace flux

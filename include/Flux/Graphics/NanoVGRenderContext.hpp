@@ -156,9 +156,25 @@ public:
     bool isCurrentViewFocused() const override;
     
     // Focus state members (public for renderer access)
-    std::string globalFocusedKey_;  // Which view globally has focus
-    std::string currentViewFocusKey_;  // Focus key of the view currently being rendered
-    
+    std::string globalFocusedKey_;
+    std::string currentViewFocusKey_;
+
+    // ============================================================================
+    // HOVER / PRESS STATE
+    // ============================================================================
+    void setHoveredBounds(const Rect& bounds) override;
+    void setCurrentViewGlobalBounds(const Rect& bounds) override;
+    bool isCurrentViewHovered() const override;
+    void setPressedBounds(const Rect& bounds) override;
+    void clearPressedBounds() override;
+    bool isCurrentViewPressed() const override;
+
+    Rect hoveredBounds_{};
+    bool hasHovered_ = false;
+    Rect currentViewBounds_{};
+    Rect pressedBounds_{};
+    bool hasPressed_ = false;
+
 private:
     // Helper functions
     NVGcolor toNVGColor(const Color& color) const;
