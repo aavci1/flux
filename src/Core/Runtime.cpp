@@ -63,7 +63,16 @@ int Runtime::run() {
         if (redrawPending) {
             processEvents();
         } else {
-            waitForEvents();
+            bool blinkActive = false;
+            for (auto& window : windows_) {
+                if (window->isCursorBlinkActive()) { blinkActive = true; break; }
+            }
+            if (blinkActive) {
+                waitForEventsTimeout(500);
+                needsRedraw_.store(true, std::memory_order_relaxed);
+            } else {
+                waitForEvents();
+            }
         }
 
         for (auto& window : windows_) {
@@ -109,9 +118,17 @@ void Runtime::processEvents() {
 }
 
 void Runtime::waitForEvents() {
+    waitForEventsImpl(-1);
+}
+
+void Runtime::waitForEventsTimeout(int timeoutMs) {
+    waitForEventsImpl(timeoutMs);
+}
+
+void Runtime::waitForEventsImpl(int timeoutMs) {
     if (windows_.empty()) return;
     if (auto* platformWindow = static_cast<PlatformWindow*>(windows_.front()->platformWindow())) {
-        platformWindow->waitForEvents(-1);
+        platformWindow->waitForEvents(timeoutMs);
         if (platformWindow->shouldClose()) {
             quit();
             return;

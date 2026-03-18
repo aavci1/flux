@@ -344,6 +344,10 @@ ShortcutManager& Window::shortcuts() {
     return *impl_->shortcutManager;
 }
 
+bool Window::isCursorBlinkActive() const {
+    return impl_->renderer && impl_->renderer->isCursorBlinkActive();
+}
+
 // Hooks
 
 void Window::setPostRenderCallback(std::function<void()> callback) {

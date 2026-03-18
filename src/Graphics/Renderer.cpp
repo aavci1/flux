@@ -72,10 +72,7 @@ void Renderer::renderFrame(const Rect& bounds) {
     // Present the frame
     renderContext_->present();
 
-    // If a text input/area is focused, keep redrawing for cursor blink
-    if (window_ && !window_->focus().getFocusedKey().empty()) {
-        requestApplicationRedraw();
-    }
+    cursorBlinkActive_ = window_ && !window_->focus().getFocusedKey().empty();
 }
 
 // Helper to collect the cursor during traversal

@@ -45,6 +45,8 @@ public:
 private:
     void processEvents();
     void waitForEvents();
+    void waitForEventsTimeout(int timeoutMs);
+    void waitForEventsImpl(int timeoutMs);
 
     std::atomic<bool> needsRedraw_{false};
     bool running_{true};

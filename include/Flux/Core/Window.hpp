@@ -182,6 +182,11 @@ public:
      */
     ShortcutManager& shortcuts();
 
+    /**
+     * @brief Whether a text cursor is blinking (needs periodic redraws)
+     */
+    bool isCursorBlinkActive() const;
+
     // Hooks
     
     /**

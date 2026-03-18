@@ -73,6 +73,8 @@ private:
     Rect pressedBounds_{};
     bool hasPressedView_ = false;
 
+    bool cursorBlinkActive_ = false;
+
     // Mouse capture: when MouseDown is handled by an interactive view, all
     // subsequent MouseMove/MouseUp events are routed to the same view
     // (identified by its path in the layout tree) until MouseUp releases it.
@@ -108,6 +110,7 @@ public:
 
     const LayoutNode& getCachedLayoutTree() const { return cachedLayoutTree_; }
     bool hasValidLayout() const { return layoutCacheValid_; }
+    bool isCursorBlinkActive() const { return cursorBlinkActive_; }
 
 private:
     void renderTree(LayoutNode& node, Point parentOrigin = {0, 0});
