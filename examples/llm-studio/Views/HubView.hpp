@@ -34,7 +34,7 @@ struct ModelCardView {
         std::string sizeStr = formatBytes(c.sizeBytes);
         std::string likesStr = std::format("\xE2\x98\x85 {}k", c.likes / 1000);
 
-        return View(VStack{
+        return VStack{
             .spacing = Theme::Space2,
             .backgroundColor = Theme::SurfaceRaised,
             .padding = Theme::Space4,
@@ -42,46 +42,46 @@ struct ModelCardView {
             .borderColor = Theme::Border,
             .borderWidth = 1.0f,
             .children = {
-                View(Text{
+                Text{
                     .value = c.repoId,
                     .fontSize = Theme::FontBody,
                     .fontWeight = FontWeight::semibold,
                     .color = Theme::TextPrimary,
                     .horizontalAlignment = HorizontalAlignment::leading
-                }),
-                View(HStack{
+                },
+                HStack{
                     .spacing = Theme::Space3,
                     .alignItems = AlignItems::center,
                     .children = {
-                        View(Badge{
+                        Badge{
                             .text = likesStr,
                             .badgeColor = Color(0.3f, 0.3f, 0.1f),
                             .textColor = Color(1.0f, 0.85f, 0.0f),
                             .fontSize = Theme::FontBadge
-                        }),
-                        View(Badge{
+                        },
+                        Badge{
                             .text = c.format,
                             .badgeColor = Theme::Accent.opacity(0.2f),
                             .textColor = Theme::Accent,
                             .fontSize = Theme::FontBadge
-                        }),
-                        View(Badge{
+                        },
+                        Badge{
                             .text = c.parameterSize,
                             .badgeColor = Theme::Surface,
                             .textColor = Theme::TextMuted,
                             .fontSize = Theme::FontBadge
-                        }),
-                        View(Text{
+                        },
+                        Text{
                             .value = sizeStr,
                             .fontSize = Theme::FontCaption,
                             .color = Theme::TextMuted
-                        })
+                        }
                     }
-                }),
-                View(HStack{
+                },
+                HStack{
                     .spacing = Theme::Space2,
                     .children = {
-                        View(DropdownMenu{
+                        DropdownMenu{
                             .label = std::string("Download"),
                             .items = std::vector<DropdownMenuItem>{
                                 {.label = "Q4_K_M", .subtitle = "~4.6 GB", .onClick = [this, c]() {
@@ -94,19 +94,19 @@ struct ModelCardView {
                                     startDownload(c.repoId, "Q8_0", c.sizeBytes);
                                 }}
                             }
-                        }),
-                        View(Button{
+                        },
+                        Button{
                             .text = std::string("View on HF"),
                             .backgroundColor = Colors::transparent,
                             .padding = EdgeInsets(6, 12, 6, 12),
                             .cornerRadius = Theme::RadiusSmall,
                             .borderColor = Theme::Border,
                             .borderWidth = 1.0f
-                        })
+                        }
                     }
-                })
+                }
             }
-        });
+        };
     }
 
 private:
@@ -158,7 +158,7 @@ struct HubView {
     AppState* state = nullptr;
 
     View body() const {
-        if (!state) return View(VStack{});
+        if (!state) return VStack{};
 
         std::vector<ModelCard> results = state->searchResults;
         std::optional<DownloadJob> dl = state->activeDownload;
@@ -166,29 +166,29 @@ struct HubView {
 
         std::vector<View> resultViews;
         for (const auto& card : results) {
-            resultViews.push_back(View(ModelCardView{
+            resultViews.push_back(ModelCardView{
                 .card = card,
                 .state = state
-            }));
+            });
         }
 
         if (resultViews.empty()) {
-            resultViews.push_back(View(Text{
+            resultViews.push_back(Text{
                 .value = std::string("Search for models on HuggingFace above."),
                 .fontSize = Theme::FontBody,
                 .color = Theme::TextMuted,
                 .padding = Theme::Space8
-            }));
+            });
         }
 
         std::vector<View> mainChildren;
 
-        mainChildren.push_back(View(HStack{
+        mainChildren.push_back(HStack{
             .spacing = Theme::Space2,
             .alignItems = AlignItems::center,
             .padding = EdgeInsets(Theme::Space4),
             .children = {
-                View(TextInput{
+                TextInput{
                     .value = state->hubSearchQuery,
                     .placeholder = std::string("Search HuggingFace models..."),
                     .inputWidth = 400.0f,
@@ -199,82 +199,82 @@ struct HubView {
                     .onReturn = [this]() {
                         populateSearchResults();
                     }
-                }),
-                View(Button{
+                },
+                Button{
                     .text = std::string("Search"),
                     .backgroundColor = Theme::Accent,
                     .padding = EdgeInsets(8, 16, 8, 16),
                     .cornerRadius = Theme::RadiusSmall,
                     .onClick = [this]() { populateSearchResults(); }
-                })
+                }
             }
-        }));
+        });
 
-        mainChildren.push_back(View(HStack{
+        mainChildren.push_back(HStack{
             .spacing = Theme::Space2,
             .padding = EdgeInsets(0, Theme::Space4, Theme::Space2, Theme::Space4),
             .children = {
-                View(Badge{
+                Badge{
                     .text = std::string("Text Gen"),
                     .badgeColor = Theme::Accent.opacity(0.2f),
                     .textColor = Theme::Accent,
                     .fontSize = Theme::FontBadge
-                }),
-                View(Badge{
+                },
+                Badge{
                     .text = std::string("GGUF"),
                     .badgeColor = Theme::SurfaceRaised,
                     .textColor = Theme::TextMuted,
                     .fontSize = Theme::FontBadge
-                }),
-                View(Badge{
+                },
+                Badge{
                     .text = std::string("\xE2\x89\xA4 7B"),
                     .badgeColor = Theme::SurfaceRaised,
                     .textColor = Theme::TextMuted,
                     .fontSize = Theme::FontBadge
-                })
+                }
             }
-        }));
+        });
 
-        mainChildren.push_back(View(Divider{.borderColor = Theme::Border}));
+        mainChildren.push_back(Divider{.borderColor = Theme::Border});
 
-        mainChildren.push_back(View(ScrollArea{
+        mainChildren.push_back(ScrollArea{
             .expansionBias = 1.0f,
             .children = {
-                View(VStack{
+                VStack{
                     .spacing = Theme::Space3,
                     .padding = Theme::Space4,
                     .expansionBias = 1.0f,
                     .children = std::move(resultViews)
-                })
+                }
             }
-        }));
+        });
 
         if (dl.has_value()) {
-            mainChildren.push_back(View(Divider{.borderColor = Theme::Border}));
-            mainChildren.push_back(View(VStack{
+            mainChildren.push_back(Divider{.borderColor = Theme::Border});
+            mainChildren.push_back(VStack{
                 .spacing = Theme::Space2,
                 .backgroundColor = Theme::Surface,
                 .padding = EdgeInsets(Theme::Space3, Theme::Space4, Theme::Space3, Theme::Space4),
                 .children = {
-                    View(HStack{
+                    HStack{
                         .spacing = Theme::Space2,
                         .alignItems = AlignItems::center,
                         .children = {
-                            View(Text{
+                            Text{
                                 .value = std::string("Downloading: ") + dl->modelId + " " + dl->variant,
                                 .fontSize = Theme::FontCaption,
                                 .fontWeight = FontWeight::medium,
                                 .color = Theme::TextPrimary,
                                 .horizontalAlignment = HorizontalAlignment::leading,
                                 .expansionBias = 1.0f
-                            }),
-                            View(Text{
+                            },
+                            Text{
                                 .value = std::format("{:.0f}%", dl->progress * 100),
                                 .fontSize = Theme::FontCaption,
                                 .fontWeight = FontWeight::bold,
                                 .color = Theme::Accent
-                            }),
-                            View(Button{
+                            },
+                            Button{
                                 .text = std::string("Cancel"),
                                 .backgroundColor = Theme::Destructive.opacity(0.2f),
                                 .padding = EdgeInsets(4, 8, 4, 8),
@@ -282,24 +282,24 @@ struct HubView {
                                 .onClick = [this]() {
                                     state->activeDownload = std::optional<DownloadJob>(std::nullopt);
                                 }
-                            })
+                            }
                         }
-                    }),
-                    View(ProgressBar{
+                    },
+                    ProgressBar{
                         .value = dl->progress,
                         .height = 6.0f,
                         .fillColor = Theme::Accent,
                         .trackColor = Theme::Border
-                    })
+                    }
                 }
-            }));
+            });
         }
 
-        return View(VStack{
+        return VStack{
             .spacing = 0.0f,
             .expansionBias = 1.0f,
             .children = std::move(mainChildren)
-        });
+        };
     }
 
 private:

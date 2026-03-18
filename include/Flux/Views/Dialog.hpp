@@ -69,23 +69,23 @@ struct Dialog {
 
     View body() const {
         if (!static_cast<bool>(isVisible)) {
-            return View(VStack{.visible = false});
+            return VStack{.visible = false};
         }
 
         std::vector<View> btnViews;
-        btnViews.push_back(View(Spacer{}));
+        btnViews.push_back(Spacer{});
         for (const auto& btn : buttons) {
             Color bg = defaultButtonColor;
             if (btn.isPrimary) bg = primaryColor;
             if (btn.isDestructive) bg = destructiveColor;
 
-            btnViews.push_back(View(Button{
+            btnViews.push_back(Button{
                 .text = btn.label,
                 .backgroundColor = bg,
                 .padding = EdgeInsets(8, 16, 8, 16),
                 .cornerRadius = 4.0f,
                 .onClick = btn.onClick
-            }));
+            });
         }
 
         std::string titleStr = title;
@@ -93,38 +93,38 @@ struct Dialog {
 
         std::vector<View> contentViews;
         if (!titleStr.empty()) {
-            contentViews.push_back(View(Text{
+            contentViews.push_back(Text{
                 .value = titleStr,
                 .fontSize = titleFontSize,
                 .fontWeight = FontWeight::bold,
                 .color = titleColor,
                 .horizontalAlignment = HorizontalAlignment::leading
-            }));
+            });
         }
         if (!msgStr.empty()) {
-            contentViews.push_back(View(Text{
+            contentViews.push_back(Text{
                 .value = msgStr,
                 .fontSize = messageFontSize,
                 .color = messageColor,
                 .horizontalAlignment = HorizontalAlignment::leading,
                 .padding = EdgeInsets(4, 0, 12, 0)
-            }));
+            });
         }
-        contentViews.push_back(View(HStack{
+        contentViews.push_back(HStack{
             .spacing = 8.0f,
             .justifyContent = JustifyContent::end,
             .children = std::move(btnViews)
-        }));
+        });
 
-        return View(VStack{
+        return VStack{
             .backgroundColor = overlayColor,
             .children = {
-                View(Spacer{}),
-                View(HStack{
+                Spacer{},
+                HStack{
                     .justifyContent = JustifyContent::center,
                     .children = {
-                        View(Spacer{}),
-                        View(VStack{
+                        Spacer{},
+                        VStack{
                             .spacing = 8.0f,
                             .backgroundColor = dialogBgColor,
                             .padding = 24.0f,
@@ -134,13 +134,13 @@ struct Dialog {
                             .minWidth = static_cast<float>(dialogWidth),
                             .maxWidth = static_cast<float>(dialogWidth),
                             .children = std::move(contentViews)
-                        }),
-                        View(Spacer{})
+                        },
+                        Spacer{}
                     }
-                }),
-                View(Spacer{})
+                },
+                Spacer{}
             }
-        });
+        };
     }
 };
 

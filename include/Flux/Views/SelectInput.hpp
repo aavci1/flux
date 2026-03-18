@@ -79,7 +79,7 @@ struct SelectInput {
 
         std::vector<View> children;
 
-        children.push_back(View(HStack{
+        children.push_back(HStack{
             .spacing = 4.0f,
             .alignItems = AlignItems::center,
             .backgroundColor = bgColor,
@@ -89,20 +89,20 @@ struct SelectInput {
             .borderWidth = 1.0f,
             .minWidth = w,
             .children = {
-                View(Text{
+                Text{
                     .value = currentLabel,
                     .fontSize = itemFontSize,
                     .color = textColor_,
                     .horizontalAlignment = HorizontalAlignment::leading,
                     .expansionBias = 1.0f
-                }),
-                View(Text{
+                },
+                Text{
                     .value = std::string(isOpen ? "\xE2\x96\xB4" : "\xE2\x96\xBE"),
                     .fontSize = 10.0f,
                     .color = mutedColor
-                })
+                }
             }
-        }));
+        });
 
         if (isOpen) {
             std::vector<View> optViews;
@@ -114,20 +114,20 @@ struct SelectInput {
 
                 std::vector<View> itemContent;
                 if (selected) {
-                    itemContent.push_back(View(Text{
+                    itemContent.push_back(Text{
                         .value = std::string("\xE2\x9C\x93"),
                         .fontSize = 12.0f,
                         .color = accentColor
-                    }));
+                    });
                 }
-                itemContent.push_back(View(Text{
+                itemContent.push_back(Text{
                     .value = capturedLabel,
                     .fontSize = itemFontSize,
                     .color = textColor_,
                     .horizontalAlignment = HorizontalAlignment::leading
-                }));
+                });
 
-                optViews.push_back(View(HStack{
+                optViews.push_back(HStack{
                     .spacing = 8.0f,
                     .alignItems = AlignItems::center,
                     .backgroundColor = bg,
@@ -139,10 +139,10 @@ struct SelectInput {
                         if (onSelect) onSelect(capturedIdx, capturedLabel);
                     },
                     .children = std::move(itemContent)
-                }));
+                });
             }
 
-            children.push_back(View(VStack{
+            children.push_back(VStack{
                 .spacing = 1.0f,
                 .backgroundColor = dropdownBgColor,
                 .cornerRadius = 4.0f,
@@ -150,13 +150,13 @@ struct SelectInput {
                 .borderWidth = 1.0f,
                 .minWidth = w,
                 .children = std::move(optViews)
-            }));
+            });
         }
 
-        return View(VStack{
+        return VStack{
             .spacing = 2.0f,
             .children = std::move(children)
-        });
+        };
     }
 };
 

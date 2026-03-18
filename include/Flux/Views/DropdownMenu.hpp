@@ -61,7 +61,7 @@ struct DropdownMenu {
 
         std::vector<View> children;
 
-        children.push_back(View(HStack{
+        children.push_back(HStack{
             .spacing = 4.0f,
             .alignItems = AlignItems::center,
             .backgroundColor = bgColor,
@@ -70,19 +70,19 @@ struct DropdownMenu {
             .borderColor = borderColor_,
             .borderWidth = 1.0f,
             .children = {
-                View(Text{
+                Text{
                     .value = lbl,
                     .fontSize = itemFontSize,
                     .color = textColor_,
                     .horizontalAlignment = HorizontalAlignment::leading
-                }),
-                View(Text{
+                },
+                Text{
                     .value = std::string(isOpen ? "\xE2\x96\xB4" : "\xE2\x96\xBE"),
                     .fontSize = 10.0f,
                     .color = mutedColor
-                })
+                }
             }
-        }));
+        });
 
         if (isOpen) {
             std::vector<DropdownMenuItem> menuItems = items;
@@ -90,23 +90,23 @@ struct DropdownMenu {
             for (const auto& item : menuItems) {
                 Color textCol = item.enabled ? static_cast<Color>(textColor_) : static_cast<Color>(mutedColor).opacity(0.4f);
                 std::vector<View> itemContent;
-                itemContent.push_back(View(Text{
+                itemContent.push_back(Text{
                     .value = item.label,
                     .fontSize = itemFontSize,
                     .color = textCol,
                     .horizontalAlignment = HorizontalAlignment::leading
-                }));
+                });
                 if (!item.subtitle.empty()) {
-                    itemContent.push_back(View(Text{
+                    itemContent.push_back(Text{
                         .value = item.subtitle,
                         .fontSize = subtitleFontSize,
                         .color = mutedColor,
                         .horizontalAlignment = HorizontalAlignment::leading
-                    }));
+                    });
                 }
                 auto cb = item.onClick;
                 bool en = item.enabled;
-                itemViews.push_back(View(VStack{
+                itemViews.push_back(VStack{
                     .backgroundColor = bgColor,
                     .padding = EdgeInsets(6, 10, 6, 10),
                     .cursor = en ? std::optional(CursorType::Pointer) : std::nullopt,
@@ -115,10 +115,10 @@ struct DropdownMenu {
                         const_cast<Property<bool>&>(open) = false;
                     } : std::function<void()>(nullptr),
                     .children = std::move(itemContent)
-                }));
+                });
             }
 
-            children.push_back(View(VStack{
+            children.push_back(VStack{
                 .spacing = 1.0f,
                 .backgroundColor = dropdownBgColor,
                 .cornerRadius = 8.0f,
@@ -126,13 +126,13 @@ struct DropdownMenu {
                 .borderWidth = 1.0f,
                 .minWidth = static_cast<float>(menuWidth),
                 .children = std::move(itemViews)
-            }));
+            });
         }
 
-        return View(VStack{
+        return VStack{
             .spacing = 2.0f,
             .children = std::move(children)
-        });
+        };
     }
 };
 

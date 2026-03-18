@@ -1,12 +1,12 @@
 #include <Flux.hpp>
 #include "Theme.hpp"
 #include "AppState.hpp"
-#include "Views/TopBar.hpp"
+#include "Views/IconRail.hpp"
 #include "Views/Sidebar.hpp"
 #include "Views/ChatView.hpp"
-#include "Views/ImageView.hpp"
 #include "Views/HubView.hpp"
 #include "Views/SettingsView.hpp"
+#include "Views/ModelConfigSidebar.hpp"
 
 using namespace flux;
 using namespace llm_studio;
@@ -17,20 +17,48 @@ struct MainPanel {
     AppState* state = nullptr;
 
     View body() const {
-        if (!state) return View(VStack{});
+        if (!state) return VStack{};
 
-        AppView current = state->currentView;
-        switch (current) {
-            case AppView::CHAT:
-                return View(ChatView{.state = state, .expansionBias = 1.0f});
-            case AppView::IMAGE:
-                return View(ImageView{.state = state, .expansionBias = 1.0f});
-            case AppView::HUB:
-                return View(HubView{.state = state, .expansionBias = 1.0f});
-            case AppView::SETTINGS:
-                return View(SettingsView{.state = state, .expansionBias = 1.0f});
+        AppPage page = state->currentPage;
+        switch (page) {
+            case AppPage::CHAT:
+                return ChatView{.state = state, .expansionBias = 1.0f};
+            case AppPage::MODELS:
+                return HubView{.state = state, .expansionBias = 1.0f};
         }
-        return View(VStack{});
+        return VStack{};
+    }
+};
+
+struct AppRoot {
+    FLUX_VIEW_PROPERTIES;
+
+    AppState* state = nullptr;
+
+    View body() const {
+        if (!state) return VStack{};
+
+        bool showSettings = state->showSettingsDialog;
+
+        if (showSettings) {
+            return SettingsDialog{
+                .state = state,
+                .expansionBias = 1.0f
+            };
+        }
+
+        return HStack{
+            .spacing = 0.0f,
+            .alignItems = AlignItems::stretch,
+            .backgroundColor = Theme::Background,
+            .expansionBias = 1.0f,
+            .children = {
+                IconRailView{.state = state},
+                SidebarView{.state = state},
+                MainPanel{.state = state, .expansionBias = 1.0f},
+                ModelConfigSidebar{.state = state}
+            }
+        };
     }
 };
 
@@ -75,24 +103,7 @@ int main(int argc, char* argv[]) {
     });
 
     window.setRootView(
-        VStack{
-            .spacing = 0.0f,
-            .backgroundColor = Theme::Background,
-            .expansionBias = 1.0f,
-            .children = {
-                View(TopBarView{.state = &state}),
-
-                View(HStack{
-                    .spacing = 0.0f,
-                    .alignItems = AlignItems::stretch,
-                    .expansionBias = 1.0f,
-                    .children = {
-                        View(SidebarView{.state = &state}),
-                        View(MainPanel{.state = &state, .expansionBias = 1.0f})
-                    }
-                })
-            }
-        }
+        AppRoot{.state = &state, .expansionBias = 1.0f}
     );
 
     return runtime.run();

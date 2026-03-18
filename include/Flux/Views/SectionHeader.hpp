@@ -30,26 +30,26 @@ struct SectionHeader {
         for (char c : titleStr) upper.push_back(static_cast<char>(std::toupper(c)));
 
         std::vector<View> children;
-        children.push_back(View(Text{
+        children.push_back(Text{
             .value = upper,
             .fontSize = fontSize,
             .fontWeight = FontWeight::semibold,
             .color = color,
             .horizontalAlignment = HorizontalAlignment::leading
-        }));
+        });
 
         if (static_cast<bool>(showRule)) {
-            children.push_back(View(Divider{
+            children.push_back(Divider{
                 .borderColor = dividerColor
-            }));
+            });
         }
 
-        return View(VStack{
+        return VStack{
             .spacing = 4.0f,
             .padding = EdgeInsets(static_cast<float>(topPad), 0,
                                   static_cast<float>(bottomPad), 0),
             .children = std::move(children)
-        });
+        };
     }
 };
 

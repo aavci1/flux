@@ -7,17 +7,19 @@
 #include <optional>
 #include <filesystem>
 #include <cstdint>
+#include <format>
+#include <random>
 
 namespace llm_studio {
 
-enum class AppView { CHAT, IMAGE, HUB, SETTINGS };
+enum class AppPage { CHAT, MODELS };
 enum class ModelLoadState { UNLOADED, LOADING, READY, ERROR };
 
 struct ModelInfo {
     std::string id;
     std::string name;
     std::string quantization;
-    std::string type;          // "text" | "image"
+    std::string type;          // "text" | "image" | "multimodal"
     uint64_t sizeBytes = 0;
     std::filesystem::path localPath;
     bool isLoaded = false;
@@ -30,16 +32,6 @@ struct ChatMessage {
     std::chrono::system_clock::time_point timestamp;
 };
 
-struct ImageGenParams {
-    std::string prompt;
-    std::string negativePrompt;
-    int steps = 20;
-    float cfgScale = 7.5f;
-    int width = 512;
-    int height = 512;
-    int seed = -1;
-};
-
 struct ChatParams {
     float temperature = 0.7f;
     float topP = 0.9f;
@@ -47,10 +39,13 @@ struct ChatParams {
     std::string systemPrompt;
 };
 
-struct GeneratedImage {
-    std::filesystem::path path;
-    std::string prompt;
-    std::chrono::system_clock::time_point timestamp;
+struct ChatSession {
+    std::string id;
+    std::string title;
+    std::vector<ChatMessage> messages;
+    std::optional<ModelInfo> model;
+    ChatParams params;
+    std::chrono::system_clock::time_point createdAt;
 };
 
 struct ModelCard {
@@ -82,12 +77,9 @@ struct AppSettings {
     int contextLength = 4096;
     int gpuLayers = 0;
     int threads = 4;
-    float temperature = 0.7f;
     std::string theme = "dark";
     float fontSize = 14.0f;
-    bool sidebarDefault = true;
     std::filesystem::path modelDirectory = "~/.local/share/llm-studio/models";
-    std::filesystem::path imageDirectory = "~/.local/share/llm-studio/images";
     std::string hfToken;
 };
 
@@ -97,25 +89,86 @@ struct AppState {
     flux::Property<std::optional<ModelInfo>> activeModel = std::optional<ModelInfo>(std::nullopt);
     flux::Property<ModelLoadState> loadState = ModelLoadState::UNLOADED;
 
-    flux::Property<AppView> currentView = AppView::CHAT;
-    flux::Property<bool> sidebarExpanded = true;
+    flux::Property<AppPage> currentPage = AppPage::CHAT;
 
-    flux::Property<std::vector<ChatMessage>> messages;
+    flux::Property<std::vector<ChatSession>> chatSessions;
+    flux::Property<std::string> activeChatId = std::string("");
+
+    flux::Property<bool> leftSidebarExpanded = true;
+    flux::Property<bool> rightSidebarExpanded = true;
+
     flux::Property<bool> isGenerating = false;
     flux::Property<std::string> streamingToken = std::string("");
     flux::Property<std::string> chatInput = std::string("");
-
-    flux::Property<ImageGenParams> imageParams = ImageGenParams{};
-    flux::Property<std::vector<GeneratedImage>> imageHistory;
-    flux::Property<bool> isGeneratingImage = false;
-    flux::Property<float> imageGenProgress = 0.0f;
 
     flux::Property<std::optional<DownloadJob>> activeDownload = std::optional<DownloadJob>(std::nullopt);
     flux::Property<std::string> hubSearchQuery = std::string("");
 
     flux::Property<AppSettings> settings = AppSettings{};
 
-    flux::Property<bool> showClearDialog = false;
+    flux::Property<bool> showSettingsDialog = false;
+
+    ChatSession* getActiveSession() {
+        std::string activeId = activeChatId;
+        if (activeId.empty()) return nullptr;
+        auto sessions = chatSessions.get();
+        for (auto& s : sessions) {
+            if (s.id == activeId) {
+                auto allSessions = chatSessions.get();
+                for (size_t i = 0; i < allSessions.size(); i++) {
+                    if (allSessions[i].id == activeId) {
+                        return nullptr;
+                    }
+                }
+            }
+        }
+        return nullptr;
+    }
+
+    void updateActiveSession(const std::function<void(ChatSession&)>& updater) {
+        std::string activeId = activeChatId;
+        if (activeId.empty()) return;
+        auto sessions = chatSessions.get();
+        for (size_t i = 0; i < sessions.size(); i++) {
+            if (sessions[i].id == activeId) {
+                updater(sessions[i]);
+                chatSessions = std::move(sessions);
+                return;
+            }
+        }
+    }
+
+    std::optional<ChatSession> getActiveSessionCopy() const {
+        std::string activeId = activeChatId;
+        if (activeId.empty()) return std::nullopt;
+        auto sessions = chatSessions.get();
+        for (const auto& s : sessions) {
+            if (s.id == activeId) return s;
+        }
+        return std::nullopt;
+    }
+
+    std::string createNewChat() {
+        static std::mt19937 rng(std::random_device{}());
+        static std::uniform_int_distribution<uint64_t> dist;
+        std::string id = std::format("chat_{}", dist(rng));
+
+        ChatSession session{
+            .id = id,
+            .title = "New Chat",
+            .messages = {},
+            .model = static_cast<std::optional<ModelInfo>>(activeModel),
+            .params = ChatParams{},
+            .createdAt = std::chrono::system_clock::now()
+        };
+
+        auto sessions = chatSessions.get();
+        sessions.insert(sessions.begin(), session);
+        chatSessions = std::move(sessions);
+        activeChatId = id;
+        currentPage = AppPage::CHAT;
+        return id;
+    }
 };
 
 inline std::string formatBytes(uint64_t bytes) {

@@ -10,7 +10,6 @@
 #include <Flux/Views/Spacer.hpp>
 #include <Flux/Views/Divider.hpp>
 #include <Flux/Views/ScrollArea.hpp>
-#include <Flux/Views/Badge.hpp>
 #include "../Theme.hpp"
 #include "../AppState.hpp"
 #include <string>
@@ -19,11 +18,11 @@ namespace llm_studio {
 
 using namespace flux;
 
-struct ModelListItem {
+struct ChatHistoryItem {
     FLUX_VIEW_PROPERTIES;
     FLUX_INTERACTIVE_PROPERTIES;
 
-    Property<ModelInfo> model;
+    Property<ChatSession> session;
     Property<bool> isActive = false;
 
     void init() {
@@ -31,229 +30,183 @@ struct ModelListItem {
     }
 
     View body() const {
-        ModelInfo m = model;
+        ChatSession s = session;
         bool active = isActive;
 
         Color bg = active ? Theme::Accent.opacity(0.15f) : Colors::transparent;
         Color leftBorder = active ? Theme::Accent : Colors::transparent;
 
-        std::string sizeStr = formatBytes(m.sizeBytes);
+        std::string title = s.title;
+        if (title.empty()) title = "New Chat";
 
-        return View(HStack{
+        std::string timeStr = formatTime(s.createdAt);
+        std::string msgCount = std::format("{} message{}", s.messages.size(),
+            s.messages.size() == 1 ? "" : "s");
+
+        return HStack{
             .spacing = 0.0f,
             .alignItems = AlignItems::stretch,
             .backgroundColor = bg,
-            .padding = EdgeInsets(0),
             .children = {
-                View(VStack{
+                VStack{
                     .backgroundColor = leftBorder,
                     .minWidth = 3.0f,
                     .maxWidth = 3.0f
-                }),
-                View(VStack{
+                },
+                VStack{
                     .spacing = 2.0f,
                     .padding = EdgeInsets(Theme::Space2, Theme::Space3, Theme::Space2, Theme::Space3),
                     .expansionBias = 1.0f,
                     .children = {
-                        View(Text{
-                            .value = m.name,
+                        Text{
+                            .value = title,
                             .fontSize = Theme::FontBody,
                             .fontWeight = FontWeight::medium,
                             .color = Theme::TextPrimary,
                             .horizontalAlignment = HorizontalAlignment::leading
-                        }),
-                        View(HStack{
+                        },
+                        HStack{
                             .spacing = Theme::Space1,
                             .alignItems = AlignItems::center,
                             .children = {
-                                View(Text{
-                                    .value = m.quantization,
+                                Text{
+                                    .value = timeStr,
                                     .fontSize = Theme::FontCaption,
                                     .color = Theme::TextMuted,
                                     .horizontalAlignment = HorizontalAlignment::leading
-                                }),
-                                View(Text{
+                                },
+                                Text{
                                     .value = std::string(" \xC2\xB7 "),
                                     .fontSize = Theme::FontCaption,
                                     .color = Theme::TextMuted
-                                }),
-                                View(Text{
-                                    .value = sizeStr,
+                                },
+                                Text{
+                                    .value = msgCount,
                                     .fontSize = Theme::FontCaption,
                                     .color = Theme::TextMuted,
                                     .horizontalAlignment = HorizontalAlignment::leading
-                                })
+                                }
                             }
-                        })
+                        }
                     }
-                })
+                }
             }
-        });
+        };
     }
 };
 
 struct SidebarView {
     FLUX_VIEW_PROPERTIES;
-    FLUX_INTERACTIVE_PROPERTIES;
 
     AppState* state = nullptr;
 
     View body() const {
-        if (!state) return View(VStack{});
+        if (!state) return VStack{};
 
-        std::vector<ModelInfo> models = state->installedModels;
-        std::optional<ModelInfo> active = state->activeModel;
-        bool expanded = state->sidebarExpanded;
-        ModelLoadState loadSt = state->loadState;
-
-        float sidebarW = expanded ? 240.0f : 48.0f;
+        bool expanded = state->leftSidebarExpanded;
+        float sidebarW = expanded ? 260.0f : 48.0f;
 
         if (!expanded) {
-            return View(VStack{
+            return VStack{
                 .backgroundColor = Theme::Surface,
                 .borderColor = Theme::Border,
                 .borderWidth = 1.0f,
                 .minWidth = sidebarW,
                 .maxWidth = sidebarW,
-                .expansionBias = 0.0f,
                 .children = {
-                    View(Button{
+                    Button{
                         .text = std::string("\xE2\x89\xA1"),
                         .backgroundColor = Colors::transparent,
                         .padding = EdgeInsets(12),
-                        .onClick = [this]() { state->sidebarExpanded = true; }
-                    })
+                        .onClick = [this]() { state->leftSidebarExpanded = true; }
+                    }
+                }
+            };
+        }
+
+        std::vector<ChatSession> sessions = state->chatSessions;
+        std::string activeId = state->activeChatId;
+
+        std::vector<View> sessionViews;
+        for (const auto& session : sessions) {
+            bool isActive = session.id == activeId;
+            ChatSession captured = session;
+            sessionViews.push_back(ChatHistoryItem{
+                .session = captured,
+                .isActive = isActive,
+                .onClick = [this, captured]() {
+                    state->activeChatId = captured.id;
+                    state->currentPage = AppPage::CHAT;
                 }
             });
         }
 
-        std::vector<View> modelViews;
-        for (size_t i = 0; i < models.size(); i++) {
-            bool isActive = active.has_value() && active->id == models[i].id;
-            ModelInfo captured = models[i];
-            modelViews.push_back(View(ModelListItem{
-                .model = captured,
-                .isActive = isActive,
-                .onClick = [this, captured]() {
-                    state->activeModel = captured;
-                    state->loadState = ModelLoadState::READY;
+        View listContent = sessionViews.empty()
+            ? View(VStack{
+                .spacing = Theme::Space2,
+                .padding = Theme::Space6,
+                .expansionBias = 1.0f,
+                .children = {
+                    Text{
+                        .value = std::string("No chat history"),
+                        .fontSize = Theme::FontBody,
+                        .color = Theme::TextMuted.opacity(0.5f)
+                    },
+                    Text{
+                        .value = std::string("Start a new chat to begin."),
+                        .fontSize = Theme::FontCaption,
+                        .color = Theme::TextMuted.opacity(0.3f)
+                    }
                 }
-            }));
-        }
+            })
+            : View(ScrollArea{
+                .expansionBias = 1.0f,
+                .children = std::move(sessionViews)
+            });
 
-        std::string statusText = "No model loaded";
-        Color statusColor = Theme::TextMuted;
-        std::string statusDot = "\xE2\x97\x8B";
-
-        if (active.has_value()) {
-            switch (loadSt) {
-                case ModelLoadState::READY:
-                    statusText = active->name;
-                    statusColor = Theme::Success;
-                    statusDot = "\xE2\x97\x8F";
-                    break;
-                case ModelLoadState::LOADING:
-                    statusText = "Loading...";
-                    statusColor = Theme::Accent;
-                    statusDot = "\xE2\x97\x8F";
-                    break;
-                case ModelLoadState::ERROR:
-                    statusText = "Error";
-                    statusColor = Theme::Destructive;
-                    statusDot = "\xE2\x97\x8F";
-                    break;
-                default: break;
-            }
-        }
-
-        return View(VStack{
+        return VStack{
             .spacing = 0.0f,
             .backgroundColor = Theme::Surface,
             .borderColor = Theme::Border,
             .borderWidth = 1.0f,
             .minWidth = sidebarW,
             .maxWidth = sidebarW,
-            .expansionBias = 0.0f,
             .children = {
-                View(HStack{
+                HStack{
                     .spacing = Theme::Space2,
                     .justifyContent = JustifyContent::spaceBetween,
                     .alignItems = AlignItems::center,
                     .padding = EdgeInsets(Theme::Space3),
                     .children = {
-                        View(Text{
-                            .value = std::string("Models"),
+                        Text{
+                            .value = std::string("Chats"),
                             .fontSize = Theme::FontCaption,
                             .fontWeight = FontWeight::semibold,
                             .color = Theme::TextMuted,
                             .horizontalAlignment = HorizontalAlignment::leading
-                        }),
-                        View(Button{
-                            .text = std::string("\xE2\x89\xA1"),
+                        },
+                        Button{
+                            .text = std::string("\xC3\x97"),
                             .backgroundColor = Colors::transparent,
                             .padding = EdgeInsets(4),
-                            .onClick = [this]() { state->sidebarExpanded = false; }
-                        })
+                            .onClick = [this]() { state->leftSidebarExpanded = false; }
+                        }
                     }
-                }),
+                },
 
-                View(Divider{.borderColor = Theme::Border}),
+                Button{
+                    .text = std::string("+ New Chat"),
+                    .backgroundColor = Theme::Accent,
+                    .padding = EdgeInsets(8, Theme::Space3, 8, Theme::Space3),
+                    .cornerRadius = Theme::RadiusSmall,
+                    .onClick = [this]() { state->createNewChat(); }
+                },
 
-                View(ScrollArea{
-                    .expansionBias = 1.0f,
-                    .children = modelViews.empty()
-                        ? std::vector<View>{View(Text{
-                            .value = std::string("No models installed"),
-                            .fontSize = Theme::FontCaption,
-                            .color = Theme::TextMuted,
-                            .padding = Theme::Space4
-                        })}
-                        : std::move(modelViews)
-                }),
+                Divider{.borderColor = Theme::Border},
 
-                View(Button{
-                    .text = std::string("+ Browse Hub"),
-                    .backgroundColor = Colors::transparent,
-                    .padding = EdgeInsets(Theme::Space3),
-                    .cornerRadius = 0.0f,
-                    .onClick = [this]() { state->currentView = AppView::HUB; }
-                }),
-
-                View(Divider{.borderColor = Theme::Border}),
-
-                View(HStack{
-                    .spacing = Theme::Space2,
-                    .alignItems = AlignItems::center,
-                    .padding = EdgeInsets(Theme::Space3),
-                    .children = {
-                        View(Text{
-                            .value = statusDot,
-                            .fontSize = 10.0f,
-                            .color = statusColor
-                        }),
-                        View(VStack{
-                            .spacing = 1.0f,
-                            .expansionBias = 1.0f,
-                            .children = {
-                                View(Text{
-                                    .value = std::string("Active"),
-                                    .fontSize = Theme::FontCaption,
-                                    .color = Theme::TextMuted,
-                                    .horizontalAlignment = HorizontalAlignment::leading
-                                }),
-                                View(Text{
-                                    .value = statusText,
-                                    .fontSize = Theme::FontCaption,
-                                    .fontWeight = FontWeight::medium,
-                                    .color = Theme::TextPrimary,
-                                    .horizontalAlignment = HorizontalAlignment::leading
-                                })
-                            }
-                        })
-                    }
-                })
+                listContent
             }
-        });
+        };
     }
 };
 

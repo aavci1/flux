@@ -37,252 +37,280 @@ struct SettingsRow {
         std::vector<View> controlVec = controls;
 
         std::vector<View> labelChildren;
-        labelChildren.push_back(View(Text{
+        labelChildren.push_back(Text{
             .value = lbl,
             .fontSize = Theme::FontBody,
             .color = Theme::TextPrimary,
             .horizontalAlignment = HorizontalAlignment::leading
-        }));
+        });
         if (!desc.empty()) {
-            labelChildren.push_back(View(Text{
+            labelChildren.push_back(Text{
                 .value = desc,
                 .fontSize = Theme::FontCaption,
                 .color = Theme::TextMuted,
                 .horizontalAlignment = HorizontalAlignment::leading
-            }));
+            });
         }
 
-        return View(HStack{
+        return HStack{
             .spacing = Theme::Space4,
             .alignItems = AlignItems::center,
             .padding = EdgeInsets(Theme::Space2, 0, Theme::Space2, 0),
             .children = {
-                View(VStack{
+                VStack{
                     .spacing = 2.0f,
                     .expansionBias = 1.0f,
                     .children = std::move(labelChildren)
-                }),
-                View(HStack{
+                },
+                HStack{
                     .spacing = Theme::Space2,
                     .alignItems = AlignItems::center,
                     .children = std::move(controlVec)
-                })
+                }
             }
-        });
+        };
     }
 };
 
-struct SettingsView {
+struct SettingsDialog {
     FLUX_VIEW_PROPERTIES;
+    FLUX_INTERACTIVE_PROPERTIES;
 
     AppState* state = nullptr;
 
+    void init() {
+        onMouseDown = [](float, float, int) {};
+    }
+
     View body() const {
-        if (!state) return View(VStack{});
+        if (!state) return VStack{.visible = false};
+
+        bool visible = state->showSettingsDialog;
+        if (!visible) return VStack{.visible = false};
 
         AppSettings settings = state->settings;
 
-        return View(ScrollArea{
-            .padding = EdgeInsets(0, Theme::Space6, 0, Theme::Space6),
+        View settingsContent = ScrollArea{
             .expansionBias = 1.0f,
             .children = {
-                View(VStack{
+                VStack{
                     .spacing = Theme::Space2,
-                    .padding = EdgeInsets(Theme::Space4, Theme::Space8,
-                                          Theme::Space8, Theme::Space8),
+                    .padding = EdgeInsets(0, Theme::Space4, Theme::Space4, Theme::Space4),
                     .expansionBias = 1.0f,
-                    .maxWidth = 700.0f,
                     .children = {
-                        View(Text{
-                            .value = std::string("Settings"),
-                            .fontSize = 22.0f,
-                            .fontWeight = FontWeight::bold,
-                            .color = Theme::TextPrimary,
-                            .horizontalAlignment = HorizontalAlignment::leading,
-                            .padding = EdgeInsets(0, 0, Theme::Space4, 0)
-                        }),
+                        SectionHeader{.title = std::string("Inference")},
 
-                        // Inference section
-                        View(SectionHeader{.title = std::string("Inference")}),
-
-                        View(SettingsRow{
+                        SettingsRow{
                             .label = std::string("Backend path"),
                             .description = std::string("Path to llama-server binary"),
                             .controls = {
-                                View(TextInput{
+                                TextInput{
                                     .value = settings.backendPath,
-                                    .inputWidth = 250.0f
-                                })
+                                    .inputWidth = 220.0f
+                                }
                             }
-                        }),
+                        },
 
-                        View(SettingsRow{
+                        SettingsRow{
                             .label = std::string("Context length"),
                             .controls = {
-                                View(TextInput{
+                                TextInput{
                                     .value = std::to_string(settings.contextLength),
                                     .inputWidth = 100.0f
-                                })
+                                }
                             }
-                        }),
+                        },
 
-                        View(SettingsRow{
+                        SettingsRow{
                             .label = std::string("GPU layers"),
-                            .description = std::string("Number of layers to offload to GPU (0 = CPU only)"),
+                            .description = std::string("Layers to offload to GPU (0 = CPU only)"),
                             .controls = {
-                                View(Slider{
+                                Slider{
                                     .value = static_cast<float>(settings.gpuLayers),
                                     .minValue = 0.0f,
                                     .maxValue = 100.0f,
                                     .step = 1.0f,
                                     .activeColor = Theme::Accent,
                                     .inactiveColor = Theme::Border,
-                                    .maxWidth = 150.0f
-                                }),
-                                View(Text{
+                                    .maxWidth = 120.0f
+                                },
+                                Text{
                                     .value = std::to_string(settings.gpuLayers),
                                     .fontSize = Theme::FontBody,
                                     .fontWeight = FontWeight::medium,
                                     .color = Theme::Accent,
                                     .minWidth = 30.0f
-                                })
+                                }
                             }
-                        }),
+                        },
 
-                        View(SettingsRow{
+                        SettingsRow{
                             .label = std::string("Threads"),
                             .controls = {
-                                View(Slider{
+                                Slider{
                                     .value = static_cast<float>(settings.threads),
                                     .minValue = 1.0f,
                                     .maxValue = 32.0f,
                                     .step = 1.0f,
                                     .activeColor = Theme::Accent,
                                     .inactiveColor = Theme::Border,
-                                    .maxWidth = 150.0f
-                                }),
-                                View(Text{
+                                    .maxWidth = 120.0f
+                                },
+                                Text{
                                     .value = std::to_string(settings.threads),
                                     .fontSize = Theme::FontBody,
                                     .fontWeight = FontWeight::medium,
                                     .color = Theme::Accent,
                                     .minWidth = 30.0f
-                                })
+                                }
                             }
-                        }),
+                        },
 
-                        // Interface section
-                        View(SectionHeader{.title = std::string("Interface")}),
+                        SectionHeader{.title = std::string("Interface")},
 
-                        View(SettingsRow{
+                        SettingsRow{
                             .label = std::string("Theme"),
                             .controls = {
-                                View(SelectInput{
+                                SelectInput{
                                     .options = std::vector<std::string>{"Dark", "Light", "System"},
-                                    .selectWidth = 140.0f
-                                })
+                                    .selectWidth = 120.0f
+                                }
                             }
-                        }),
+                        },
 
-                        View(SettingsRow{
+                        SettingsRow{
                             .label = std::string("Font size"),
                             .controls = {
-                                View(Slider{
+                                Slider{
                                     .value = settings.fontSize,
                                     .minValue = 10.0f,
                                     .maxValue = 22.0f,
                                     .step = 1.0f,
                                     .activeColor = Theme::Accent,
                                     .inactiveColor = Theme::Border,
-                                    .maxWidth = 120.0f
-                                }),
-                                View(Text{
+                                    .maxWidth = 100.0f
+                                },
+                                Text{
                                     .value = std::format("{:.0f}px", settings.fontSize),
                                     .fontSize = Theme::FontBody,
                                     .color = Theme::Accent,
                                     .minWidth = 40.0f
-                                })
+                                }
                             }
-                        }),
+                        },
 
-                        View(SettingsRow{
-                            .label = std::string("Sidebar visible on start"),
-                            .controls = {
-                                View(Toggle{
-                                    .isOn = settings.sidebarDefault,
-                                    .onColor = Theme::Accent,
-                                    .offColor = Theme::Border
-                                })
-                            }
-                        }),
+                        SectionHeader{.title = std::string("Storage")},
 
-                        // Storage section
-                        View(SectionHeader{.title = std::string("Storage")}),
-
-                        View(SettingsRow{
+                        SettingsRow{
                             .label = std::string("Model directory"),
                             .controls = {
-                                View(TextInput{
+                                TextInput{
                                     .value = settings.modelDirectory.string(),
-                                    .inputWidth = 280.0f
-                                })
+                                    .inputWidth = 240.0f
+                                }
                             }
-                        }),
+                        },
 
-                        View(SettingsRow{
-                            .label = std::string("Image output directory"),
-                            .controls = {
-                                View(TextInput{
-                                    .value = settings.imageDirectory.string(),
-                                    .inputWidth = 280.0f
-                                })
-                            }
-                        }),
+                        SectionHeader{.title = std::string("HuggingFace")},
 
-                        // HuggingFace section
-                        View(SectionHeader{.title = std::string("HuggingFace")}),
-
-                        View(SettingsRow{
+                        SettingsRow{
                             .label = std::string("API Token"),
                             .description = std::string("Required for gated models"),
                             .controls = {
-                                View(TextInput{
+                                TextInput{
                                     .value = settings.hfToken.empty()
                                         ? std::string("")
                                         : std::string("hf_****"),
                                     .placeholder = std::string("hf_..."),
                                     .password = true,
-                                    .inputWidth = 250.0f
-                                })
+                                    .inputWidth = 220.0f
+                                }
                             }
-                        }),
-
-                        View(Spacer{}),
-
-                        View(HStack{
-                            .spacing = Theme::Space2,
-                            .padding = EdgeInsets(Theme::Space4, 0, 0, 0),
-                            .children = {
-                                View(Button{
-                                    .text = std::string("Save Settings"),
-                                    .backgroundColor = Theme::Accent,
-                                    .padding = EdgeInsets(10, 20, 10, 20),
-                                    .cornerRadius = Theme::RadiusCard
-                                }),
-                                View(Button{
-                                    .text = std::string("Reset to Defaults"),
-                                    .backgroundColor = Theme::SurfaceRaised,
-                                    .padding = EdgeInsets(10, 16, 10, 16),
-                                    .cornerRadius = Theme::RadiusCard,
-                                    .borderColor = Theme::Border,
-                                    .borderWidth = 1.0f
-                                })
-                            }
-                        })
+                        }
                     }
-                })
+                }
             }
-        });
+        };
+
+        return VStack{
+            .backgroundColor = Color(0.0f, 0.0f, 0.0f, 0.5f),
+            .expansionBias = 1.0f,
+            .children = {
+                Spacer{},
+                HStack{
+                    .justifyContent = JustifyContent::center,
+                    .minHeight = 500.0f,
+                    .children = {
+                        Spacer{},
+                        VStack{
+                            .spacing = 0.0f,
+                            .backgroundColor = Theme::Surface,
+                            .cornerRadius = Theme::RadiusDialog,
+                            .borderColor = Theme::Border,
+                            .borderWidth = 1.0f,
+                            .minWidth = 600.0f,
+                            .maxWidth = 600.0f,
+                            .minHeight = 500.0f,
+                            .maxHeight = 500.0f,
+                            .children = {
+                                HStack{
+                                    .spacing = Theme::Space2,
+                                    .justifyContent = JustifyContent::spaceBetween,
+                                    .alignItems = AlignItems::center,
+                                    .padding = EdgeInsets(Theme::Space4),
+                                    .children = {
+                                        Text{
+                                            .value = std::string("Settings"),
+                                            .fontSize = Theme::FontH1,
+                                            .fontWeight = FontWeight::bold,
+                                            .color = Theme::TextPrimary
+                                        },
+                                        Button{
+                                            .text = std::string("\xC3\x97"),
+                                            .backgroundColor = Colors::transparent,
+                                            .padding = EdgeInsets(4, 8, 4, 8),
+                                            .cornerRadius = Theme::RadiusSmall,
+                                            .onClick = [this]() {
+                                                state->showSettingsDialog = false;
+                                            }
+                                        }
+                                    }
+                                },
+                                Divider{.borderColor = Theme::Border},
+                                settingsContent,
+                                Divider{.borderColor = Theme::Border},
+                                HStack{
+                                    .spacing = Theme::Space2,
+                                    .justifyContent = JustifyContent::end,
+                                    .padding = EdgeInsets(Theme::Space3, Theme::Space4, Theme::Space3, Theme::Space4),
+                                    .children = {
+                                        Button{
+                                            .text = std::string("Reset to Defaults"),
+                                            .backgroundColor = Theme::SurfaceRaised,
+                                            .padding = EdgeInsets(8, 16, 8, 16),
+                                            .cornerRadius = Theme::RadiusSmall,
+                                            .borderColor = Theme::Border,
+                                            .borderWidth = 1.0f
+                                        },
+                                        Button{
+                                            .text = std::string("Save"),
+                                            .backgroundColor = Theme::Accent,
+                                            .padding = EdgeInsets(8, 20, 8, 20),
+                                            .cornerRadius = Theme::RadiusSmall,
+                                            .onClick = [this]() {
+                                                state->showSettingsDialog = false;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        Spacer{}
+                    }
+                },
+                Spacer{}
+            }
+        };
     }
 };
 

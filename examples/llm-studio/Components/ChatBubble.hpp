@@ -38,51 +38,51 @@ struct ChatBubble {
 
         std::vector<View> contentViews;
 
-        contentViews.push_back(View(HStack{
+        contentViews.push_back(HStack{
             .spacing = Theme::Space2,
             .justifyContent = JustifyContent::spaceBetween,
             .children = {
-                View(Text{
+                Text{
                     .value = roleLabel,
                     .fontSize = Theme::FontCaption,
                     .fontWeight = FontWeight::semibold,
                     .color = isUser ? Theme::Accent : Theme::TextMuted,
                     .horizontalAlignment = HorizontalAlignment::leading
-                }),
-                View(Text{
+                },
+                Text{
                     .value = timeStr,
                     .fontSize = Theme::FontCaption,
                     .color = Theme::TextMuted,
                     .horizontalAlignment = HorizontalAlignment::trailing
-                })
+                }
             }
-        }));
+        });
 
         if (streaming && msg.content.empty()) {
-            contentViews.push_back(View(TypingIndicator{}));
+            contentViews.push_back(TypingIndicator{});
         } else {
             auto parts = parseContent(msg.content);
             for (const auto& part : parts) {
                 if (part.isCode) {
-                    contentViews.push_back(View(CodeBlock{
+                    contentViews.push_back(CodeBlock{
                         .code = part.text,
                         .language = part.lang,
                         .expansionBias = 1.0f
-                    }));
+                    });
                 } else {
-                    contentViews.push_back(View(Text{
+                    contentViews.push_back(Text{
                         .value = part.text,
                         .fontSize = Theme::FontBody,
                         .color = Theme::TextPrimary,
                         .horizontalAlignment = HorizontalAlignment::leading
-                    }));
+                    });
                 }
             }
         }
 
         std::vector<View> rowChildren;
         if (!isUser) {
-            rowChildren.push_back(View(VStack{
+            rowChildren.push_back(VStack{
                 .spacing = Theme::Space2,
                 .backgroundColor = bubbleBg,
                 .padding = EdgeInsets(Theme::Space3, Theme::Space4, Theme::Space3, Theme::Space4),
@@ -90,11 +90,11 @@ struct ChatBubble {
                 .expansionBias = 1.0f,
                 .maxWidth = 700.0f,
                 .children = std::move(contentViews)
-            }));
-            rowChildren.push_back(View(Spacer{}));
+            });
+            rowChildren.push_back(Spacer{});
         } else {
-            rowChildren.push_back(View(Spacer{}));
-            rowChildren.push_back(View(VStack{
+            rowChildren.push_back(Spacer{});
+            rowChildren.push_back(VStack{
                 .spacing = Theme::Space2,
                 .backgroundColor = bubbleBg,
                 .padding = EdgeInsets(Theme::Space3, Theme::Space4, Theme::Space3, Theme::Space4),
@@ -102,15 +102,15 @@ struct ChatBubble {
                 .expansionBias = 1.0f,
                 .maxWidth = 600.0f,
                 .children = std::move(contentViews)
-            }));
+            });
         }
 
-        return View(HStack{
+        return HStack{
             .spacing = 0.0f,
             .padding = EdgeInsets(Theme::Space1, Theme::Space4, Theme::Space1, Theme::Space4),
             .expansionBias = 1.0f,
             .children = std::move(rowChildren)
-        });
+        };
     }
 
 private:
