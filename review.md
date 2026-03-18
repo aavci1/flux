@@ -1,123 +1,10 @@
 # Flux v2: Remaining Work & Optimization Plan
 
-## 1. CPU & Memory Optimization (Critical)
-
-The application currently burns ~50% CPU when idle. The root causes are:
-
-### 1.1 Busy-Loop Main Loop
-
-The main loop in `Runtime::run()` sleeps only 1ms between iterations, polling at ~1000 Hz even when nothing has changed:
-
-```cpp
-while (running_) {
-    processEvents();
-    // ...
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-}
-```
-
-**Fix:** Replace `SDL_PollEvent` + `sleep(1ms)` with `SDL_WaitEvent` when the application is idle. Only switch to `SDL_PollEvent` when a redraw is pending or animations are active:
-
-```cpp
-int Runtime::run() {
-    while (running_) {
-        SDL_Event event;
-        if (needsRedraw_.load(std::memory_order_relaxed) || animating_) {
-            while (SDL_PollEvent(&event))
-                routeEvent(event);
-        } else {
-            // Block until an event arrives — zero CPU when idle
-            if (SDL_WaitEvent(&event))
-                routeEvent(event);
-            // Drain any additional queued events
-            while (SDL_PollEvent(&event))
-                routeEvent(event);
-        }
-        // ...
-    }
-}
-```
-
-### 1.2 Unconditional Redraws on Every Mouse Event
-
-`Renderer::handleEvent()` calls `requestApplicationRedraw()` after **every** mouse event, including mouse moves that don't change anything:
-
-```cpp
-// End of Renderer::handleEvent():
-requestApplicationRedraw();  // called unconditionally
-```
-
-**Fix:** Only request a redraw when an event handler actually changed state. Return a `bool` from `handleEvent()` and only redraw when `true`.
-
-### 1.3 Cursor Blink Forces Continuous Rendering
-
-When any text input is focused, `Renderer::renderFrame()` unconditionally requests a redraw on **every frame**:
-
-```cpp
-if (window_ && !window_->focus().getFocusedKey().empty()) {
-    requestApplicationRedraw();
-}
-```
-
-This means the app renders at full speed (~1000 fps with 1ms sleep) whenever a text field has focus.
-
-**Fix:** Use a timer-based approach for cursor blink. Post a custom SDL event every 500ms to toggle cursor visibility, instead of forcing continuous redraws. Only redraw on the toggle event:
-
-```cpp
-// In Runtime or Window:
-SDL_AddTimer(500, [](void* param, SDL_TimerID, Uint32) -> Uint32 {
-    auto* self = static_cast<Runtime*>(param);
-    self->toggleCursorBlink();
-    self->requestRedraw();
-    return 500;  // repeat
-}, this);
-```
-
-### 1.4 Full Layout Tree Rebuilt Every Frame
-
-Every render frame calls `rootView_->layout(*renderContext_, bounds)` which rebuilds the entire layout tree from scratch, including calling `body()` on every component.
-
-**Fix:** Only rebuild the layout tree when dirty. The `layoutCacheValid_` flag exists but is always invalidated by `requestRedraw()` → `invalidateLayoutCache()`. Separate layout invalidation from redraw requests. Only invalidate layout when state actually changes.
-
-### 1.5 body() Called Multiple Times Per Frame Per Component
-
-`ViewAdapter` does not cache the result of `body()`. Layout, rendering, and event handling each call `body()` independently.
-
-**Fix:** Cache `body()` results in `ViewAdapter` keyed by a frame generation counter:
-
-```cpp
-template<ViewComponent T>
-class ViewAdapter : public ViewInterface {
-    mutable std::optional<View> cachedBody_;
-    mutable uint64_t cacheFrame_ = 0;
-
-    const View& getBody() const {
-        uint64_t gen = currentBodyGeneration();
-        if (cacheFrame_ != gen) {
-            if constexpr (has_body<T>::value)
-                cachedBody_ = component.body();
-            cacheFrame_ = gen;
-        }
-        return *cachedBody_;
-    }
-};
-```
-
-### 1.6 Summary of Expected Impact
-
-| Fix | CPU impact |
-|-----|-----------|
-| SDL_WaitEvent when idle | ~50% → ~0% when idle |
-| Conditional redraw on events | Eliminates redundant frames on hover |
-| Timer-based cursor blink | 2 redraws/sec instead of 1000/sec when text focused |
-| Conditional layout rebuild | Avoids full tree rebuild when only rendering |
-| body() caching | 1 call per component per frame instead of 15+ |
-
----
-
-## 2. State Management: Property<T> Targeted Dirty Marking
+## 1. State Management: Property<T> Targeted Dirty Marking
 
 **Current problem:** `Property<T>` mutations call the global `requestApplicationRedraw()`. The entire UI is redrawn on any change. There is no per-element dirty tracking from Property changes.
+
+**Recent improvement:** `Property<T>::operator=(T&&)` now checks for equality before calling `notifyChange()`, and `suppressRedrawRequests()` prevents spurious redraws during layout/body evaluation. This dropped idle CPU from ~50% to 0%.
 
 **Design:** `Property<T>` in stateful mode should hold a back-pointer to its owning `Element`. When mutated, it marks that element dirty. The framework re-evaluates only dirty elements' `body()` calls, diffs the results, and updates the subtree.
 
@@ -140,7 +27,7 @@ struct StatefulValue {
 
 ---
 
-## 3. Element Tree: Key-Based Identity
+## 2. Element Tree: Key-Based Identity
 
 The current reconciliation matches children by `typeName` + `structuralIndex` only. There is no support for explicit key-based identity.
 
@@ -154,16 +41,16 @@ Update `reconcileChildren()` to prefer key-based matching when keys are present,
 
 ---
 
-## 4. Event System: Unified Pipeline
+## 3. Event System: Unified Pipeline
 
-### 4.1 Current Problems
+### 3.1 Current Problems
 
 1. **Split dispatch:** Mouse events go through `Renderer::findAndDispatchEvent()`. Keyboard events go through `KeyboardInputHandler` → `FocusState`. These two paths don't compose.
 2. **No bubbling:** A parent can't intercept a child's click.
 3. **Raw View* in FocusState:** Can dangle between frames.
 4. **Drag events not implemented.**
 
-### 4.2 Unified Event Pipeline
+### 3.2 Unified Event Pipeline
 
 ```
 1. HIT TEST     → Walk the element tree, find deepest element under the pointer.
@@ -174,7 +61,7 @@ Update `reconcileChildren()` to prefer key-based matching when keys are present,
 
 For keyboard events, the target is the focused element. Same pipeline.
 
-### 4.3 Event Types
+### 3.3 Event Types
 
 Replace the current C-union `Event` struct in `Renderer.hpp` with proper types:
 
@@ -197,7 +84,7 @@ struct PointerEvent : Event {
 };
 ```
 
-### 4.4 State Machines
+### 3.4 State Machines
 
 **Drag detection:** `mouseDown` + movement beyond threshold → `onDragStart` → `onDrag` → `onDragEnd`/`onDrop`.
 
@@ -205,7 +92,7 @@ struct PointerEvent : Event {
 
 ---
 
-## 5. Rendering: Wire Command Buffer Into Main Pipeline
+## 4. Rendering: Wire Command Buffer Into Main Pipeline
 
 `RenderCommandBuffer` and `NanoVGBackend` exist but are not used in the main render path. The renderer still makes immediate NanoVG calls via `RenderContext`.
 
@@ -217,9 +104,9 @@ struct PointerEvent : Event {
 
 ---
 
-## 6. Platform Polish
+## 5. Platform Polish
 
-### 6.1 Font Discovery
+### 5.1 Font Discovery
 
 Font paths are hardcoded per platform in `NanoVGRenderContext.cpp`. Implement a `FontDiscovery` utility:
 
@@ -227,11 +114,11 @@ Font paths are hardcoded per platform in `NanoVGRenderContext.cpp`. Implement a 
 - **Windows:** DirectWrite (`IDWriteFontCollection::FindFamilyName`)
 - **Linux:** Fontconfig (`FcFontMatch`)
 
-### 6.2 Clipboard: Copy/Cut
+### 5.2 Clipboard: Copy/Cut
 
-Paste works via SDL, but `CopyCommand` and `CutCommand` are stubs. Wire `SDL_SetClipboardText()` into them.
+Paste works via SDL. `CopyCommand` and `CutCommand` are stubs (log only, no-op). Wire `SDL_SetClipboardText()` into them, using the focused text input's selection.
 
-### 6.3 Headless Backend
+### 5.3 Headless Backend
 
 A headless platform + software renderer for testing. No SDL, no GPU, no display server.
 
@@ -243,7 +130,7 @@ public:
 };
 ```
 
-### 6.4 Resource Management
+### 5.4 Resource Management
 
 Fonts, images, and SVGs are cached in global `std::map`s with no eviction. Implement a `ResourceManager` owned by `Runtime`:
 
@@ -261,7 +148,7 @@ public:
 
 ---
 
-## 7. Environment (Value Propagation)
+## 6. Environment (Value Propagation)
 
 Propagate values down the element tree without prop drilling:
 
@@ -278,15 +165,15 @@ EnvironmentProvider<ThemeKey>{
 
 ---
 
-## 8. Quality & Testing
+## 7. Quality & Testing
 
-### 8.1 Header Hygiene
+### 7.1 Header Hygiene
 
 - Forward-declare aggressively.
 - Split `View.hpp` into `ViewInterface.hpp`, `ViewAdapter.hpp`, `View.hpp`.
 - Add precompiled header support.
 
-### 8.2 Accessibility
+### 7.2 Accessibility
 
 Each element carries an accessibility annotation:
 
@@ -305,11 +192,11 @@ Platform mapping:
 - **macOS:** NSAccessibility
 - **Windows:** UI Automation
 
-### 8.3 CI/CD
+### 7.3 CI/CD
 
 Add `.github/workflows/ci.yml` for all three platforms, `.clang-format`, and `.clang-tidy`.
 
-### 8.4 Portability: demangleTypeName MSVC Fallback
+### 7.4 Portability: demangleTypeName MSVC Fallback
 
 `Demangle.cpp` only handles GCC/Clang. Add MSVC support:
 
@@ -327,7 +214,7 @@ std::string demangleTypeName(const char* name) {
 
 ---
 
-## 9. Quick Fixes (Independent)
+## 8. Quick Fixes (Independent)
 
 | Fix | File(s) | Effort |
 |-----|---------|--------|
@@ -340,31 +227,25 @@ std::string demangleTypeName(const char* name) {
 
 ---
 
-## 10. Implementation Priority
-
-### Immediate (CPU fix)
-1. Replace `sleep(1ms)` loop with `SDL_WaitEvent` when idle.
-2. Remove unconditional `requestApplicationRedraw()` from `Renderer::handleEvent()`.
-3. Replace continuous cursor-blink redraw with timer-based approach.
-4. Cache `body()` results in `ViewAdapter`.
+## 9. Implementation Priority
 
 ### Short-term
-5. Wire `Property<T>` dirty notification to `Element*` back-pointer.
-6. Wire render command buffer into main pipeline.
-7. Implement clipboard copy/cut.
-8. Fix `const_cast` usage in Views.
-9. Fix examples README.
+1. Wire `Property<T>` dirty notification to `Element*` back-pointer.
+2. Wire render command buffer into main pipeline.
+3. Implement clipboard copy/cut.
+4. Fix `const_cast` usage in Views.
+5. Fix examples README.
 
 ### Medium-term
-10. Unified event pipeline with capture/bubble.
-11. Migrate `FocusState` from `View*` to `Element*`.
-12. Key-based identity in reconciler.
-13. Font discovery per platform.
-14. Resource manager.
+6. Unified event pipeline with capture/bubble.
+7. Migrate `FocusState` from `View*` to `Element*`.
+8. Key-based identity in reconciler.
+9. Font discovery per platform.
+10. Resource manager.
 
 ### Long-term
-15. Environment value propagation.
-16. Headless backend.
-17. Accessibility.
-18. CI/CD on all platforms.
-19. Header hygiene.
+11. Environment value propagation.
+12. Headless backend.
+13. Accessibility.
+14. CI/CD on all platforms.
+15. Header hygiene.
