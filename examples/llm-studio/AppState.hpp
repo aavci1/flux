@@ -12,7 +12,7 @@
 
 namespace llm_studio {
 
-enum class AppPage { CHAT, MODELS };
+enum class AppPage { CHAT, MODELS, SETTINGS };
 enum class ModelLoadState { UNLOADED, LOADING, READY, ERROR };
 
 struct ModelInfo {
@@ -105,8 +105,6 @@ struct AppState {
     flux::Property<std::string> hubSearchQuery = std::string("");
 
     flux::Property<AppSettings> settings = AppSettings{};
-
-    flux::Property<bool> showSettingsDialog = false;
 
     ChatSession* getActiveSession() {
         std::string activeId = activeChatId;

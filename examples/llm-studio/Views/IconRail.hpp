@@ -80,9 +80,9 @@ struct IconRailView {
                 Spacer{},
                 IconRailButton{
                     .icon = std::string("\xE2\x9A\x99"),
-                    .active = false,
+                    .active = page == AppPage::SETTINGS,
                     .tooltip = std::string("Settings"),
-                    .onClick = [this]() { state->showSettingsDialog = true; }
+                    .onClick = [this]() { state->currentPage = AppPage::SETTINGS; }
                 }
             }
         };

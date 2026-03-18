@@ -25,6 +25,8 @@ struct MainPanel {
                 return ChatView{.state = state, .expansionBias = 1.0f};
             case AppPage::MODELS:
                 return HubView{.state = state, .expansionBias = 1.0f};
+            case AppPage::SETTINGS:
+                return SettingsView{.state = state, .expansionBias = 1.0f};
         }
         return VStack{};
     }
@@ -38,13 +40,20 @@ struct AppRoot {
     View body() const {
         if (!state) return VStack{};
 
-        bool showSettings = state->showSettingsDialog;
+        AppPage page = state->currentPage;
+        bool showSidebars = (page == AppPage::CHAT);
 
-        if (showSettings) {
-            return SettingsDialog{
-                .state = state,
-                .expansionBias = 1.0f
-            };
+        std::vector<View> children;
+        children.push_back(IconRailView{.state = state});
+
+        if (showSidebars) {
+            children.push_back(SidebarView{.state = state});
+        }
+
+        children.push_back(MainPanel{.state = state, .expansionBias = 1.0f});
+
+        if (showSidebars) {
+            children.push_back(ModelConfigSidebar{.state = state});
         }
 
         return HStack{
@@ -52,12 +61,7 @@ struct AppRoot {
             .alignItems = AlignItems::stretch,
             .backgroundColor = Theme::Background,
             .expansionBias = 1.0f,
-            .children = {
-                IconRailView{.state = state},
-                SidebarView{.state = state},
-                MainPanel{.state = state, .expansionBias = 1.0f},
-                ModelConfigSidebar{.state = state}
-            }
+            .children = std::move(children)
         };
     }
 };
