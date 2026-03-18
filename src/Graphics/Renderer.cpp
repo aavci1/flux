@@ -111,29 +111,38 @@ std::optional<CursorType> Renderer::collectCursor(const LayoutNode& node, const 
 }
 
 bool Renderer::findAndDispatchEvent(LayoutNode& node, const Event& event, const Point& point) {
-    // Search children first (reverse order so topmost views are checked first)
-    for (auto it = node.children.rbegin(); it != node.children.rend(); ++it) {
-        if (it->bounds.contains(point)) {
-            if (findAndDispatchEvent(*it, event, point)) {
-                return true;  // Event was handled by a child
+    for (size_t i = node.children.size(); i > 0; --i) {
+        size_t idx = i - 1;
+        if (node.children[idx].bounds.contains(point)) {
+            mouseCapture_.treePath.push_back(idx);
+            if (findAndDispatchEvent(node.children[idx], event, point)) {
+                return true;
             }
+            mouseCapture_.treePath.pop_back();
         }
     }
 
-    // Check if the current view contains the point
-    if (node.bounds.contains(point)) {
-        if (node.view.isInteractive()) {
-            Point localPoint = {point.x - node.bounds.x, point.y - node.bounds.y};
-            bool handled = dispatchEventToView(node.view, event, localPoint);
-            if (handled && event.type == Event::MouseDown) {
-                pressedBounds_ = node.bounds;
-                hasPressedView_ = true;
-            }
-            return handled;
+    if (node.bounds.contains(point) && node.view.isInteractive()) {
+        Point localPoint = {point.x - node.bounds.x, point.y - node.bounds.y};
+        bool handled = dispatchEventToView(node.view, event, localPoint);
+        if (handled && event.type == Event::MouseDown) {
+            mouseCapture_.active = true;
+            pressedBounds_ = node.bounds;
+            hasPressedView_ = true;
         }
+        return handled;
     }
 
     return false;
+}
+
+LayoutNode* Renderer::findNodeByPath(LayoutNode& root, const std::vector<size_t>& path) {
+    LayoutNode* current = &root;
+    for (size_t idx : path) {
+        if (idx >= current->children.size()) return nullptr;
+        current = &current->children[idx];
+    }
+    return current;
 }
 
 void Renderer::renderTree(LayoutNode& node, Point parentOrigin) {
@@ -223,16 +232,30 @@ void Renderer::handleEvent(const struct Event& event, const Rect& windowBounds) 
         window_->focus().focusViewAtPoint(eventPoint);
     }
 
-    // Clear pressed state unconditionally on mouse release (even if
-    // the pointer is no longer over the originally-pressed view).
     if (event.type == Event::MouseUp) {
         hasPressedView_ = false;
     }
 
-    findAndDispatchEvent(cachedLayoutTree_, event, eventPoint);
+    // During an active mouse capture (drag), route move/up to the
+    // originally-pressed view instead of doing hit-testing.
+    if (mouseCapture_.active && (event.type == Event::MouseMove || event.type == Event::MouseUp)) {
+        LayoutNode* captured = findNodeByPath(cachedLayoutTree_, mouseCapture_.treePath);
+        if (captured && captured->view.isInteractive()) {
+            if (event.type == Event::MouseMove) {
+                pressedBounds_ = captured->bounds;
+                hasPressedView_ = true;
+            }
+            Point localPoint = {eventPoint.x - captured->bounds.x, eventPoint.y - captured->bounds.y};
+            dispatchEventToView(captured->view, event, localPoint);
+        }
+        if (event.type == Event::MouseUp) {
+            mouseCapture_.active = false;
+        }
+    } else {
+        mouseCapture_.treePath.clear();
+        findAndDispatchEvent(cachedLayoutTree_, event, eventPoint);
+    }
 
-    // Every mouse event can change visual state (hover, press, focus),
-    // so request a redraw to reflect it on screen.
     requestApplicationRedraw();
 }
 

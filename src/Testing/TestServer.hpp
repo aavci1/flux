@@ -31,7 +31,7 @@ public:
         if (running_.exchange(true)) return;
         thread_ = std::thread([this]() { run(); });
         std::cout << "\n  FLUX TEST SERVER: http://localhost:" << port_ << "\n"
-                  << "  Endpoints: GET /ui  GET /screenshot  POST /click  POST /type  POST /key  POST /scroll  POST /hover\n" << std::endl;
+                  << "  Endpoints: GET /ui  GET /screenshot  POST /click  POST /type  POST /key  POST /scroll  POST /hover  POST /drag\n" << std::endl;
     }
 
     void stop() {
@@ -65,7 +65,7 @@ public:
     // --- Synthetic event queue (read by main thread) ---
 
     struct SyntheticEvent {
-        enum Type { Click, TextInput, KeyPress, Scroll, Hover };
+        enum Type { Click, TextInput, KeyPress, Scroll, Hover, MouseDown, MouseUp };
         Type type;
         float x = 0, y = 0;
         float deltaX = 0, deltaY = 0;
@@ -145,6 +145,8 @@ private:
             handleScroll(fd, body);
         } else if (method == "POST" && path == "/hover") {
             handleHover(fd, body);
+        } else if (method == "POST" && path == "/drag") {
+            handleDrag(fd, body);
         } else {
             std::string msg = R"({"error":"not found"})";
             sendResponse(fd, "404 Not Found", "application/json", msg.data(), msg.size());
@@ -282,6 +284,53 @@ private:
         waitForFrame(frameBefore);
 
         std::string resp = R"({"ok":true,"action":"hover"})";
+        sendResponse(fd, "200 OK", "application/json", resp.data(), resp.size());
+    }
+
+    void handleDrag(int fd, const std::string& body) {
+        float startX = 0, startY = 0, endX = 0, endY = 0;
+        float steps = 10;
+        parseFloat(body, "startX", startX);
+        parseFloat(body, "startY", startY);
+        parseFloat(body, "endX", endX);
+        parseFloat(body, "endY", endY);
+        parseFloat(body, "steps", steps);
+        int numSteps = std::max(1, static_cast<int>(steps));
+
+        // MouseDown at start
+        {
+            uint64_t f = currentFrame();
+            { std::lock_guard<std::mutex> lk(eventMutex_);
+              pendingEvents_.push_back({SyntheticEvent::MouseDown, startX, startY, 0, 0, "", 0}); }
+            window_.requestRedraw();
+            waitForFrame(f);
+        }
+
+        // Interpolated MouseMove steps
+        for (int i = 1; i <= numSteps; ++i) {
+            float t = static_cast<float>(i) / static_cast<float>(numSteps);
+            float mx = startX + (endX - startX) * t;
+            float my = startY + (endY - startY) * t;
+            uint64_t f = currentFrame();
+            { std::lock_guard<std::mutex> lk(eventMutex_);
+              pendingEvents_.push_back({SyntheticEvent::Hover, mx, my, 0, 0, "", 0}); }
+            window_.requestRedraw();
+            waitForFrame(f);
+        }
+
+        // MouseUp at end
+        {
+            uint64_t f = currentFrame();
+            { std::lock_guard<std::mutex> lk(eventMutex_);
+              pendingEvents_.push_back({SyntheticEvent::MouseUp, endX, endY, 0, 0, "", 0}); }
+            window_.requestRedraw();
+            waitForFrame(f);
+        }
+
+        std::string resp = R"({"ok":true,"action":"drag","startX":)" + std::to_string(startX)
+            + R"(,"startY":)" + std::to_string(startY)
+            + R"(,"endX":)" + std::to_string(endX)
+            + R"(,"endY":)" + std::to_string(endY) + "}";
         sendResponse(fd, "200 OK", "application/json", resp.data(), resp.size());
     }
 

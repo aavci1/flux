@@ -73,6 +73,16 @@ private:
     Rect pressedBounds_{};
     bool hasPressedView_ = false;
 
+    // Mouse capture: when MouseDown is handled by an interactive view, all
+    // subsequent MouseMove/MouseUp events are routed to the same view
+    // (identified by its path in the layout tree) until MouseUp releases it.
+    struct {
+        std::vector<size_t> treePath;
+        bool active = false;
+    } mouseCapture_;
+
+    LayoutNode* findNodeByPath(LayoutNode& root, const std::vector<size_t>& path);
+
 public:
     Renderer(RenderContext* ctx)
         : renderContext_(ctx), rootView_(), window_(nullptr) {}

@@ -184,9 +184,17 @@ struct ModelConfigSidebar {
 private:
     View makeParamSlider(const std::string& label, float value, float minV, float maxV, float step,
                          std::function<void(float)> callback) const {
-        std::string valStr = (maxV > 50)
+        bool integerFormat = maxV > 50;
+        std::string valStr = integerFormat
             ? std::format("{:.0f}", value)
             : std::format("{:.2f}", value);
+
+        // Fixed-width label sized for the widest possible formatted value
+        // so the slider doesn't jump when the number changes.
+        std::string widestStr = integerFormat
+            ? std::format("{:.0f}", maxV)
+            : std::format("{:.2f}", maxV);
+        float valueLabelWidth = std::max(28.0f, widestStr.size() * 8.0f);
 
         return VStack{
             .spacing = Theme::Space1,
@@ -206,7 +214,9 @@ private:
                             .value = valStr,
                             .fontSize = Theme::FontCaption,
                             .fontWeight = FontWeight::medium,
-                            .color = Theme::Accent
+                            .color = Theme::Accent,
+                            .horizontalAlignment = HorizontalAlignment::trailing,
+                            .minWidth = valueLabelWidth
                         }
                     }
                 },

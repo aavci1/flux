@@ -391,6 +391,12 @@ void Window::processSyntheticEvents() {
             case TestServer::SyntheticEvent::Hover:
                 handleMouseMove(e.x, e.y);
                 break;
+            case TestServer::SyntheticEvent::MouseDown:
+                handleMouseDown(0, e.x, e.y);
+                break;
+            case TestServer::SyntheticEvent::MouseUp:
+                handleMouseUp(0, e.x, e.y);
+                break;
         }
     }
 

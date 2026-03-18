@@ -24,33 +24,22 @@ struct Slider {
 
     std::function<void(float)> onValueChange;
 
-    mutable bool isDragging = false;
     mutable float lastSliderX = 0.0f;
     mutable float lastSliderWidth = 200.0f;
 
     void init() {
-        focusable = true;  // Sliders are focusable for keyboard control
+        focusable = true;
 
-        // Handle mouse down to start dragging
         onMouseDown = [this](float x, float y, int button) {
-            if (button == 0) {  // Left mouse button
-                isDragging = true;
-                updateValueFromPosition(x, y);
-            }
-        };
-
-        // Handle mouse up to stop dragging
-        onMouseUp = [this](float x, float y, int button) {
             if (button == 0) {
-                isDragging = false;
+                updateValueFromPosition(x, y);
             }
         };
 
-        // Handle mouse move while dragging
+        // MouseMove is only dispatched during an active mouse capture (drag),
+        // so there is no need for a separate isDragging guard.
         onMouseMove = [this](float x, float y) {
-            if (isDragging) {
-                updateValueFromPosition(x, y);
-            }
+            updateValueFromPosition(x, y);
         };
     }
 
@@ -110,8 +99,9 @@ struct Slider {
         ctx.setStrokeStyle(StrokeStyle::none());
         ctx.drawCircle({thumbX, sliderY + 1}, thumbR);
 
+        bool isPressed = ctx.isCurrentViewPressed();
         Color thumbColor = static_cast<Color>(activeColor);
-        if (isDragging) {
+        if (isPressed) {
             thumbColor = thumbColor.darken(0.15f);
         } else if (isHovered) {
             thumbColor = thumbColor.lighten(0.15f);
@@ -119,8 +109,7 @@ struct Slider {
         ctx.setFillStyle(FillStyle::solid(thumbColor));
         ctx.drawCircle({thumbX, sliderY}, thumbR);
 
-        // Draw focus ring if focused
-        if (hasFocus && !isDragging) {
+        if (hasFocus && !isPressed) {
             ctx.setFillStyle(FillStyle::none());
             ctx.setStrokeStyle(StrokeStyle{
                 .color = static_cast<Color>(activeColor).darken(0.2f),
