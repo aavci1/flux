@@ -10,16 +10,17 @@
 
 ### Quick Build
 
+Dependencies (SDL3, NanoVG, NanoSVG, stb) are resolved by CMake: system SDL3 if available, otherwise fetched like the other libraries. No `git submodule` step.
+
 ```bash
 mkdir build && cd build
 cmake ..
-make
-
-# Run examples
-./hello_world
-./counter
-./custom_drawing
+cmake --build .
 ```
+
+### Bumping third-party pins
+
+Edit the `FLUX_*_GIT_TAG` defaults in `CMakeLists.txt`, or pass e.g. `-DFLUX_NANOVG_GIT_TAG=abc123` when configuring.
 
 ## Project Structure
 

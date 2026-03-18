@@ -12,8 +12,9 @@
 
 namespace flux {
 
-// Forward declaration
+// Forward declarations
 void requestApplicationRedraw();
+uint64_t currentBodyGeneration();
 
 // Property - A flexible wrapper that can be:
 // 1. A stateful reactive value (thread-safe with automatic change notifications)

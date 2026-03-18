@@ -60,6 +60,7 @@ conan/
 *.gcno
 *.gcov
 coverage/
+__pycache__
 
 # Documentation build
 docs/_build/

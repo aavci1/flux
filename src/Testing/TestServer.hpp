@@ -59,6 +59,7 @@ public:
     void signalFrameComplete() {
         std::lock_guard<std::mutex> lock(frameMutex_);
         ++frameCounter_;
+        renderedSeq_ = processedSeq_;
         frameCV_.notify_all();
     }
 
@@ -71,6 +72,7 @@ public:
         float deltaX = 0, deltaY = 0;
         std::string text;
         int keyCode = 0;
+        uint64_t seq = 0;
     };
 
     std::vector<SyntheticEvent> drainEvents() {
@@ -78,6 +80,15 @@ public:
         std::vector<SyntheticEvent> out;
         out.swap(pendingEvents_);
         return out;
+    }
+
+    void markEventsProcessed(const std::vector<SyntheticEvent>& events) {
+        if (events.empty()) return;
+        uint64_t maxSeq = 0;
+        for (auto& e : events) {
+            if (e.seq > maxSeq) maxSeq = e.seq;
+        }
+        if (maxSeq > processedSeq_) processedSeq_ = maxSeq;
     }
 
 private:
@@ -108,25 +119,51 @@ private:
             int clientFd = accept(serverFd_, (struct sockaddr*)&clientAddr, &clientLen);
             if (clientFd < 0) continue;
             handleClient(clientFd);
+            shutdown(clientFd, SHUT_RDWR);
             ::close(clientFd);
         }
     }
 
     void handleClient(int fd) {
-        char buf[16384];
-        ssize_t n = recv(fd, buf, sizeof(buf) - 1, 0);
-        if (n <= 0) return;
-        buf[n] = '\0';
+        std::string request;
+        request.reserve(4096);
+        char buf[4096];
 
-        std::string request(buf, n);
+        // Read until we have the full headers and body
+        size_t contentLength = 0;
+        size_t headerEnd = std::string::npos;
+
+        while (true) {
+            ssize_t n = recv(fd, buf, sizeof(buf), 0);
+            if (n <= 0) return;
+            request.append(buf, n);
+
+            if (headerEnd == std::string::npos) {
+                headerEnd = request.find("\r\n\r\n");
+                if (headerEnd != std::string::npos) {
+                    auto clPos = request.find("Content-Length:");
+                    if (clPos == std::string::npos) clPos = request.find("content-length:");
+                    if (clPos != std::string::npos) {
+                        clPos += 15;
+                        while (clPos < request.size() && request[clPos] == ' ') clPos++;
+                        contentLength = std::strtoul(request.c_str() + clPos, nullptr, 10);
+                    }
+                }
+            }
+
+            if (headerEnd != std::string::npos) {
+                size_t bodyStart = headerEnd + 4;
+                if (request.size() - bodyStart >= contentLength) break;
+            }
+        }
+
         std::string method, path;
         std::istringstream reqStream(request);
         reqStream >> method >> path;
 
         std::string body;
-        auto bodyPos = request.find("\r\n\r\n");
-        if (bodyPos != std::string::npos) {
-            body = request.substr(bodyPos + 4);
+        if (headerEnd != std::string::npos) {
+            body = request.substr(headerEnd + 4);
         }
 
         if (method == "OPTIONS") {
@@ -208,13 +245,7 @@ private:
         parseFloat(body, "x", x);
         parseFloat(body, "y", y);
 
-        uint64_t frameBefore = currentFrame();
-        {
-            std::lock_guard<std::mutex> lock(eventMutex_);
-            pendingEvents_.push_back({SyntheticEvent::Click, x, y, 0, 0, "", 0});
-        }
-        window_.requestRedraw();
-        waitForFrame(frameBefore);
+        enqueueAndWait({SyntheticEvent::Click, x, y, 0, 0, "", 0});
 
         std::string resp = R"({"ok":true,"action":"click","x":)" + std::to_string(x) + R"(,"y":)" + std::to_string(y) + "}";
         sendResponse(fd, "200 OK", "application/json", resp.data(), resp.size());
@@ -223,13 +254,7 @@ private:
     void handleType(int fd, const std::string& body) {
         std::string text = parseString(body, "text");
 
-        uint64_t frameBefore = currentFrame();
-        {
-            std::lock_guard<std::mutex> lock(eventMutex_);
-            pendingEvents_.push_back({SyntheticEvent::TextInput, 0, 0, 0, 0, text, 0});
-        }
-        window_.requestRedraw();
-        waitForFrame(frameBefore);
+        enqueueAndWait({SyntheticEvent::TextInput, 0, 0, 0, 0, text, 0});
 
         std::string resp = R"({"ok":true,"action":"type"})";
         sendResponse(fd, "200 OK", "application/json", resp.data(), resp.size());
@@ -239,13 +264,7 @@ private:
         std::string keyStr = parseString(body, "key");
         int keyCode = keyNameToCode(keyStr);
 
-        uint64_t frameBefore = currentFrame();
-        {
-            std::lock_guard<std::mutex> lock(eventMutex_);
-            pendingEvents_.push_back({SyntheticEvent::KeyPress, 0, 0, 0, 0, "", keyCode});
-        }
-        window_.requestRedraw();
-        waitForFrame(frameBefore);
+        enqueueAndWait({SyntheticEvent::KeyPress, 0, 0, 0, 0, "", keyCode});
 
         std::string resp = R"({"ok":true,"action":"key","key":")" + escapeJson(keyStr) + "\"}";
         sendResponse(fd, "200 OK", "application/json", resp.data(), resp.size());
@@ -258,13 +277,7 @@ private:
         parseFloat(body, "deltaX", dx);
         parseFloat(body, "deltaY", dy);
 
-        uint64_t frameBefore = currentFrame();
-        {
-            std::lock_guard<std::mutex> lock(eventMutex_);
-            pendingEvents_.push_back({SyntheticEvent::Scroll, x, y, dx, dy, "", 0});
-        }
-        window_.requestRedraw();
-        waitForFrame(frameBefore);
+        enqueueAndWait({SyntheticEvent::Scroll, x, y, dx, dy, "", 0});
 
         std::string resp = R"({"ok":true,"action":"scroll"})";
         sendResponse(fd, "200 OK", "application/json", resp.data(), resp.size());
@@ -275,13 +288,7 @@ private:
         parseFloat(body, "x", x);
         parseFloat(body, "y", y);
 
-        uint64_t frameBefore = currentFrame();
-        {
-            std::lock_guard<std::mutex> lock(eventMutex_);
-            pendingEvents_.push_back({SyntheticEvent::Hover, x, y, 0, 0, "", 0});
-        }
-        window_.requestRedraw();
-        waitForFrame(frameBefore);
+        enqueueAndWait({SyntheticEvent::Hover, x, y, 0, 0, "", 0});
 
         std::string resp = R"({"ok":true,"action":"hover"})";
         sendResponse(fd, "200 OK", "application/json", resp.data(), resp.size());
@@ -297,35 +304,16 @@ private:
         parseFloat(body, "steps", steps);
         int numSteps = std::max(1, static_cast<int>(steps));
 
-        // MouseDown at start
-        {
-            uint64_t f = currentFrame();
-            { std::lock_guard<std::mutex> lk(eventMutex_);
-              pendingEvents_.push_back({SyntheticEvent::MouseDown, startX, startY, 0, 0, "", 0}); }
-            window_.requestRedraw();
-            waitForFrame(f);
-        }
+        enqueueAndWait({SyntheticEvent::MouseDown, startX, startY, 0, 0, "", 0});
 
-        // Interpolated MouseMove steps
         for (int i = 1; i <= numSteps; ++i) {
             float t = static_cast<float>(i) / static_cast<float>(numSteps);
             float mx = startX + (endX - startX) * t;
             float my = startY + (endY - startY) * t;
-            uint64_t f = currentFrame();
-            { std::lock_guard<std::mutex> lk(eventMutex_);
-              pendingEvents_.push_back({SyntheticEvent::Hover, mx, my, 0, 0, "", 0}); }
-            window_.requestRedraw();
-            waitForFrame(f);
+            enqueueAndWait({SyntheticEvent::Hover, mx, my, 0, 0, "", 0});
         }
 
-        // MouseUp at end
-        {
-            uint64_t f = currentFrame();
-            { std::lock_guard<std::mutex> lk(eventMutex_);
-              pendingEvents_.push_back({SyntheticEvent::MouseUp, endX, endY, 0, 0, "", 0}); }
-            window_.requestRedraw();
-            waitForFrame(f);
-        }
+        enqueueAndWait({SyntheticEvent::MouseUp, endX, endY, 0, 0, "", 0});
 
         std::string resp = R"({"ok":true,"action":"drag","startX":)" + std::to_string(startX)
             + R"(,"startY":)" + std::to_string(startY)
@@ -336,15 +324,23 @@ private:
 
     // --- Frame synchronization ---
 
-    uint64_t currentFrame() {
-        std::lock_guard<std::mutex> lock(frameMutex_);
-        return frameCounter_;
-    }
-
-    void waitForFrame(uint64_t afterFrame) {
-        std::unique_lock<std::mutex> lock(frameMutex_);
-        frameCV_.wait_for(lock, std::chrono::milliseconds(2000),
-            [&]() { return frameCounter_ > afterFrame; });
+    void enqueueAndWait(SyntheticEvent event) {
+        uint64_t seq;
+        {
+            std::lock_guard<std::mutex> lock(eventMutex_);
+            seq = ++eventSeq_;
+            event.seq = seq;
+            pendingEvents_.push_back(std::move(event));
+        }
+        window_.requestRedraw();
+        // Single wait: block until a frame has been rendered that reflects
+        // our event (renderedSeq_ is updated in signalFrameComplete after
+        // the UI tree has been serialized).
+        {
+            std::unique_lock<std::mutex> lock(frameMutex_);
+            frameCV_.wait_for(lock, std::chrono::milliseconds(3000),
+                [&]() { return renderedSeq_ >= seq; });
+        }
     }
 
     // --- Minimal JSON parsing helpers ---
@@ -433,10 +429,13 @@ private:
 
     std::mutex eventMutex_;
     std::vector<SyntheticEvent> pendingEvents_;
+    uint64_t eventSeq_ = 0;
+    uint64_t processedSeq_ = 0;
 
     std::mutex frameMutex_;
     std::condition_variable frameCV_;
     uint64_t frameCounter_ = 0;
+    uint64_t renderedSeq_ = 0;
 
 public:
     // --- UI tree serialization (static utility) ---

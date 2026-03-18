@@ -58,6 +58,11 @@ void Renderer::renderFrame(const Rect& bounds) {
         // Render the tree (this also registers focusable views)
         renderTree(cachedLayoutTree_);
 
+        // Dispatch deferred focus/blur notifications now that views are valid
+        if (window_) {
+            window_->focus().dispatchPendingFocusNotifications();
+        }
+
         // Process pending keyboard/text events after focusable views are registered
         if (window_) {
             window_->processPendingEvents(cachedLayoutTree_);
@@ -246,7 +251,12 @@ void Renderer::handleEvent(const struct Event& event, const Rect& windowBounds) 
                 hasPressedView_ = true;
             }
             Point localPoint = {eventPoint.x - captured->bounds.x, eventPoint.y - captured->bounds.y};
-            dispatchEventToView(captured->view, event, localPoint);
+            bool handled = dispatchEventToView(captured->view, event, localPoint);
+            if (event.type == Event::MouseUp) {
+                FLUX_LOG_DEBUG("[Renderer] MouseUp dispatched to %s, handled=%d", captured->view.getTypeName().c_str(), handled);
+            }
+        } else {
+            FLUX_LOG_DEBUG("[Renderer] MouseUp capture miss: captured=%p interactive=%d", (void*)captured, captured ? captured->view.isInteractive() : -1);
         }
         if (event.type == Event::MouseUp) {
             mouseCapture_.active = false;

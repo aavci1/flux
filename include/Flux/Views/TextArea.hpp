@@ -38,7 +38,7 @@ struct TextArea {
     std::function<void(const std::string&)> onValueChange;
     std::function<void()> onSubmit;
 
-    mutable size_t caretPos = 0;
+    mutable size_t caretPos = std::string::npos;
     mutable float scrollY = 0.0f;
 
     void init() {
@@ -53,6 +53,7 @@ struct TextArea {
     bool handleTextInput(const TextInputEvent& event) const {
         if (static_cast<bool>(readOnly)) return false;
         std::string val = value;
+        if (caretPos > val.size()) caretPos = val.size();
         val.insert(caretPos, event.text);
         caretPos += event.text.size();
         const_cast<Property<std::string>&>(value) = val;
@@ -62,6 +63,7 @@ struct TextArea {
 
     bool handleKeyDown(const KeyEvent& event) const {
         std::string val = value;
+        if (caretPos > val.size()) caretPos = val.size();
 
         if (event.key == Key::Enter) {
             if (event.hasCtrl() || event.hasSuper()) {
@@ -146,6 +148,7 @@ struct TextArea {
 
         float fs = fontSize;
         std::string val = value;
+        if (caretPos > val.size()) caretPos = val.size();
         ctx.setTextStyle(TextStyle::regular("default", fs));
 
         float textX = bounds.x + pad;

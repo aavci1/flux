@@ -240,10 +240,31 @@ std::string FocusState::generateAutoKey(const View* view, int registrationIndex)
 
 void FocusState::notifyFocusChange(const std::string& newKey) {
     if (newKey == focusedKey_) return;
+    std::string oldKey = focusedKey_;
     focusedKey_ = newKey;
+    pendingBlurKey_ = oldKey;
+    pendingFocusKey_ = newKey;
+}
 
-    // Focus notifications are deferred to render time via isCurrentViewFocused()
-    // to avoid dangling pointer issues with View* during event dispatch.
+void FocusState::dispatchPendingFocusNotifications() {
+    if (!pendingBlurKey_.empty()) {
+        int idx = findViewIndexByKey(pendingBlurKey_);
+        if (idx >= 0 && idx < static_cast<int>(focusableViews_.size())) {
+            if (View* v = focusableViews_[idx].view) {
+                v->notifyFocusLost();
+            }
+        }
+        pendingBlurKey_.clear();
+    }
+    if (!pendingFocusKey_.empty()) {
+        int idx = findViewIndexByKey(pendingFocusKey_);
+        if (idx >= 0 && idx < static_cast<int>(focusableViews_.size())) {
+            if (View* v = focusableViews_[idx].view) {
+                v->notifyFocusGained();
+            }
+        }
+        pendingFocusKey_.clear();
+    }
 }
 
 } // namespace flux

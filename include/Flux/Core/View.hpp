@@ -222,17 +222,17 @@ FLUX_DEFINE_HAS_FIELD(onScroll)
 template<typename T>
 struct has_handleKeyDown {
     template<typename U>
-    static auto test(const U& u) -> decltype(u.handleKeyDown(std::declval<const KeyEvent&>()), std::true_type{});
+    static auto test(U& u) -> decltype(u.handleKeyDown(std::declval<const KeyEvent&>()), std::true_type{});
     static std::false_type test(...);
-    static constexpr bool value = decltype(test(std::declval<const T&>()))::value;
+    static constexpr bool value = decltype(test(std::declval<T&>()))::value;
 };
 
 template<typename T>
 struct has_handleKeyUp {
     template<typename U>
-    static auto test(const U& u) -> decltype(u.handleKeyUp(std::declval<const KeyEvent&>()), std::true_type{});
+    static auto test(U& u) -> decltype(u.handleKeyUp(std::declval<const KeyEvent&>()), std::true_type{});
     static std::false_type test(...);
-    static constexpr bool value = decltype(test(std::declval<const T&>()))::value;
+    static constexpr bool value = decltype(test(std::declval<T&>()))::value;
 };
 
 template<typename T>
@@ -331,6 +331,7 @@ class ViewAdapter : public ViewInterface {
 private:
     mutable T component;
     mutable std::unique_ptr<View> cachedBody_;
+    mutable uint64_t cachedBodyGen_ = 0;
 
     const View& getCachedBody() const;
 
@@ -588,7 +589,13 @@ struct LayoutNode {
 // Now that LayoutNode is defined, implement the View::layout method
 
 inline LayoutNode View::layout(RenderContext& ctx, const Rect& bounds) const {
-    return component_->layout(ctx, bounds);
+    LayoutNode node = component_->layout(ctx, bounds);
+    // Preserve ViewAdapter identity: the default layout creates a fresh
+    // View(component) copy each frame, losing mutable state (e.g. caret
+    // position in TextInput).  Re-attach the caller's View so the
+    // LayoutNode shares the same ViewAdapter across frames.
+    node.view = *this;
+    return node;
 }
 
 // Now implement the ViewAdapter methods with proper default implementations
@@ -645,10 +652,15 @@ inline LayoutNode ViewAdapter<T>::layout(RenderContext& ctx, const Rect& bounds)
 
 template<ViewComponent T>
 inline const View& ViewAdapter<T>::getCachedBody() const {
-    if constexpr (has_body<T>::value)
-        cachedBody_ = std::make_unique<View>(component.body());
-    else if (!cachedBody_)
+    if constexpr (has_body<T>::value) {
+        uint64_t gen = currentBodyGeneration();
+        if (!cachedBody_ || cachedBodyGen_ != gen) {
+            cachedBody_ = std::make_unique<View>(component.body());
+            cachedBodyGen_ = gen;
+        }
+    } else if (!cachedBody_) {
         cachedBody_ = std::make_unique<View>();
+    }
     return *cachedBody_;
 }
 

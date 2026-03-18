@@ -12,11 +12,12 @@ find_package(Threads REQUIRED)
 find_package(Freetype REQUIRED)
 find_package(OpenGL REQUIRED)
 
+include(FetchContent)
+
 # SDL3: try system install first, fetch from GitHub as fallback
 find_package(SDL3 QUIET)
 if(NOT SDL3_FOUND)
     message(STATUS "SDL3 not found on system, fetching from GitHub...")
-    include(FetchContent)
     FetchContent_Declare(SDL3
         GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
         GIT_TAG release-3.2.0
@@ -29,29 +30,74 @@ if(NOT SDL3_FOUND)
     FetchContent_MakeAvailable(SDL3)
 endif()
 
-# NanoVG for high-quality 2D vector graphics
+# Pin commits match former submodules; override with -DFLUX_*_GIT_TAG=...
+set(FLUX_NANOVG_GIT_REPOSITORY "https://github.com/inniyah/nanovg.git" CACHE STRING "NanoVG Git repository")
+set(FLUX_NANOVG_GIT_TAG "313ef1368bb186c7df21a578e4c5700061a7a68c" CACHE STRING "NanoVG Git tag or commit")
+set(FLUX_NANOSVG_GIT_REPOSITORY "https://github.com/memononen/nanosvg.git" CACHE STRING "NanoSVG Git repository")
+set(FLUX_NANOSVG_GIT_TAG "66579081d84b613daa49a64f76357ce65925e13b" CACHE STRING "NanoSVG Git tag or commit")
+set(FLUX_STB_GIT_REPOSITORY "https://github.com/nothings/stb.git" CACHE STRING "stb Git repository")
+set(FLUX_STB_GIT_TAG "fede005abaf93d9d7f3a679d1999b2db341b360f" CACHE STRING "stb Git tag or commit")
+
+# NanoVG: Populate only (upstream CMake also defines target "nanovg" — would clash with ours)
 if(EXISTS "${CMAKE_SOURCE_DIR}/third_party/nanovg/src/nanovg.c")
-    message(STATUS "NanoVG submodule found")
     set(NANOVG_SOURCE_DIR "${CMAKE_SOURCE_DIR}/third_party/nanovg")
+    message(STATUS "NanoVG: using local third_party/nanovg")
 else()
-    message(FATAL_ERROR "NanoVG submodule is required. Please run: ./scripts/setup-nanovg.sh")
+    FetchContent_Declare(flux_nanovg
+        GIT_REPOSITORY ${FLUX_NANOVG_GIT_REPOSITORY}
+        GIT_TAG ${FLUX_NANOVG_GIT_TAG}
+        GIT_SUBMODULES "" # upstream has optional submodules; not needed for core sources
+    )
+    FetchContent_GetProperties(flux_nanovg)
+    if(NOT flux_nanovg_POPULATED)
+        message(STATUS "NanoVG: fetching ${FLUX_NANOVG_GIT_TAG} from ${FLUX_NANOVG_GIT_REPOSITORY}")
+        FetchContent_Populate(flux_nanovg)
+    endif()
+    set(NANOVG_SOURCE_DIR "${flux_nanovg_SOURCE_DIR}")
 endif()
 
-# NanoSVG for SVG parsing
 if(EXISTS "${CMAKE_SOURCE_DIR}/third_party/nanosvg/src/nanosvg.h")
-    message(STATUS "NanoSVG found")
     set(NANOSVG_SOURCE_DIR "${CMAKE_SOURCE_DIR}/third_party/nanosvg/src")
+    message(STATUS "NanoSVG: using local third_party/nanosvg")
 else()
-    message(FATAL_ERROR "NanoSVG is required. Please ensure nanosvg submodule is initialized.")
+    FetchContent_Declare(flux_nanosvg
+        GIT_REPOSITORY ${FLUX_NANOSVG_GIT_REPOSITORY}
+        GIT_TAG ${FLUX_NANOSVG_GIT_TAG}
+        GIT_SUBMODULES ""
+    )
+    FetchContent_GetProperties(flux_nanosvg)
+    if(NOT flux_nanosvg_POPULATED)
+        message(STATUS "NanoSVG: fetching ${FLUX_NANOSVG_GIT_TAG}")
+        FetchContent_Populate(flux_nanosvg)
+    endif()
+    set(NANOSVG_SOURCE_DIR "${flux_nanosvg_SOURCE_DIR}/src")
 endif()
 
-# STB single-file libraries
 if(EXISTS "${CMAKE_SOURCE_DIR}/third_party/stb/stb_truetype.h")
-    message(STATUS "STB found")
     set(STB_SOURCE_DIR "${CMAKE_SOURCE_DIR}/third_party/stb")
+    message(STATUS "stb: using local third_party/stb")
 else()
-    message(FATAL_ERROR "STB is required. Please ensure stb submodule is initialized.")
+    FetchContent_Declare(flux_stb
+        GIT_REPOSITORY ${FLUX_STB_GIT_REPOSITORY}
+        GIT_TAG ${FLUX_STB_GIT_TAG}
+        GIT_SUBMODULES ""
+    )
+    FetchContent_GetProperties(flux_stb)
+    if(NOT flux_stb_POPULATED)
+        message(STATUS "stb: fetching ${FLUX_STB_GIT_TAG}")
+        FetchContent_Populate(flux_stb)
+    endif()
+    set(STB_SOURCE_DIR "${flux_stb_SOURCE_DIR}")
 endif()
+
+# NanoVG includes <stb/stb_image.h>; nothings/stb ships headers as stb_*.h at repo root
+set(FLUX_STB_SHIM_DIR "${CMAKE_BINARY_DIR}/flux_stb_shim")
+file(MAKE_DIRECTORY "${FLUX_STB_SHIM_DIR}/stb")
+file(GLOB _flux_stb_shim_headers "${STB_SOURCE_DIR}/stb_*.h")
+foreach(_flux_stb_shim_h IN LISTS _flux_stb_shim_headers)
+    get_filename_component(_flux_stb_shim_name "${_flux_stb_shim_h}" NAME)
+    configure_file("${_flux_stb_shim_h}" "${FLUX_STB_SHIM_DIR}/stb/${_flux_stb_shim_name}" COPYONLY)
+endforeach()
 
 # Flux library sources
 set(FLUX_SOURCES
@@ -93,7 +139,7 @@ add_library(nanovg STATIC
 
 target_include_directories(nanovg PUBLIC
     ${NANOVG_SOURCE_DIR}/src
-    ${STB_SOURCE_DIR}
+    ${FLUX_STB_SHIM_DIR}
 )
 
 target_link_libraries(nanovg PUBLIC
@@ -145,81 +191,20 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(BUILD_EXAMPLES "Build example applications" ON)
 
 if(BUILD_EXAMPLES)
-    add_executable(hello_world examples/01-hello-world/main.cpp)
-    target_link_libraries(hello_world PRIVATE flux)
-
-    add_executable(counter examples/03-counter/main.cpp)
-    target_link_libraries(counter PRIVATE flux)
-
-    add_executable(todo_app examples/04-todo-app/main.cpp)
-    target_link_libraries(todo_app PRIVATE flux)
-
-    add_executable(colors_and_theming examples/05-colors-and-theming/main.cpp)
-    target_link_libraries(colors_and_theming PRIVATE flux)
-
-    add_executable(flexbox_demo examples/09-flexbox-demo/main.cpp)
-    target_link_libraries(flexbox_demo PRIVATE flux)
-
-    add_executable(justify_content_demo examples/10-justify-content-demo/main.cpp)
-    target_link_libraries(justify_content_demo PRIVATE flux)
-
-    add_executable(automotive_dashboard examples/11-automotive-dashboard/main.cpp)
-    target_link_libraries(automotive_dashboard PRIVATE flux)
-
-    add_executable(svg_demo examples/14-svg-demo/main.cpp)
-    target_link_libraries(svg_demo PRIVATE flux)
-
-    add_executable(render_context_demo examples/15-render-context-demo/main.cpp)
-    target_link_libraries(render_context_demo PRIVATE flux)
-
-    add_executable(login_manager examples/17-login-manager/main.cpp)
-    target_link_libraries(login_manager PRIVATE flux)
-
     add_executable(clock examples/19-clock/main.cpp)
     target_link_libraries(clock PRIVATE flux)
 
-    add_executable(grid_demo examples/22-grid-demo/main.cpp)
-    target_link_libraries(grid_demo PRIVATE flux)
-
-    add_executable(spacer_grid_demo examples/23-spacer-grid-demo/main.cpp)
-    target_link_libraries(spacer_grid_demo PRIVATE flux)
-
     add_executable(calculator examples/24-calculator/main.cpp)
     target_link_libraries(calculator PRIVATE flux)
-
-    add_executable(cursor_demo examples/25-cursor-demo/main.cpp)
-    target_link_libraries(cursor_demo PRIVATE flux)
-
-    add_executable(focus_keyboard_demo examples/27-focus-keyboard-demo/main.cpp)
-    target_link_libraries(focus_keyboard_demo PRIVATE flux)
-
-    add_executable(event_system_demo examples/28-event-system-demo/main.cpp)
-    target_link_libraries(event_system_demo PRIVATE flux)
-
-    add_executable(color_picker examples/29-color-picker/main.cpp)
-    target_link_libraries(color_picker PRIVATE flux)
-
-    add_executable(component_showcase examples/31-component-showcase/main.cpp)
-    target_link_libraries(component_showcase PRIVATE flux)
-
-    add_executable(label_position_demo examples/32-label-position-demo/main.cpp)
-    target_link_libraries(label_position_demo PRIVATE flux)
-
-    add_executable(scroll_area_demo examples/33-scroll-area-demo/main.cpp)
-    target_link_libraries(scroll_area_demo PRIVATE flux)
-
-    add_executable(passwords examples/passwords/main.cpp)
-    target_link_libraries(passwords PRIVATE flux)
 
     add_executable(llm_studio examples/llm-studio/main.cpp)
     target_include_directories(llm_studio PRIVATE ${CMAKE_SOURCE_DIR}/examples/llm-studio)
     target_link_libraries(llm_studio PRIVATE flux)
 endif()
 
-# --- Tests ---
-option(BUILD_TESTS "Build tests" OFF)
+# --- Unit Tests (Catch2) ---
+option(BUILD_TESTS "Build unit tests" OFF)
 if(BUILD_TESTS)
-    include(FetchContent)
     FetchContent_Declare(Catch2
         GIT_REPOSITORY https://github.com/catchorg/Catch2.git
         GIT_TAG v3.7.1
@@ -238,6 +223,55 @@ if(BUILD_TESTS)
     include(CTest)
     include(Catch)
     catch_discover_tests(flux_tests)
+endif()
+
+# --- UI Tests (test server + Python runner) ---
+option(BUILD_UI_TESTS "Build UI test applications" OFF)
+if(BUILD_UI_TESTS)
+    add_executable(ui_test_layout tests/ui/apps/test_layout.cpp)
+    target_link_libraries(ui_test_layout PRIVATE flux)
+
+    add_executable(ui_test_button tests/ui/apps/test_button.cpp)
+    target_link_libraries(ui_test_button PRIVATE flux)
+
+    add_executable(ui_test_checkbox_toggle tests/ui/apps/test_checkbox_toggle.cpp)
+    target_link_libraries(ui_test_checkbox_toggle PRIVATE flux)
+
+    add_executable(ui_test_radio_select tests/ui/apps/test_radio_select.cpp)
+    target_link_libraries(ui_test_radio_select PRIVATE flux)
+
+    add_executable(ui_test_text_input tests/ui/apps/test_text_input.cpp)
+    target_link_libraries(ui_test_text_input PRIVATE flux)
+
+    add_executable(ui_test_focus tests/ui/apps/test_focus.cpp)
+    target_link_libraries(ui_test_focus PRIVATE flux)
+
+    add_executable(ui_test_scroll tests/ui/apps/test_scroll.cpp)
+    target_link_libraries(ui_test_scroll PRIVATE flux)
+
+    add_executable(ui_test_visibility tests/ui/apps/test_visibility.cpp)
+    target_link_libraries(ui_test_visibility PRIVATE flux)
+
+    add_executable(ui_test_slider tests/ui/apps/test_slider.cpp)
+    target_link_libraries(ui_test_slider PRIVATE flux)
+
+    add_executable(ui_test_dialog tests/ui/apps/test_dialog.cpp)
+    target_link_libraries(ui_test_dialog PRIVATE flux)
+
+    add_executable(ui_test_nested_state tests/ui/apps/test_nested_state.cpp)
+    target_link_libraries(ui_test_nested_state PRIVATE flux)
+
+    add_custom_target(run_ui_tests
+        COMMAND ${CMAKE_COMMAND} -E env FLUX_BUILD_DIR=${CMAKE_BINARY_DIR}
+            python3 ${CMAKE_SOURCE_DIR}/tests/ui/run_tests.py -v
+        DEPENDS
+            ui_test_layout ui_test_button ui_test_checkbox_toggle
+            ui_test_radio_select ui_test_text_input ui_test_focus
+            ui_test_scroll ui_test_visibility ui_test_slider
+            ui_test_dialog ui_test_nested_state
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        COMMENT "Running Flux UI tests..."
+    )
 endif()
 
 # Installation rules

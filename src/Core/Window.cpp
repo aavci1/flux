@@ -401,6 +401,7 @@ void Window::processSyntheticEvents() {
     }
 
     if (!events.empty()) {
+        impl_->testServer->markEventsProcessed(events);
         requestRedraw();
     }
 }

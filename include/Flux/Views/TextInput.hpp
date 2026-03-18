@@ -38,9 +38,9 @@ struct TextInput {
     std::function<void(const std::string&)> onValueChange;
     std::function<void()> onReturn;
 
-    mutable size_t caretPos = 0;
-    mutable size_t selStart = 0;
-    mutable size_t selEnd = 0;
+    mutable size_t caretPos = std::string::npos;
+    mutable size_t selStart = std::string::npos;
+    mutable size_t selEnd = std::string::npos;
     mutable float scrollOffset = 0.0f;
 
     void init() {
@@ -59,6 +59,11 @@ struct TextInput {
         std::string val = value;
         int maxLen = maxLength;
 
+        // Value may have been externally changed (e.g. reset button)
+        if (caretPos > val.size()) caretPos = val.size();
+        if (selStart > val.size()) selStart = val.size();
+        if (selEnd > val.size()) selEnd = val.size();
+
         deleteSelection(val);
 
         if (maxLen >= 0 && static_cast<int>(val.size() + event.text.size()) > maxLen)
@@ -75,6 +80,11 @@ struct TextInput {
 
     bool handleKeyDown(const KeyEvent& event) const {
         std::string val = value;
+
+        // Value may have been externally changed (e.g. reset button)
+        if (caretPos > val.size()) caretPos = val.size();
+        if (selStart > val.size()) selStart = val.size();
+        if (selEnd > val.size()) selEnd = val.size();
 
         if (event.key == Key::Backspace) {
             if (static_cast<bool>(readOnly)) return true;
@@ -169,6 +179,11 @@ struct TextInput {
         float fs = fontSize;
         std::string val = value;
         std::string displayText;
+
+        // Clamp positions in case value was externally changed
+        if (caretPos > val.size()) caretPos = val.size();
+        if (selStart > val.size()) selStart = val.size();
+        if (selEnd > val.size()) selEnd = val.size();
 
         if (static_cast<bool>(password)) {
             displayText = std::string(val.size(), '\xE2');

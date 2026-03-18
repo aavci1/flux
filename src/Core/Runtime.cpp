@@ -9,10 +9,17 @@ namespace flux {
 
 Runtime* Runtime::current_ = nullptr;
 
+static std::atomic<uint64_t> bodyGeneration_{0};
+
 void requestApplicationRedraw() {
+    bodyGeneration_.fetch_add(1, std::memory_order_relaxed);
     if (Runtime::current_) {
         Runtime::current_->requestRedraw();
     }
+}
+
+uint64_t currentBodyGeneration() {
+    return bodyGeneration_.load(std::memory_order_relaxed);
 }
 
 Runtime::Runtime(int argc, char** argv) {

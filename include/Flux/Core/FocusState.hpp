@@ -91,6 +91,11 @@ public:
      */
     bool dispatchTextInputToFocused(LayoutNode& root, const TextInputEvent& event);
 
+    /**
+     * @brief Dispatch deferred onFocus/onBlur notifications (call after focusable views are re-registered)
+     */
+    void dispatchPendingFocusNotifications();
+
 private:
     struct FocusableViewInfo {
         View* view;
@@ -100,6 +105,8 @@ private:
     
     std::string focusedKey_;
     std::vector<FocusableViewInfo> focusableViews_;
+    std::string pendingBlurKey_;
+    std::string pendingFocusKey_;
     
     int findViewIndexByKey(const std::string& key) const;
     std::string generateAutoKey(const View* view, int registrationIndex) const;
