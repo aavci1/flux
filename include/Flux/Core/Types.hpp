@@ -286,8 +286,9 @@ class TextMeasurement {
 public:
     virtual ~TextMeasurement() = default;
 
-    // Measure text dimensions using the current renderer's font system
     virtual Size measureText(const std::string& text, const TextStyle& style) = 0;
+
+    virtual Size measureTextBox(const std::string& text, const TextStyle& style, float maxWidth) = 0;
 };
 
 } // namespace flux

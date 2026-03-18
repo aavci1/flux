@@ -111,7 +111,9 @@ public:
     void setTextStyle(const TextStyle& style) override;
 
     void drawText(const std::string& text, const Point& position, HorizontalAlignment hAlign, VerticalAlignment vAlign) override;
+    void drawTextBox(const std::string& text, const Point& position, float maxWidth, HorizontalAlignment hAlign) override;
     Size measureText(const std::string& text, const TextStyle& style) override;
+    Size measureTextBox(const std::string& text, const TextStyle& style, float maxWidth) override;
     Rect getTextBounds(const std::string& text, const Point& position, const TextStyle& style) override;
 
     // ============================================================================

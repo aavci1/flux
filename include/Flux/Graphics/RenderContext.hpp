@@ -386,7 +386,9 @@ public:
     virtual void setTextStyle(const TextStyle& style) = 0;
 
     virtual void drawText(const std::string& text, const Point& position, HorizontalAlignment hAlign, VerticalAlignment vAlign) = 0;
+    virtual void drawTextBox(const std::string& text, const Point& position, float maxWidth, HorizontalAlignment hAlign) = 0;
     virtual Size measureText(const std::string& text, const TextStyle& style) = 0;
+    virtual Size measureTextBox(const std::string& text, const TextStyle& style, float maxWidth) = 0;
     virtual Rect getTextBounds(const std::string& text, const Point& position, const TextStyle& style) = 0;
 
     // ============================================================================

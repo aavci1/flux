@@ -52,57 +52,44 @@ struct ScrollArea {
 
     LayoutNode layout(RenderContext& ctx, const Rect& bounds) {
         std::vector<View> childrenVec = children;
-        
-        // Calculate content size
         EdgeInsets paddingVal = padding;
+
+        cachedViewportRect = bounds;
+
+        float contentWidth = bounds.width - paddingVal.horizontal();
+
         Size contentSz;
-        
         if (contentSize.get().has_value()) {
             contentSz = contentSize.get().value();
         } else {
-            // Calculate from children
-            float maxWidth = 0;
             float totalHeight = paddingVal.vertical();
-            
             for (const auto& child : childrenVec) {
                 if (!child->isVisible()) continue;
-                Size childSize = child.preferredSize(ctx);
-                maxWidth = std::max(maxWidth, childSize.width);
-                totalHeight += childSize.height;
+                float childH = child.heightForWidth(contentWidth, static_cast<TextMeasurement&>(ctx));
+                totalHeight += childH;
             }
-            
-            contentSz = Size(maxWidth + paddingVal.horizontal(), totalHeight);
+            contentSz = Size(bounds.width, totalHeight);
         }
-        
+
         cachedContentSize = contentSz;
-        cachedViewportRect = bounds;
-        
-        // Create layout for children within scrolled viewport
-        // Wrap all content in a clipping container
+
         std::vector<LayoutNode> contentChildLayouts;
-        
+
         float currentY = bounds.y + paddingVal.top - static_cast<float>(scrollY);
         float currentX = bounds.x + paddingVal.left - static_cast<float>(scrollX);
-        
-        // Make content width the full available width minus padding (no scrollbar subtraction)
-        // Scrollbar will be overlaid on top
-        float contentWidth = bounds.width - paddingVal.horizontal();
-        
+
         for (auto& child : childrenVec) {
             if (!child->isVisible()) continue;
-            
-            Size childSize = child.preferredSize(ctx);
-            Rect childBounds(currentX, currentY, 
-                           std::max(childSize.width, contentWidth),
-                           childSize.height);
-            
+
+            float childH = child.heightForWidth(contentWidth, static_cast<TextMeasurement&>(ctx));
+            Rect childBounds(currentX, currentY, contentWidth, childH);
+
             LayoutNode childLayout = child.layout(ctx, childBounds);
             contentChildLayouts.push_back(std::move(childLayout));
-            
-            currentY += childSize.height;
+
+            currentY += childH;
         }
-        
-        // Create clip rect inset by border to prevent content overlap
+
         float borderW = borderWidth;
         Rect clipRect = {
             bounds.x + borderW / 2,
@@ -110,16 +97,15 @@ struct ScrollArea {
             bounds.width - borderW,
             bounds.height - borderW
         };
-        
-        // Wrap content with clipping container
+
         ClipContainer clipper;
         clipper.clip = true;
         View clipperView(clipper);
-        
+
         std::vector<LayoutNode> childLayouts;
         LayoutNode contentWrapper(clipperView, clipRect, std::move(contentChildLayouts));
         childLayouts.push_back(std::move(contentWrapper));
-        
+
         return LayoutNode(View(*this), bounds, std::move(childLayouts));
     }
 

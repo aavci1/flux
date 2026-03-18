@@ -22,59 +22,55 @@ struct Text {
     void render(RenderContext& ctx, const Rect& bounds) const {
         ViewHelpers::renderView(*this, ctx, bounds);
 
-        // Draw text
         EdgeInsets paddingVal = padding;
-
-        // Set text style
-        ctx.setTextStyle(TextStyle::regular("default", static_cast<float>(fontSize)));
-        ctx.setFillStyle(FillStyle::solid(color));
-        
-        // Measure text for alignment calculations
-        Size textSize = ctx.measureText(static_cast<std::string>(value), TextStyle::regular("default", static_cast<float>(fontSize)));
-
-        Point textPos = {
-            bounds.x + paddingVal.left,
-            bounds.y + paddingVal.top
-        };
-
-        // Adjust horizontal position based on horizontal alignment
+        float fontSz = fontSize;
+        std::string text = value;
         HorizontalAlignment hAlign = horizontalAlignment;
-        switch (hAlign) {
-            case HorizontalAlignment::leading:
-                // Position at left edge
-                textPos.x = bounds.x + paddingVal.left;
-                break;
-            case HorizontalAlignment::center:
-                // Position at center
-                textPos.x = bounds.x + bounds.width / 2;
-                break;
-            case HorizontalAlignment::trailing:
-                // Position at right edge
-                textPos.x = bounds.x + bounds.width - paddingVal.right;
-                break;
-            case HorizontalAlignment::justify:
-                // For now, treat justify same as leading (full justification not yet implemented)
-                textPos.x = bounds.x + paddingVal.left;
-                break;
-        }
 
-        // Adjust vertical position based on vertical alignment
-        // With the alignment system, we pass the exact position where we want the text aligned
-        VerticalAlignment vAlign = verticalAlignment;
-        switch (vAlign) {
-            case VerticalAlignment::top:
-                textPos.y = bounds.y + paddingVal.top;
-                break;
-            case VerticalAlignment::center:
-                textPos.y = bounds.y + bounds.height / 2 + 0.075f * static_cast<float>(fontSize);
-                break;
-            case VerticalAlignment::bottom:
-                textPos.y = bounds.y + bounds.height - paddingVal.bottom;
-                break;
-        }
+        ctx.setTextStyle(TextStyle::regular("default", fontSz));
+        ctx.setFillStyle(FillStyle::solid(color));
 
-        // Draw the text using the new method that supports both horizontal and vertical alignment
-        ctx.drawText(static_cast<std::string>(value), textPos, hAlign, vAlign);
+        float contentWidth = bounds.width - paddingVal.horizontal();
+
+        Size singleLineSize = ctx.measureText(text, TextStyle::regular("default", fontSz));
+        bool needsWrap = singleLineSize.width > contentWidth && contentWidth > 0;
+
+        if (needsWrap) {
+            Point textPos = { bounds.x + paddingVal.left, bounds.y + paddingVal.top };
+            ctx.drawTextBox(text, textPos, contentWidth, hAlign);
+        } else {
+            Point textPos = { bounds.x + paddingVal.left, bounds.y + paddingVal.top };
+
+            switch (hAlign) {
+                case HorizontalAlignment::leading:
+                    textPos.x = bounds.x + paddingVal.left;
+                    break;
+                case HorizontalAlignment::center:
+                    textPos.x = bounds.x + bounds.width / 2;
+                    break;
+                case HorizontalAlignment::trailing:
+                    textPos.x = bounds.x + bounds.width - paddingVal.right;
+                    break;
+                case HorizontalAlignment::justify:
+                    textPos.x = bounds.x + paddingVal.left;
+                    break;
+            }
+
+            VerticalAlignment vAlign = verticalAlignment;
+            switch (vAlign) {
+                case VerticalAlignment::top:
+                    textPos.y = bounds.y + paddingVal.top;
+                    break;
+                case VerticalAlignment::center:
+                    textPos.y = bounds.y + bounds.height / 2 + 0.075f * fontSz;
+                    break;
+                case VerticalAlignment::bottom:
+                    textPos.y = bounds.y + bounds.height - paddingVal.bottom;
+                    break;
+            }
+
+            ctx.drawText(text, textPos, hAlign, vAlign);
+        }
     }
 
     Size preferredSize(TextMeasurement& textMeasurer) const {
@@ -82,10 +78,28 @@ struct Text {
         float fontSz = fontSize;
         EdgeInsets paddingVal = padding;
 
-        // Use accurate measurement from renderer
         Size textSize = textMeasurer.measureText(text, TextStyle::regular("default", fontSz));
         return {textSize.width + paddingVal.horizontal(),
                 textSize.height + paddingVal.vertical()};
+    }
+
+    float heightForWidth(float width, TextMeasurement& textMeasurer) const {
+        std::string text = value;
+        float fontSz = fontSize;
+        EdgeInsets paddingVal = padding;
+
+        float contentWidth = width - paddingVal.horizontal();
+        if (contentWidth <= 0) {
+            return paddingVal.vertical();
+        }
+
+        Size singleLine = textMeasurer.measureText(text, TextStyle::regular("default", fontSz));
+        if (singleLine.width <= contentWidth) {
+            return singleLine.height + paddingVal.vertical();
+        }
+
+        Size boxSize = textMeasurer.measureTextBox(text, TextStyle::regular("default", fontSz), contentWidth);
+        return boxSize.height + paddingVal.vertical();
     }
 };
 

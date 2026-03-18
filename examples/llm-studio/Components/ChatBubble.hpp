@@ -88,7 +88,7 @@ struct ChatBubble {
                 .padding = EdgeInsets(Theme::Space3, Theme::Space4, Theme::Space3, Theme::Space4),
                 .cornerRadius = Theme::RadiusCard,
                 .expansionBias = 1.0f,
-                .maxWidth = 700.0f,
+                .maxWidth = 600.0f,
                 .children = std::move(contentViews)
             });
             rowChildren.push_back(Spacer{});
@@ -108,7 +108,6 @@ struct ChatBubble {
         return HStack{
             .spacing = 0.0f,
             .padding = EdgeInsets(Theme::Space1, Theme::Space4, Theme::Space1, Theme::Space4),
-            .expansionBias = 1.0f,
             .children = std::move(rowChildren)
         };
     }

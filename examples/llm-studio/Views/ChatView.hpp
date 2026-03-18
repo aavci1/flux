@@ -154,7 +154,6 @@ struct ChatView {
                     .children = {
                         VStack{
                             .spacing = Theme::Space2,
-                            .expansionBias = 1.0f,
                             .children = std::move(msgViews)
                         }
                     }
@@ -178,7 +177,6 @@ struct ChatView {
                                     .areaMinHeight = 40.0f,
                                     .areaMaxHeight = 150.0f,
                                     .bgColor = Theme::Background,
-                                    .areaWidth = 600.0f,
                                     .expansionBias = 1.0f,
                                     .onValueChange = [this](const std::string& val) {
                                         state->chatInput = val;
@@ -324,10 +322,11 @@ private:
 
     void simulateResponse() const {
         if (!state) return;
-        state->isGenerating = true;
-        state->streamingToken = std::string("");
+        AppState* s = state;
+        s->isGenerating = true;
+        s->streamingToken = std::string("");
 
-        std::thread([this]() {
+        std::thread([s]() {
             std::string response = "This is a simulated response from the model. "
                 "In production, this would stream tokens from llama.cpp via the inference server.\n\n"
                 "Here's an example code block:\n\n"
@@ -337,19 +336,19 @@ private:
             std::string accumulated;
             for (size_t i = 0; i < response.size(); i++) {
                 accumulated += response[i];
-                state->streamingToken = accumulated;
+                s->streamingToken = accumulated;
                 std::this_thread::sleep_for(std::chrono::milliseconds(15));
             }
 
-            state->updateActiveSession([&](ChatSession& s) {
-                s.messages.push_back(ChatMessage{
+            s->updateActiveSession([&](ChatSession& session) {
+                session.messages.push_back(ChatMessage{
                     .role = ChatMessage::Role::Assistant,
                     .content = accumulated,
                     .timestamp = std::chrono::system_clock::now()
                 });
             });
-            state->isGenerating = false;
-            state->streamingToken = std::string("");
+            s->isGenerating = false;
+            s->streamingToken = std::string("");
         }).detach();
     }
 };

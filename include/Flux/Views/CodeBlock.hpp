@@ -84,7 +84,7 @@ struct CodeBlock {
         std::string codeStr = code;
         std::string lang = language;
 
-        int lineCount = 1;
+        int lineCount = 0;
         float maxLineW = 0;
         std::istringstream stream(codeStr);
         std::string line;
@@ -93,6 +93,7 @@ struct CodeBlock {
             maxLineW = std::max(maxLineW, ls.width);
             lineCount++;
         }
+        if (lineCount == 0) lineCount = 1;
 
         float headerH = lang.empty() ? 0 : 24.0f;
         return {

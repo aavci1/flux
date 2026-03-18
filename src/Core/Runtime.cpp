@@ -57,11 +57,10 @@ int Runtime::run() {
             window->processSyntheticEvents();
         }
 
-        if (needsRedraw_.load(std::memory_order_relaxed)) {
+        if (needsRedraw_.exchange(false, std::memory_order_relaxed)) {
             for (auto& window : windows_) {
                 window->render();
             }
-            needsRedraw_.store(false, std::memory_order_relaxed);
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(1));

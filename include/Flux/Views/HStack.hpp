@@ -49,6 +49,46 @@ struct HStack {
 
         return {width, height + paddingVal.vertical()};
     }
+
+    float heightForWidth(float width, TextMeasurement& textMeasurer) const {
+        EdgeInsets paddingVal = padding;
+        float availableWidth = width - paddingVal.horizontal();
+
+        std::vector<View> childrenVec = children;
+        std::vector<const View*> visibleChildren;
+        float totalPreferredWidth = 0;
+        float totalExpansion = 0;
+        int visibleCount = 0;
+
+        for (const auto& child : childrenVec) {
+            if (!child->isVisible()) continue;
+            visibleChildren.push_back(&child);
+            Size childSize = child.preferredSize(textMeasurer);
+            totalPreferredWidth += childSize.width;
+            totalExpansion += child.getExpansionBias();
+            visibleCount++;
+        }
+
+        float totalSpacing = visibleCount > 1 ? static_cast<float>(spacing) * (visibleCount - 1) : 0;
+        float contentWidth = availableWidth - totalSpacing;
+        float remainingSpace = contentWidth - totalPreferredWidth;
+
+        float maxHeight = 0;
+        for (const auto* child : visibleChildren) {
+            Size childSize = child->preferredSize(textMeasurer);
+            float childWidth = childSize.width;
+            if (remainingSpace > 0 && totalExpansion > 0) {
+                childWidth += remainingSpace * child->getExpansionBias() / totalExpansion;
+            }
+            auto childMaxW = child->getMaxWidth();
+            if (childMaxW.has_value()) childWidth = std::min(childWidth, childMaxW.value());
+
+            float childH = child->heightForWidth(childWidth, textMeasurer);
+            maxHeight = std::max(maxHeight, childH);
+        }
+
+        return maxHeight + paddingVal.vertical();
+    }
 };
 
 } // namespace flux

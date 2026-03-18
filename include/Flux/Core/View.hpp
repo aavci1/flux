@@ -93,6 +93,7 @@ public:
 
     virtual Size preferredSize(TextMeasurement& textMeasurer) const = 0;
 
+    virtual float heightForWidth(float width, TextMeasurement& textMeasurer) const = 0;
 
     // Access to common properties (all components have these via FLUX_VIEW_PROPERTIES macro)
     virtual bool isVisible() const = 0;
@@ -174,6 +175,14 @@ template<typename T>
 struct has_preferredSize {
     template<typename U>
     static auto test(const U& u) -> decltype(u.preferredSize(std::declval<TextMeasurement&>()), std::true_type{});
+    static std::false_type test(...);
+    static constexpr bool value = decltype(test(std::declval<const T&>()))::value;
+};
+
+template<typename T>
+struct has_heightForWidth {
+    template<typename U>
+    static auto test(const U& u) -> decltype(u.heightForWidth(std::declval<float>(), std::declval<TextMeasurement&>()), std::true_type{});
     static std::false_type test(...);
     static constexpr bool value = decltype(test(std::declval<const T&>()))::value;
 };
@@ -341,6 +350,7 @@ public:
     View body() const override;
     void render(RenderContext& ctx, const Rect& bounds) const override;
     Size preferredSize(TextMeasurement& textMeasurer) const override;
+    float heightForWidth(float width, TextMeasurement& textMeasurer) const override;
 
     // New children property methods
     bool hasChildrenProperty() const override;
@@ -422,6 +432,10 @@ public:
 
     Size preferredSize(TextMeasurement& textMeasurer) const {
         return component_ ? component_->preferredSize(textMeasurer) : Size{};
+    }
+
+    float heightForWidth(float width, TextMeasurement& textMeasurer) const {
+        return component_ ? component_->heightForWidth(width, textMeasurer) : 0.0f;
     }
 
     bool shouldClip() const {
@@ -676,6 +690,22 @@ inline Size ViewAdapter<T>::preferredSize(TextMeasurement& textMeasurer) const {
         // Default: minimal size with padding
         EdgeInsets paddingVal = component.padding;
         return {paddingVal.horizontal(), paddingVal.vertical()};
+    }
+}
+
+template<ViewComponent T>
+inline float ViewAdapter<T>::heightForWidth(float width, TextMeasurement& textMeasurer) const {
+    if constexpr (has_heightForWidth<T>::value) {
+        return component.heightForWidth(width, textMeasurer);
+    } else if constexpr (has_body<T>::value) {
+        const View& bodyView = getCachedBody();
+        if (bodyView.isValid()) {
+            return bodyView.heightForWidth(width, textMeasurer);
+        }
+        EdgeInsets paddingVal = component.padding;
+        return paddingVal.vertical();
+    } else {
+        return preferredSize(textMeasurer).height;
     }
 }
 

@@ -31,10 +31,10 @@ int main(int argc, char* argv[]) {
     // Helper function to perform calculation
     auto performCalculation = [&]() {
         if (static_cast<std::string>(operation).empty()) return;
-        
+
         double secondNumber = std::stod(static_cast<std::string>(display));
         double result = 0.0;
-        
+
         if (operation == "+") {
             result = firstNumber + secondNumber;
         } else if (operation == "-") {
@@ -49,14 +49,14 @@ int main(int argc, char* argv[]) {
                 return;
             }
         }
-        
+
         // Format result
         if (result == std::floor(result) && result < 1e10) {
             updateDisplay(std::format("{:.0f}", result));
         } else {
             updateDisplay(std::format("{:.8g}", result));
         }
-        
+
         operation = std::string("");
         waitingForOperand = true;
         shouldResetDisplay = true;
@@ -78,7 +78,7 @@ int main(int argc, char* argv[]) {
         if (!static_cast<std::string>(operation).empty() && !waitingForOperand) {
             performCalculation();
         }
-        
+
         firstNumber = std::stod(static_cast<std::string>(display));
         operation = op;
         waitingForOperand = true;
@@ -106,7 +106,7 @@ int main(int argc, char* argv[]) {
                     .backgroundColor = Colors::lightGray,
                     .cornerRadius = 8
                 },
-                
+
                 // Button grid - 4 columns x 5 rows
                 Grid {
                     .columns = 4,
@@ -128,7 +128,7 @@ int main(int argc, char* argv[]) {
                                     updateDisplay(std::format("{}", -value));
                                 }
                             },
-                            .backgroundColor = Colors::lightGray
+                            .backgroundColor = Colors::red
                         },
                         Button {
                             .text = "%",
@@ -136,14 +136,14 @@ int main(int argc, char* argv[]) {
                                 double value = std::stod(static_cast<std::string>(display));
                                 updateDisplay(std::format("{}", value / 100));
                             },
-                            .backgroundColor = Colors::lightGray
+                            .backgroundColor = Colors::red
                         },
                         Button {
                             .text = "÷",
                             .onClick = [&]() { handleOperationInput("÷"); },
                             .backgroundColor = Colors::red
                         },
-                        
+
                         // Row 2: 7, 8, 9, ×
                         Button {
                             .text = "7",
@@ -165,7 +165,7 @@ int main(int argc, char* argv[]) {
                             .onClick = [&]() { handleOperationInput("×"); },
                             .backgroundColor = Colors::red
                         },
-                        
+
                         // Row 3: 4, 5, 6, -
                         Button {
                             .text = "4",
@@ -187,7 +187,7 @@ int main(int argc, char* argv[]) {
                             .onClick = [&]() { handleOperationInput("-"); },
                             .backgroundColor = Colors::red
                         },
-                        
+
                         // Row 4: 1, 2, 3, +
                         Button {
                             .text = "1",
@@ -209,7 +209,7 @@ int main(int argc, char* argv[]) {
                             .onClick = [&]() { handleOperationInput("+"); },
                             .backgroundColor = Colors::red
                         },
-                        
+
                         // Row 5: 0 (spans 2 columns), ., =
                         Button {
                             .text = "0",

@@ -420,8 +420,19 @@ void NanoVGRenderContext::drawText(const std::string& text, const Point& positio
     nvgText(nvgContext_, position.x, position.y, text.c_str(), nullptr);
 }
 
+void NanoVGRenderContext::drawTextBox(const std::string& text, const Point& position, float maxWidth, HorizontalAlignment hAlign) {
+    int align = NVG_ALIGN_TOP;
+    switch (hAlign) {
+        case HorizontalAlignment::leading:  align |= NVG_ALIGN_LEFT; break;
+        case HorizontalAlignment::center:   align |= NVG_ALIGN_CENTER; break;
+        case HorizontalAlignment::trailing: align |= NVG_ALIGN_RIGHT; break;
+        case HorizontalAlignment::justify:  align |= NVG_ALIGN_LEFT; break;
+    }
+    nvgTextAlign(nvgContext_, align);
+    nvgTextBox(nvgContext_, position.x, position.y, maxWidth, text.c_str(), nullptr);
+}
+
 Size NanoVGRenderContext::measureText(const std::string& text, const TextStyle& style) {
-    // Apply the text style temporarily for measurement
     nvgFontFaceId(nvgContext_, getFont(style.fontName, style.weight));
     nvgFontSize(nvgContext_, style.size);
     nvgTextLetterSpacing(nvgContext_, style.letterSpacing);
@@ -429,6 +440,18 @@ Size NanoVGRenderContext::measureText(const std::string& text, const TextStyle& 
     
     float bounds[4];
     nvgTextBounds(nvgContext_, 0, 0, text.c_str(), nullptr, bounds);
+    return Size{bounds[2] - bounds[0], bounds[3] - bounds[1]};
+}
+
+Size NanoVGRenderContext::measureTextBox(const std::string& text, const TextStyle& style, float maxWidth) {
+    nvgFontFaceId(nvgContext_, getFont(style.fontName, style.weight));
+    nvgFontSize(nvgContext_, style.size);
+    nvgTextLetterSpacing(nvgContext_, style.letterSpacing);
+    nvgTextLineHeight(nvgContext_, style.lineHeight);
+    nvgTextAlign(nvgContext_, NVG_ALIGN_LEFT | NVG_ALIGN_TOP);
+
+    float bounds[4];
+    nvgTextBoxBounds(nvgContext_, 0, 0, maxWidth, text.c_str(), nullptr, bounds);
     return Size{bounds[2] - bounds[0], bounds[3] - bounds[1]};
 }
 
