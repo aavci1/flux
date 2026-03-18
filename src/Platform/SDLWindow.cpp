@@ -52,12 +52,14 @@ SDLWindow::SDLWindow(const std::string& title, const Size& size, bool resizable,
 
     windowMap_[SDL_GetWindowID(window_)] = this;
 
+    SDL_StartTextInput(window_);
     SDL_AddEventWatch(liveResizeWatcher, this);
 }
 
 SDLWindow::~SDLWindow() {
     SDL_RemoveEventWatch(liveResizeWatcher, this);
     if (window_) {
+        SDL_StopTextInput(window_);
         windowMap_.erase(SDL_GetWindowID(window_));
     }
     if (sdlCursor_) {
