@@ -251,7 +251,7 @@ void Renderer::handleEvent(const struct Event& event, const Rect& windowBounds) 
         if (event.type == Event::MouseUp) {
             mouseCapture_.active = false;
         }
-    } else {
+    } else if (event.type != Event::MouseMove) {
         mouseCapture_.treePath.clear();
         findAndDispatchEvent(cachedLayoutTree_, event, eventPoint);
     }
