@@ -224,25 +224,28 @@ void Renderer::handleEvent(const struct Event& event, const Rect& windowBounds) 
         cachedBounds_ = windowBounds;
         layoutCacheValid_ = true;
     }
-    
+
+    bool needsRedraw = false;
+
     if (event.type == Event::MouseMove) {
-        updateHoverState(eventPoint);
+        bool hoverChanged = updateHoverState(eventPoint);
         if (window_) {
             std::optional<CursorType> cursor = collectCursor(cachedLayoutTree_, eventPoint, CursorType::Default);
             window_->setCursor(cursor.value_or(CursorType::Default));
         }
+        needsRedraw = hoverChanged;
     }
     
     if (event.type == Event::MouseDown && window_) {
         window_->focus().focusViewAtPoint(eventPoint);
+        needsRedraw = true;
     }
 
     if (event.type == Event::MouseUp) {
         hasPressedView_ = false;
+        needsRedraw = true;
     }
 
-    // During an active mouse capture (drag), route move/up to the
-    // originally-pressed view instead of doing hit-testing.
     if (mouseCapture_.active && (event.type == Event::MouseMove || event.type == Event::MouseUp)) {
         LayoutNode* captured = findNodeByPath(cachedLayoutTree_, mouseCapture_.treePath);
         if (captured && captured->view.isInteractive()) {
@@ -251,22 +254,22 @@ void Renderer::handleEvent(const struct Event& event, const Rect& windowBounds) 
                 hasPressedView_ = true;
             }
             Point localPoint = {eventPoint.x - captured->bounds.x, eventPoint.y - captured->bounds.y};
-            bool handled = dispatchEventToView(captured->view, event, localPoint);
-            if (event.type == Event::MouseUp) {
-                FLUX_LOG_DEBUG("[Renderer] MouseUp dispatched to %s, handled=%d", captured->view.getTypeName().c_str(), handled);
-            }
-        } else {
-            FLUX_LOG_DEBUG("[Renderer] MouseUp capture miss: captured=%p interactive=%d", (void*)captured, captured ? captured->view.isInteractive() : -1);
+            dispatchEventToView(captured->view, event, localPoint);
+            needsRedraw = true;
         }
         if (event.type == Event::MouseUp) {
             mouseCapture_.active = false;
         }
     } else if (event.type != Event::MouseMove) {
         mouseCapture_.treePath.clear();
-        findAndDispatchEvent(cachedLayoutTree_, event, eventPoint);
+        if (findAndDispatchEvent(cachedLayoutTree_, event, eventPoint)) {
+            needsRedraw = true;
+        }
     }
 
-    requestApplicationRedraw();
+    if (needsRedraw) {
+        requestApplicationRedraw();
+    }
 }
 
 void Renderer::collectHoverPath(const LayoutNode& node, const Point& point, std::vector<View>& path) {
@@ -284,8 +287,8 @@ void Renderer::collectHoverPath(const LayoutNode& node, const Point& point, std:
     }
 }
 
-void Renderer::updateHoverState(const Point& point) {
-    if (!layoutCacheValid_) return;
+bool Renderer::updateHoverState(const Point& point) {
+    if (!layoutCacheValid_) return false;
 
     hasHoveredView_ = false;
     std::vector<View> newPath;
@@ -298,6 +301,8 @@ void Renderer::updateHoverState(const Point& point) {
         ++commonLen;
     }
 
+    bool changed = (commonLen != hoveredViews_.size() || commonLen != newPath.size());
+
     for (size_t i = hoveredViews_.size(); i > commonLen; --i) {
         View v = hoveredViews_[i - 1];
         v.handleMouseLeave();
@@ -309,6 +314,7 @@ void Renderer::updateHoverState(const Point& point) {
     }
 
     hoveredViews_ = std::move(newPath);
+    return changed;
 }
 
 } // namespace flux

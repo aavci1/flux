@@ -119,7 +119,7 @@ private:
 
     // Hover tracking
     void collectHoverPath(const LayoutNode& node, const Point& point, std::vector<View>& path);
-    void updateHoverState(const Point& point);
+    bool updateHoverState(const Point& point);
 
     // Dispatch event to a specific view
     bool dispatchEventToView(const View& view, const Event& event, const Point& localPoint) {
