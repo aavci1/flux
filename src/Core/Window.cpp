@@ -224,41 +224,40 @@ void Window::handleMouseScroll(float x, float y, float deltaX, float deltaY) {
 void Window::handleKeyDown(int key) {
     impl_->keyboardHandler.handleKeyDown(key);
     
-    // Check if we should handle Tab navigation or shortcuts
     const auto& pendingEvents = impl_->keyboardHandler.getPendingKeyDown();
     if (!pendingEvents.empty()) {
         const KeyEvent& event = pendingEvents.back();
         
-        // Handle shortcuts first
         if (impl_->shortcutManager->handleShortcut(event, *this)) {
-            // Shortcut consumed the event, remove it from pending
             impl_->keyboardHandler.clearPendingEvents();
-            impl_->keyboardHandler.handleKeyDown(key); // Re-add for tracking
+            impl_->keyboardHandler.handleKeyDown(key);
+            requestRedraw();
             return;
         }
         
-        // Handle Tab navigation
         if (event.key == Key::Tab && !event.hasCtrl() && !event.hasAlt()) {
             if (event.hasShift()) {
                 impl_->focusState.focusPrevious();
             } else {
                 impl_->focusState.focusNext();
             }
-            // Clear the pending event since we handled it
             impl_->keyboardHandler.clearPendingEvents();
+            requestRedraw();
             return;
         }
     }
     
-    FLUX_LOG_DEBUG("Key down queued for next frame");
+    requestRedraw();
 }
 
 void Window::handleKeyUp(int key) {
     impl_->keyboardHandler.handleKeyUp(key);
+    requestRedraw();
 }
 
 void Window::handleTextInput(const std::string& text) {
     impl_->keyboardHandler.handleTextInput(text);
+    requestRedraw();
 }
 
 void Window::handleResize(const Size& newSize) {

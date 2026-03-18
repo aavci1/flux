@@ -3,6 +3,7 @@
 #include <Flux/Core/Window.hpp>
 #include <Flux/Core/View.hpp>
 #include <Flux/Core/KeyEvent.hpp>
+#include <SDL3/SDL.h>
 #include <thread>
 #include <atomic>
 #include <string>
@@ -333,9 +334,11 @@ private:
             pendingEvents_.push_back(std::move(event));
         }
         window_.requestRedraw();
-        // Single wait: block until a frame has been rendered that reflects
-        // our event (renderedSeq_ is updated in signalFrameComplete after
-        // the UI tree has been serialized).
+
+        SDL_Event wakeEvent{};
+        wakeEvent.type = SDL_EVENT_USER;
+        SDL_PushEvent(&wakeEvent);
+
         {
             std::unique_lock<std::mutex> lock(frameMutex_);
             frameCV_.wait_for(lock, std::chrono::milliseconds(3000),
