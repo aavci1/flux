@@ -10,8 +10,8 @@
 #include <Flux/Graphics/RenderContext.hpp>
 #include <Flux/Graphics/NanoVGRenderContext.hpp>
 #include <Flux/Platform/PlatformWindow.hpp>
-#include <Flux/Testing/TestServer.hpp>
-#include <Flux/Testing/ScreenCapture.hpp>
+#include "../Testing/TestServer.hpp"
+#include "../Testing/ScreenCapture.hpp"
 
 #include <Flux/Core/Log.hpp>
 #include <algorithm>
