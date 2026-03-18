@@ -107,7 +107,8 @@ struct SettingsView {
                                     .padding = EdgeInsets(8, 16, 8, 16),
                                     .cornerRadius = Theme::RadiusSmall,
                                     .borderColor = Theme::Border,
-                                    .borderWidth = 1.0f
+                                    .borderWidth = 1.0f,
+                                    .onClick = [this]() { state->settings = AppSettings{}; }
                                 },
                                 Button{
                                     .text = std::string("Save"),
@@ -137,7 +138,10 @@ struct SettingsView {
                                     .controls = {
                                         TextInput{
                                             .value = settings.backendPath,
-                                            .inputWidth = 220.0f
+                                            .inputWidth = 220.0f,
+                                            .onValueChange = [this](const std::string& val) {
+                                                state->updateSettings([&](AppSettings& s) { s.backendPath = val; });
+                                            }
                                         }
                                     }
                                 },
@@ -147,7 +151,11 @@ struct SettingsView {
                                     .controls = {
                                         TextInput{
                                             .value = std::to_string(settings.contextLength),
-                                            .inputWidth = 100.0f
+                                            .inputWidth = 100.0f,
+                                            .onValueChange = [this](const std::string& val) {
+                                                try { state->updateSettings([&](AppSettings& s) { s.contextLength = std::stoi(val); }); }
+                                                catch (...) {}
+                                            }
                                         }
                                     }
                                 },
@@ -163,7 +171,10 @@ struct SettingsView {
                                             .step = 1.0f,
                                             .activeColor = Theme::Accent,
                                             .inactiveColor = Theme::Border,
-                                            .maxWidth = 120.0f
+                                            .maxWidth = 120.0f,
+                                            .onValueChange = [this](float v) {
+                                                state->updateSettings([v](AppSettings& s) { s.gpuLayers = static_cast<int>(v); });
+                                            }
                                         },
                                         Text{
                                             .value = std::to_string(settings.gpuLayers),
@@ -185,7 +196,10 @@ struct SettingsView {
                                             .step = 1.0f,
                                             .activeColor = Theme::Accent,
                                             .inactiveColor = Theme::Border,
-                                            .maxWidth = 120.0f
+                                            .maxWidth = 120.0f,
+                                            .onValueChange = [this](float v) {
+                                                state->updateSettings([v](AppSettings& s) { s.threads = static_cast<int>(v); });
+                                            }
                                         },
                                         Text{
                                             .value = std::to_string(settings.threads),
@@ -204,7 +218,10 @@ struct SettingsView {
                                     .controls = {
                                         SelectInput{
                                             .options = std::vector<std::string>{"Dark", "Light", "System"},
-                                            .selectWidth = 120.0f
+                                            .selectWidth = 120.0f,
+                                            .onSelect = [this](int, const std::string& val) {
+                                                state->updateSettings([&](AppSettings& s) { s.theme = val; });
+                                            }
                                         }
                                     }
                                 },
@@ -219,7 +236,10 @@ struct SettingsView {
                                             .step = 1.0f,
                                             .activeColor = Theme::Accent,
                                             .inactiveColor = Theme::Border,
-                                            .maxWidth = 100.0f
+                                            .maxWidth = 100.0f,
+                                            .onValueChange = [this](float v) {
+                                                state->updateSettings([v](AppSettings& s) { s.fontSize = v; });
+                                            }
                                         },
                                         Text{
                                             .value = std::format("{:.0f}px", settings.fontSize),
@@ -237,7 +257,10 @@ struct SettingsView {
                                     .controls = {
                                         TextInput{
                                             .value = settings.modelDirectory.string(),
-                                            .inputWidth = 240.0f
+                                            .inputWidth = 240.0f,
+                                            .onValueChange = [this](const std::string& val) {
+                                                state->updateSettings([&](AppSettings& s) { s.modelDirectory = val; });
+                                            }
                                         }
                                     }
                                 },
@@ -254,7 +277,10 @@ struct SettingsView {
                                                 : std::string("hf_****"),
                                             .placeholder = std::string("hf_..."),
                                             .password = true,
-                                            .inputWidth = 220.0f
+                                            .inputWidth = 220.0f,
+                                            .onValueChange = [this](const std::string& val) {
+                                                state->updateSettings([&](AppSettings& s) { s.hfToken = val; });
+                                            }
                                         }
                                     }
                                 }

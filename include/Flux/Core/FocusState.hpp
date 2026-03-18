@@ -102,6 +102,7 @@ private:
     
     int findViewIndexByKey(const std::string& key) const;
     std::string generateAutoKey(const View* view, int registrationIndex) const;
+    void notifyFocusChange(const std::string& newKey);
 };
 
 } // namespace flux

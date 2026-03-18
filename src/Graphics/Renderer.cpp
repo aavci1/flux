@@ -25,35 +25,32 @@ void Renderer::renderFrame(const Rect& bounds) {
         }
 
         // Layout the root view with RenderContext for accurate measurements
-        LayoutNode layoutTree = rootView_->layout(*renderContext_, bounds);
-        
-        // Update layout cache for mouse event handling
-        cachedLayoutTree_ = layoutTree;
+        // Store directly in the cache so View* pointers registered during
+        // renderTree remain valid between frames.
+        cachedLayoutTree_ = rootView_->layout(*renderContext_, bounds);
         cachedBounds_ = bounds;
         layoutCacheValid_ = true;
 
         // Reconcile persistent element tree
         if (!rootElement_) {
-            rootElement_ = Element::buildTree(layoutTree);
+            rootElement_ = Element::buildTree(cachedLayoutTree_);
         } else {
-            rootElement_->reconcile(layoutTree);
+            rootElement_->reconcile(cachedLayoutTree_);
         }
 
         // Set the global focused key in the render context for this frame
-        // This allows views to check if they have focus during rendering
         if (window_) {
             auto* nvgContext = static_cast<NanoVGRenderContext*>(renderContext_);
             nvgContext->globalFocusedKey_ = window_->focus().getFocusedKey();
         }
 
-        // Process pending keyboard events now that we have the layout tree
-        // This is safe because the View objects in the layout tree are valid for this frame
-        if (window_) {
-            window_->processPendingEvents(layoutTree);
-        }
+        // Render the tree (this also registers focusable views)
+        renderTree(cachedLayoutTree_);
 
-        // Render the tree by traversing it
-        renderTree(layoutTree);
+        // Process pending keyboard/text events after focusable views are registered
+        if (window_) {
+            window_->processPendingEvents(cachedLayoutTree_);
+        }
     }
 
     // Present the frame
@@ -212,6 +209,11 @@ void Renderer::handleEvent(const struct Event& event, const Rect& windowBounds) 
         }
     }
     
+    // On MouseDown, update focus to the clicked component
+    if (event.type == Event::MouseDown && window_) {
+        window_->focus().focusViewAtPoint(eventPoint);
+    }
+
     // Dispatch other events
     findAndDispatchEvent(cachedLayoutTree_, event, eventPoint);
 }

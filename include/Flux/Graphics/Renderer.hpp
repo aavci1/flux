@@ -5,6 +5,7 @@
 #include <Flux/Core/Element.hpp>
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/Log.hpp>
+#include <Flux/Core/FocusState.hpp>
 #include <Flux/Graphics/RenderContext.hpp>
 
 namespace flux {

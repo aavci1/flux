@@ -106,6 +106,12 @@ struct AppState {
 
     flux::Property<AppSettings> settings = AppSettings{};
 
+    void updateSettings(const std::function<void(AppSettings&)>& updater) {
+        auto s = settings.get();
+        updater(s);
+        settings = std::move(s);
+    }
+
     ChatSession* getActiveSession() {
         std::string activeId = activeChatId;
         if (activeId.empty()) return nullptr;

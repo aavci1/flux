@@ -139,9 +139,12 @@ struct ModelConfigSidebar {
 
                                 Divider{.borderColor = Theme::Border},
 
-                                makeParamSlider("Temperature", params.temperature, 0.0f, 2.0f, 0.1f),
-                                makeParamSlider("Top P", params.topP, 0.0f, 1.0f, 0.05f),
-                                makeParamSlider("Max Tokens", static_cast<float>(params.maxTokens), 256.0f, 8192.0f, 256.0f),
+                                makeParamSlider("Temperature", params.temperature, 0.0f, 2.0f, 0.1f,
+                                    [this](float v) { state->updateActiveSession([v](ChatSession& s) { s.params.temperature = v; }); }),
+                                makeParamSlider("Top P", params.topP, 0.0f, 1.0f, 0.05f,
+                                    [this](float v) { state->updateActiveSession([v](ChatSession& s) { s.params.topP = v; }); }),
+                                makeParamSlider("Max Tokens", static_cast<float>(params.maxTokens), 256.0f, 8192.0f, 256.0f,
+                                    [this](float v) { state->updateActiveSession([v](ChatSession& s) { s.params.maxTokens = static_cast<int>(v); }); }),
 
                                 Divider{.borderColor = Theme::Border},
 
@@ -179,7 +182,8 @@ struct ModelConfigSidebar {
     }
 
 private:
-    View makeParamSlider(const std::string& label, float value, float minV, float maxV, float step) const {
+    View makeParamSlider(const std::string& label, float value, float minV, float maxV, float step,
+                         std::function<void(float)> callback) const {
         std::string valStr = (maxV > 50)
             ? std::format("{:.0f}", value)
             : std::format("{:.2f}", value);
@@ -212,7 +216,8 @@ private:
                     .maxValue = maxV,
                     .step = step,
                     .activeColor = Theme::Accent,
-                    .inactiveColor = Theme::Border
+                    .inactiveColor = Theme::Border,
+                    .onValueChange = std::move(callback)
                 }
             }
         };

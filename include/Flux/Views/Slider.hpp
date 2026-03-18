@@ -21,6 +21,8 @@ struct Slider {
     Property<float> thumbRadius = 8.0f;
     Property<float> trackHeight = 4.0f;
 
+    std::function<void(float)> onValueChange;
+
     mutable bool isDragging = false;
     mutable float lastSliderX = 0.0f;
     mutable float lastSliderWidth = 200.0f;
@@ -154,9 +156,14 @@ struct Slider {
             changed = true;
         }
 
-        if (changed && onChange) {
-            onChange();
-            return true;
+        if (changed) {
+            if (onValueChange) {
+                onValueChange(static_cast<float>(value));
+                return true;
+            } else if (onChange) {
+                onChange();
+                return true;
+            }
         }
 
         return false;
@@ -182,7 +189,9 @@ private:
         
         value = std::clamp(newValue, minVal, maxVal);
         
-        if (onChange) {
+        if (onValueChange) {
+            onValueChange(static_cast<float>(value));
+        } else if (onChange) {
             onChange();
         }
     }

@@ -54,11 +54,11 @@ void FocusState::focusNext() {
         nextIndex = (currentIndex + 1) % static_cast<int>(focusableViews_.size());
     }
     
-    focusedKey_ = focusableViews_[nextIndex].key;
-
+    std::string newKey = focusableViews_[nextIndex].key;
     FLUX_LOG_DEBUG("[FOCUS] Moving focus: index %d -> %d (key: '%s', total: %zu views)",
-                   currentIndex, nextIndex, focusedKey_.c_str(), focusableViews_.size());
+                   currentIndex, nextIndex, newKey.c_str(), focusableViews_.size());
 
+    notifyFocusChange(newKey);
     requestApplicationRedraw();
 }
 
@@ -80,11 +80,11 @@ void FocusState::focusPrevious() {
         }
     }
     
-    focusedKey_ = focusableViews_[prevIndex].key;
-
+    std::string newKey = focusableViews_[prevIndex].key;
     FLUX_LOG_DEBUG("[FOCUS] Moving focus: index %d -> %d (key: '%s', total: %zu views)",
-                   currentIndex, prevIndex, focusedKey_.c_str(), focusableViews_.size());
+                   currentIndex, prevIndex, newKey.c_str(), focusableViews_.size());
 
+    notifyFocusChange(newKey);
     requestApplicationRedraw();
 }
 
@@ -104,14 +104,21 @@ void FocusState::clearFocus() {
 bool FocusState::focusViewAtPoint(const Point& point) {
     for (int i = static_cast<int>(focusableViews_.size()) - 1; i >= 0; --i) {
         if (focusableViews_[i].bounds.contains(point)) {
+            std::string newKey = focusableViews_[i].key;
+            if (newKey == focusedKey_) return true;
+
             FLUX_LOG_DEBUG("[FOCUS] Found focusable view at click point (%.0f, %.0f) - key '%s'",
-                           point.x, point.y, focusableViews_[i].key.c_str());
-            focusedKey_ = focusableViews_[i].key;
+                           point.x, point.y, newKey.c_str());
+
+            notifyFocusChange(newKey);
             return true;
         }
     }
     
-    FLUX_LOG_DEBUG("[FOCUS] No focusable view at point (%.0f, %.0f)", point.x, point.y);
+    if (!focusedKey_.empty()) {
+        FLUX_LOG_DEBUG("[FOCUS] Clearing focus (clicked non-focusable area)");
+        notifyFocusChange("");
+    }
     return false;
 }
 
@@ -228,6 +235,14 @@ std::string FocusState::generateAutoKey(const View* view, int registrationIndex)
     std::ostringstream oss;
     oss << view->getTypeName() << "_" << registrationIndex;
     return oss.str();
+}
+
+void FocusState::notifyFocusChange(const std::string& newKey) {
+    if (newKey == focusedKey_) return;
+    focusedKey_ = newKey;
+
+    // Focus notifications are deferred to render time via isCurrentViewFocused()
+    // to avoid dangling pointer issues with View* during event dispatch.
 }
 
 } // namespace flux
