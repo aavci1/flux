@@ -5,7 +5,11 @@
 #include <vector>
 #include <mutex>
 #include <cstring>
+#ifdef __APPLE__
 #include <OpenGL/gl.h>
+#else
+#include <GL/gl.h>
+#endif
 #include "stb_image_write.h"
 
 namespace flux {
