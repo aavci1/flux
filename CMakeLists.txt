@@ -80,11 +80,8 @@ else()
         GIT_TAG ${FLUX_NANOSVG_GIT_TAG}
         GIT_SUBMODULES ""
     )
-    FetchContent_GetProperties(flux_nanosvg)
-    if(NOT flux_nanosvg_POPULATED)
-        message(STATUS "NanoSVG: fetching ${FLUX_NANOSVG_GIT_TAG}")
-        FetchContent_Populate(flux_nanosvg)
-    endif()
+    message(STATUS "NanoSVG: fetching ${FLUX_NANOSVG_GIT_TAG}")
+    FetchContent_MakeAvailable(flux_nanosvg)
     set(NANOSVG_SOURCE_DIR "${flux_nanosvg_SOURCE_DIR}/src")
 endif()
 
@@ -97,11 +94,8 @@ else()
         GIT_TAG ${FLUX_STB_GIT_TAG}
         GIT_SUBMODULES ""
     )
-    FetchContent_GetProperties(flux_stb)
-    if(NOT flux_stb_POPULATED)
-        message(STATUS "stb: fetching ${FLUX_STB_GIT_TAG}")
-        FetchContent_Populate(flux_stb)
-    endif()
+    message(STATUS "stb: fetching ${FLUX_STB_GIT_TAG}")
+    FetchContent_MakeAvailable(flux_stb)
     set(STB_SOURCE_DIR "${flux_stb_SOURCE_DIR}")
 endif()
 
