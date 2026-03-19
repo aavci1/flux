@@ -48,30 +48,40 @@ Runtime::Runtime(int argc, char** argv) {
                 continue;
             }
             const char* b = argv[++i];
-            auto* factory = dynamic_cast<SDLWindowFactory*>(getDefaultPlatformFactory());
-            if (!factory) {
-                backendArgInvalid_ = true;
-                FLUX_LOG_ERROR("Could not apply --backend (unexpected platform factory)");
-                continue;
-            }
+            PlatformWindowFactory* factory = getDefaultPlatformFactory();
             bool ok = false;
             if (std::strcmp(b, "metal") == 0) {
 #ifdef __APPLE__
-                factory->setRenderBackend(RenderBackendType::GPU_Metal);
-                ok = true;
+                try {
+                    factory->setRenderBackend(RenderBackendType::GPU_Metal);
+                    ok = true;
+                } catch (const std::exception& ex) {
+                    (void)ex;
+                    ok = false;
+                }
+#else
+                (void)factory;
 #endif
             } else if (std::strcmp(b, "vulkan") == 0) {
+#ifndef __APPLE__
 #if defined(FLUX_HAS_VULKAN)
                 factory->setRenderBackend(RenderBackendType::GPU_Vulkan);
                 ok = true;
 #endif
+#endif
             } else if (std::strcmp(b, "gpu") == 0) {
-                factory->setRenderBackend(RenderBackendType::GPU_Auto);
-                ok = true;
+                try {
+                    factory->setRenderBackend(RenderBackendType::GPU_Auto);
+                    ok = true;
+                } catch (const std::exception&) {
+                    ok = false;
+                }
             } else if (std::strcmp(b, "nanovg") == 0) {
+#ifndef __APPLE__
 #if defined(FLUX_HAS_NANOVG)
                 factory->setRenderBackend(RenderBackendType::NanoVG);
                 ok = true;
+#endif
 #endif
             }
             if (!ok) {

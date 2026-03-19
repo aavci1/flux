@@ -1,6 +1,7 @@
 #import "MetalDevice.hpp"
-#import <SDL3/SDL.h>
-#import <SDL3/SDL_metal.h>
+#import <AppKit/AppKit.h>
+#import <QuartzCore/CAMetalLayer.h>
+#include <algorithm>
 #include <stdexcept>
 #include <cstring>
 
@@ -237,12 +238,25 @@ void MetalRenderPassEncoder::end() {
 // MetalDevice
 // =============================================================================
 
-MetalDevice::MetalDevice(SDL_Window* window)
-    : window_(window)
-    , metalView_(nullptr)
-    , currentDrawable_(nil)
+MetalDevice::MetalDevice(void* nsViewPtr)
+    : currentDrawable_(nil)
     , currentCommandBuffer_(nil)
 {
+    NSView* view = (__bridge NSView*)nsViewPtr;
+    if (!view) {
+        throw std::runtime_error("MetalDevice: null NSView");
+    }
+    // Layer may be nil or CALayer until laid out; layer-hosting with CAMetalLayer is reliable.
+    if (view.layer == nil || ![view.layer isKindOfClass:[CAMetalLayer class]]) {
+        view.wantsLayer = YES;
+        CAMetalLayer* metal = [CAMetalLayer layer];
+        metal.frame = view.bounds;
+        view.layer = metal;
+    }
+    if (!view.layer || ![view.layer isKindOfClass:[CAMetalLayer class]]) {
+        throw std::runtime_error("MetalDevice: could not attach CAMetalLayer to NSView");
+    }
+
     device_ = MTLCreateSystemDefaultDevice();
     if (!device_) {
         throw std::runtime_error("No Metal-capable GPU found");
@@ -253,20 +267,13 @@ MetalDevice::MetalDevice(SDL_Window* window)
         throw std::runtime_error("Failed to create Metal command queue");
     }
 
-    metalView_ = SDL_Metal_CreateView(window_);
-    if (!metalView_) {
-        throw std::runtime_error(
-            std::string("Failed to create Metal view: ") + SDL_GetError());
-    }
-
-    layer_ = (__bridge CAMetalLayer*)SDL_Metal_GetLayer(metalView_);
+    layer_ = (CAMetalLayer*)view.layer;
     layer_.device = device_;
     layer_.pixelFormat = MTLPixelFormatBGRA8Unorm;
     layer_.framebufferOnly = NO;
 
-    int w, h;
-    SDL_GetWindowSizeInPixels(window_, &w, &h);
-    layer_.drawableSize = CGSizeMake(w, h);
+    NSSize backing = [view convertSizeToBacking:NSMakeSize(NSWidth(view.bounds), NSHeight(view.bounds))];
+    layer_.drawableSize = CGSizeMake(std::max(1.0, backing.width), std::max(1.0, backing.height));
 
     frameSemaphore_ = dispatch_semaphore_create(1);
 }
@@ -275,10 +282,6 @@ MetalDevice::~MetalDevice() {
     currentEncoder_.reset();
     currentCommandBuffer_ = nil;
     currentDrawable_ = nil;
-
-    if (metalView_) {
-        SDL_Metal_DestroyView(metalView_);
-    }
 }
 
 std::unique_ptr<Buffer> MetalDevice::createBuffer(const BufferDesc& desc) {
@@ -436,8 +439,8 @@ bool MetalDevice::readPixels(int x, int y, int w, int h, std::vector<uint8_t>& o
     return true;
 }
 
-std::unique_ptr<Device> createMetalDevice(SDL_Window* window) {
-    return std::make_unique<MetalDevice>(window);
+std::unique_ptr<Device> createMetalDevice(void* nsView) {
+    return std::make_unique<MetalDevice>(nsView);
 }
 
 } // namespace flux::gpu

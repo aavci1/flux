@@ -8,9 +8,6 @@
 #import <dispatch/dispatch.h>
 #endif
 
-struct SDL_Window;
-typedef void* SDL_MetalView;
-
 namespace flux::gpu {
 
 #ifdef __OBJC__
@@ -79,7 +76,8 @@ private:
 
 class MetalDevice : public Device {
 public:
-    MetalDevice(SDL_Window* window);
+    /// `nsView` is an `NSView*` with `CAMetalLayer` as its layer (e.g. `+[layerClass]`).
+    explicit MetalDevice(void* nsView);
     ~MetalDevice() override;
 
     std::unique_ptr<Buffer> createBuffer(const BufferDesc& desc) override;
@@ -97,8 +95,6 @@ public:
     bool readPixels(int x, int y, int w, int h, std::vector<uint8_t>& out) override;
 
 private:
-    SDL_Window* window_;
-    SDL_MetalView metalView_;
     id<MTLDevice> device_;
     id<MTLCommandQueue> commandQueue_;
     CAMetalLayer* layer_;

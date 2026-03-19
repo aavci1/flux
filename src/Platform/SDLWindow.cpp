@@ -3,6 +3,7 @@
 #include <Flux/Platform/NanoVGRenderer.hpp>
 #endif
 #include <Flux/Platform/GPUPlatformRenderer.hpp>
+#include <Flux/Platform/NativeGraphicsSurface.hpp>
 #include <Flux/Core/Window.hpp>
 #include <Flux/Core/Log.hpp>
 #include <stdexcept>
@@ -26,11 +27,7 @@ SDLWindow::SDLWindow(const std::string& title, const Size& size, bool resizable,
     bool useGPU = (backend != RenderBackendType::NanoVG);
 
     if (useGPU && backend == RenderBackendType::GPU_Auto) {
-#ifdef __APPLE__
-        backendType_ = RenderBackendType::GPU_Metal;
-#else
         backendType_ = RenderBackendType::GPU_Vulkan;
-#endif
     }
 
     if (!useGPU) {
@@ -48,8 +45,6 @@ SDLWindow::SDLWindow(const std::string& title, const Size& size, bool resizable,
 
     if (!useGPU) {
         flags |= SDL_WINDOW_OPENGL;
-    } else if (backendType_ == RenderBackendType::GPU_Metal) {
-        flags |= SDL_WINDOW_METAL;
     } else {
         flags |= SDL_WINDOW_VULKAN;
     }
@@ -90,10 +85,8 @@ SDLWindow::SDLWindow(const std::string& title, const Size& size, bool resizable,
         throw std::runtime_error("NanoVG backend unavailable");
 #endif
     } else {
-        auto gpuBackendEnum = (backendType_ == RenderBackendType::GPU_Metal)
-            ? gpu::Backend::Metal : gpu::Backend::Vulkan;
-        auto gpuRenderer = std::make_unique<GPUPlatformRenderer>(gpuBackendEnum);
-        gpuRenderer->setWindow(window_);
+        auto gpuRenderer = std::make_unique<GPUPlatformRenderer>(gpu::Backend::Vulkan);
+        gpuRenderer->setGraphicsSurface(gpu::NativeGraphicsSurface::fromSdlWindow(window_));
         if (!gpuRenderer->initialize(
                 static_cast<int>(size.width),
                 static_cast<int>(size.height),

@@ -1,11 +1,10 @@
 #pragma once
 
 #include <Flux/GPU/Types.hpp>
+#include <Flux/Platform/NativeGraphicsSurface.hpp>
 #include <memory>
 #include <vector>
 #include <cstdint>
-
-struct SDL_Window;
 
 namespace flux::gpu {
 
@@ -75,6 +74,6 @@ public:
     }
 };
 
-std::unique_ptr<Device> createDevice(Backend backend, SDL_Window* window);
+std::unique_ptr<Device> createDevice(Backend backend, NativeGraphicsSurface surface);
 
 } // namespace flux::gpu

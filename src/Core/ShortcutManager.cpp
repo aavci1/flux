@@ -1,9 +1,9 @@
 #include <Flux/Core/ShortcutManager.hpp>
+#include <Flux/Core/ClipboardUtil.hpp>
 #include <Flux/Core/Window.hpp>
 #include <Flux/Core/FocusState.hpp>
 #include <Flux/Core/Runtime.hpp>
 #include <Flux/Core/Log.hpp>
-#include <SDL3/SDL.h>
 
 namespace flux {
 
@@ -76,19 +76,18 @@ void CopyCommand::execute(Window& window) {
 
     std::string selected = focused->getSelectedText();
     if (!selected.empty()) {
-        SDL_SetClipboardText(selected.c_str());
+        setClipboardText(selected);
         FLUX_LOG_DEBUG("[SHORTCUT] Copy: \"%s\"", selected.c_str());
     }
 }
 
 void PasteCommand::execute(Window& window) {
-    if (SDL_HasClipboardText()) {
-        char* text = SDL_GetClipboardText();
-        if (text && text[0] != '\0') {
-            FLUX_LOG_DEBUG("[SHORTCUT] Paste: \"%s\"", text);
-            window.handleTextInput(std::string(text));
+    if (hasClipboardText()) {
+        std::string text = getClipboardText();
+        if (!text.empty()) {
+            FLUX_LOG_DEBUG("[SHORTCUT] Paste: \"%s\"", text.c_str());
+            window.handleTextInput(text);
         }
-        SDL_free(text);
     }
 }
 
@@ -98,7 +97,7 @@ void CutCommand::execute(Window& window) {
 
     std::string cut = focused->cutSelectedText();
     if (!cut.empty()) {
-        SDL_SetClipboardText(cut.c_str());
+        setClipboardText(cut);
         FLUX_LOG_DEBUG("[SHORTCUT] Cut: \"%s\"", cut.c_str());
     }
 }

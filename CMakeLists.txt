@@ -11,27 +11,36 @@ add_definitions(-w)
 find_package(Threads REQUIRED)
 find_package(Freetype REQUIRED)
 
-option(FLUX_ENABLE_NANOVG "Build NanoVG OpenGL backend (off by default; use -DFLUX_ENABLE_NANOVG=ON)" OFF)
-if(FLUX_ENABLE_NANOVG)
+option(FLUX_ENABLE_NANOVG "Build NanoVG OpenGL backend (Linux/Windows only; off by default)" OFF)
+
+if(APPLE)
+    if(FLUX_ENABLE_NANOVG)
+        message(FATAL_ERROR "NanoVG/OpenGL is not supported on macOS. Use native Cocoa + Metal (default).")
+    endif()
+endif()
+
+if(FLUX_ENABLE_NANOVG AND NOT APPLE)
     find_package(OpenGL REQUIRED)
 endif()
 
 include(FetchContent)
 
-# SDL3: try system install first, fetch from GitHub as fallback
-find_package(SDL3 QUIET)
-if(NOT SDL3_FOUND)
-    message(STATUS "SDL3 not found on system, fetching from GitHub...")
-    FetchContent_Declare(SDL3
-        GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
-        GIT_TAG release-3.2.0
-        GIT_SHALLOW TRUE
-    )
-    set(SDL_SHARED OFF CACHE BOOL "" FORCE)
-    set(SDL_STATIC ON CACHE BOOL "" FORCE)
-    set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
-    set(SDL_TESTS OFF CACHE BOOL "" FORCE)
-    FetchContent_MakeAvailable(SDL3)
+# SDL3: Linux/Windows only (macOS uses native Cocoa)
+if(NOT APPLE)
+    find_package(SDL3 QUIET)
+    if(NOT SDL3_FOUND)
+        message(STATUS "SDL3 not found on system, fetching from GitHub...")
+        FetchContent_Declare(SDL3
+            GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
+            GIT_TAG release-3.2.0
+            GIT_SHALLOW TRUE
+        )
+        set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+        set(SDL_STATIC ON CACHE BOOL "" FORCE)
+        set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
+        set(SDL_TESTS OFF CACHE BOOL "" FORCE)
+        FetchContent_MakeAvailable(SDL3)
+    endif()
 endif()
 
 # Pin commits match former submodules; override with -DFLUX_*_GIT_TAG=...
@@ -125,11 +134,11 @@ foreach(_flux_stb_shim_h IN LISTS _flux_stb_shim_headers)
     configure_file("${_flux_stb_shim_h}" "${FLUX_STB_SHIM_DIR}/stb/${_flux_stb_shim_name}" COPYONLY)
 endforeach()
 
-# NanoVG includes <GL/gl.h>; macOS provides OpenGL via framework headers
-if(APPLE AND FLUX_ENABLE_NANOVG)
+# NanoVG includes <GL/gl.h> on non-Apple
+if(NOT APPLE AND FLUX_ENABLE_NANOVG)
     set(FLUX_GL_SHIM_DIR "${CMAKE_BINARY_DIR}/flux_gl_shim")
     file(MAKE_DIRECTORY "${FLUX_GL_SHIM_DIR}/GL")
-    file(WRITE "${FLUX_GL_SHIM_DIR}/GL/gl.h" "#include <OpenGL/gl.h>\n")
+    file(WRITE "${FLUX_GL_SHIM_DIR}/GL/gl.h" "#include <GL/gl.h>\n")
 endif()
 
 # Flux library sources
@@ -141,6 +150,19 @@ set(FLUX_SOURCES
     src/Core/MouseInputHandler.cpp
     src/Core/FocusState.cpp
     src/Core/ShortcutManager.cpp
+)
+
+if(APPLE)
+    list(APPEND FLUX_SOURCES
+        src/Core/ClipboardUtil.mm
+    )
+else()
+    list(APPEND FLUX_SOURCES
+        src/Core/ClipboardUtilSDL.cpp
+    )
+endif()
+
+list(APPEND FLUX_SOURCES
     src/Core/PlatformWindowFactory.cpp
     src/Core/Demangle.cpp
     src/Core/Element.cpp
@@ -164,12 +186,21 @@ set(FLUX_SOURCES
     # Views
     src/Views/SVG.cpp
     src/Views/NanoSVG.cpp
-
-    # Platform (SDL3)
-    src/Platform/SDLWindow.cpp
 )
 
-if(FLUX_ENABLE_NANOVG)
+if(APPLE)
+    list(APPEND FLUX_SOURCES
+        src/Platform/MacWindow.mm
+        src/Platform/WakeEventLoop.mm
+    )
+else()
+    list(APPEND FLUX_SOURCES
+        src/Platform/SDLWindow.cpp
+        src/Platform/WakeEventLoopSDL.cpp
+    )
+endif()
+
+if(NOT APPLE AND FLUX_ENABLE_NANOVG)
     list(APPEND FLUX_SOURCES
         src/Graphics/NanoVGRenderer.cpp
         src/Graphics/NanoVGRenderContext.cpp
@@ -184,21 +215,27 @@ if(APPLE)
     list(APPEND FLUX_SOURCES src/GPU/Metal/MetalDevice.mm)
 endif()
 
-# Vulkan backend (optional — requires vulkan headers + loader)
-find_package(Vulkan QUIET)
-if(NOT Vulkan_FOUND)
-    # Try pkg-config / homebrew fallback
-    find_path(Vulkan_INCLUDE_DIR vulkan/vulkan.h HINTS /opt/homebrew/include /usr/local/include)
-    find_library(Vulkan_LIBRARY NAMES vulkan HINTS /opt/homebrew/lib /usr/local/lib)
-    if(Vulkan_INCLUDE_DIR AND Vulkan_LIBRARY)
-        set(Vulkan_FOUND TRUE)
+# Vulkan: Linux/Windows when not building NanoVG
+set(FLUX_VULKAN_AVAILABLE OFF)
+if(NOT APPLE AND NOT FLUX_ENABLE_NANOVG)
+    find_package(Vulkan QUIET)
+    if(NOT Vulkan_FOUND)
+        find_path(Vulkan_INCLUDE_DIR vulkan/vulkan.h HINTS /opt/homebrew/include /usr/local/include)
+        find_library(Vulkan_LIBRARY NAMES vulkan HINTS /opt/homebrew/lib /usr/local/lib)
+        if(Vulkan_INCLUDE_DIR AND Vulkan_LIBRARY)
+            set(Vulkan_FOUND TRUE)
+        endif()
+    endif()
+    if(Vulkan_FOUND)
+        set(FLUX_VULKAN_AVAILABLE ON)
+    else()
+        message(FATAL_ERROR "Vulkan not found. Install the Vulkan SDK or configure with -DFLUX_ENABLE_NANOVG=ON for OpenGL/NanoVG.")
     endif()
 endif()
 
-if(Vulkan_FOUND)
+if(FLUX_VULKAN_AVAILABLE)
     message(STATUS "Vulkan found — building Vulkan GPU backend")
 
-    # VMA (Vulkan Memory Allocator) — header-only
     FetchContent_Declare(VulkanMemoryAllocator
         GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
         GIT_TAG v3.2.1
@@ -209,8 +246,8 @@ if(Vulkan_FOUND)
     list(APPEND FLUX_SOURCES src/GPU/Vulkan/VulkanDevice.cpp)
 endif()
 
-# Build NanoVG (optional)
-if(FLUX_ENABLE_NANOVG)
+# Build NanoVG (optional, non-macOS only)
+if(FLUX_ENABLE_NANOVG AND NOT APPLE)
     add_library(nanovg STATIC
         ${NANOVG_SOURCE_DIR}/src/nanovg.c
         ${NANOVG_SOURCE_DIR}/src/nanovg_gl.c
@@ -221,9 +258,7 @@ if(FLUX_ENABLE_NANOVG)
         ${NANOVG_SOURCE_DIR}/src
         ${FLUX_STB_SHIM_DIR}
     )
-    if(APPLE)
-        target_include_directories(nanovg PRIVATE ${FLUX_GL_SHIM_DIR})
-    endif()
+    target_include_directories(nanovg PRIVATE ${FLUX_GL_SHIM_DIR})
 
     target_link_libraries(nanovg PUBLIC
         Freetype::Freetype
@@ -251,16 +286,22 @@ target_include_directories(flux PUBLIC
 target_link_libraries(flux PUBLIC
     Threads::Threads
     Freetype::Freetype
-    SDL3::SDL3
     libtess2
 )
-if(FLUX_ENABLE_NANOVG)
+if(NOT APPLE)
+    target_link_libraries(flux PUBLIC SDL3::SDL3)
+endif()
+
+if(FLUX_ENABLE_NANOVG AND NOT APPLE)
     target_link_libraries(flux PUBLIC OpenGL::GL nanovg)
     target_compile_definitions(flux PUBLIC FLUX_HAS_NANOVG=1)
 endif()
 
 if(APPLE)
     target_link_libraries(flux PRIVATE
+        "-framework Cocoa"
+        "-framework Carbon"
+        "-framework AppKit"
         "-framework CoreText"
         "-framework CoreFoundation"
         "-framework Metal"
@@ -268,7 +309,7 @@ if(APPLE)
     )
 endif()
 
-if(Vulkan_FOUND)
+if(FLUX_VULKAN_AVAILABLE)
     target_compile_definitions(flux PUBLIC FLUX_HAS_VULKAN=1)
     if(TARGET VulkanMemoryAllocator)
         target_include_directories(flux PRIVATE

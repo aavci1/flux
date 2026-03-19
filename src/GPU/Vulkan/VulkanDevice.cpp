@@ -716,8 +716,8 @@ PixelFormat VulkanDevice::swapchainFormat() const {
     return PixelFormat::RGBA8;
 }
 
-std::unique_ptr<Device> createVulkanDevice(SDL_Window* window) {
-    return std::make_unique<VulkanDevice>(window);
+std::unique_ptr<Device> createVulkanDevice(void* sdlWindow) {
+    return std::make_unique<VulkanDevice>(static_cast<SDL_Window*>(sdlWindow));
 }
 
 } // namespace flux::gpu

@@ -3,7 +3,7 @@
 #include <Flux/Core/Window.hpp>
 #include <Flux/Core/View.hpp>
 #include <Flux/Core/KeyEvent.hpp>
-#include <SDL3/SDL.h>
+#include <Flux/Platform/EventLoopWake.hpp>
 #include <thread>
 #include <atomic>
 #include <string>
@@ -335,9 +335,7 @@ private:
         }
         window_.requestRedraw();
 
-        SDL_Event wakeEvent{};
-        wakeEvent.type = SDL_EVENT_USER;
-        SDL_PushEvent(&wakeEvent);
+        wakePlatformEventLoop();
 
         {
             std::unique_lock<std::mutex> lock(frameMutex_);

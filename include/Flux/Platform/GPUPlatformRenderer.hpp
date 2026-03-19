@@ -4,9 +4,8 @@
 #include <Flux/Graphics/GPURenderContext.hpp>
 #include <Flux/Graphics/GPURendererBackend.hpp>
 #include <Flux/GPU/Device.hpp>
+#include <Flux/Platform/NativeGraphicsSurface.hpp>
 #include <memory>
-
-struct SDL_Window;
 
 namespace flux {
 
@@ -30,12 +29,12 @@ public:
 
     bool readPixels(int x, int y, int w, int h, std::vector<uint8_t>& out) override;
 
-    void setWindow(SDL_Window* window) { window_ = window; }
+    void setGraphicsSurface(gpu::NativeGraphicsSurface surface) { surface_ = surface; }
     gpu::Device* device() const { return device_.get(); }
 
 private:
     gpu::Backend backend_;
-    SDL_Window* window_ = nullptr;
+    gpu::NativeGraphicsSurface surface_{};
     std::unique_ptr<gpu::Device> device_;
     std::unique_ptr<GPURendererBackend> gpuBackend_;
     std::unique_ptr<GPURenderContext> renderCtx_;

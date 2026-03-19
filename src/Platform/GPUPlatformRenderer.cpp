@@ -16,13 +16,13 @@ bool GPUPlatformRenderer::initialize(int width, int height, float dpiScaleX, flo
     dpiScaleX_ = dpiScaleX;
     dpiScaleY_ = dpiScaleY;
 
-    if (!window_) {
-        FLUX_LOG_ERROR("[GPUPlatformRenderer] SDL_Window not set before initialize");
+    if (surface_.kind == gpu::NativeGraphicsSurfaceKind::None || !surface_.ptr) {
+        FLUX_LOG_ERROR("[GPUPlatformRenderer] graphics surface not set before initialize");
         return false;
     }
 
     try {
-        device_ = gpu::createDevice(backend_, window_);
+        device_ = gpu::createDevice(backend_, surface_);
         gpuBackend_ = std::make_unique<GPURendererBackend>(device_.get());
 
         int pw = static_cast<int>(width * dpiScaleX);
