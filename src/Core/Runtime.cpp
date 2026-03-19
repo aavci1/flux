@@ -4,6 +4,7 @@
 #include <Flux/Platform/PlatformWindow.hpp>
 #include <Flux/Core/Log.hpp>
 #include <algorithm>
+#include <cstdlib>
 #include <cstring>
 
 namespace flux {
@@ -40,18 +41,42 @@ Runtime::Runtime(int argc, char** argv) {
             testMode_ = true;
         } else if (std::strcmp(argv[i], "--test-port") == 0 && i + 1 < argc) {
             testPort_ = std::atoi(argv[++i]);
-        } else if (std::strcmp(argv[i], "--backend") == 0 && i + 1 < argc) {
+        } else if (std::strcmp(argv[i], "--backend") == 0) {
+            if (i + 1 >= argc) {
+                backendArgInvalid_ = true;
+                FLUX_LOG_ERROR("Missing value for --backend");
+                continue;
+            }
             const char* b = argv[++i];
             auto* factory = dynamic_cast<SDLWindowFactory*>(getDefaultPlatformFactory());
-            if (factory) {
-                if (std::strcmp(b, "metal") == 0)
-                    factory->setRenderBackend(RenderBackendType::GPU_Metal);
-                else if (std::strcmp(b, "vulkan") == 0)
-                    factory->setRenderBackend(RenderBackendType::GPU_Vulkan);
-                else if (std::strcmp(b, "gpu") == 0)
-                    factory->setRenderBackend(RenderBackendType::GPU_Auto);
-                else if (std::strcmp(b, "nanovg") == 0)
-                    factory->setRenderBackend(RenderBackendType::NanoVG);
+            if (!factory) {
+                backendArgInvalid_ = true;
+                FLUX_LOG_ERROR("Could not apply --backend (unexpected platform factory)");
+                continue;
+            }
+            bool ok = false;
+            if (std::strcmp(b, "metal") == 0) {
+#ifdef __APPLE__
+                factory->setRenderBackend(RenderBackendType::GPU_Metal);
+                ok = true;
+#endif
+            } else if (std::strcmp(b, "vulkan") == 0) {
+#if defined(FLUX_HAS_VULKAN)
+                factory->setRenderBackend(RenderBackendType::GPU_Vulkan);
+                ok = true;
+#endif
+            } else if (std::strcmp(b, "gpu") == 0) {
+                factory->setRenderBackend(RenderBackendType::GPU_Auto);
+                ok = true;
+            } else if (std::strcmp(b, "nanovg") == 0) {
+#if defined(FLUX_HAS_NANOVG)
+                factory->setRenderBackend(RenderBackendType::NanoVG);
+                ok = true;
+#endif
+            }
+            if (!ok) {
+                backendArgInvalid_ = true;
+                FLUX_LOG_ERROR("Unknown or unavailable backend \"%s\"", b);
             }
         }
     }
@@ -63,6 +88,9 @@ Runtime::~Runtime() {
 }
 
 Window& Runtime::createWindow(const WindowConfig& config) {
+    if (backendArgInvalid_) {
+        std::exit(1);
+    }
     auto window = std::make_unique<Window>(config);
     window->addObserver(this);
     Window& ref = *window;
@@ -77,6 +105,9 @@ Window& Runtime::createWindow(const WindowConfig& config) {
 }
 
 int Runtime::run() {
+    if (backendArgInvalid_) {
+        return 1;
+    }
     while (running_) {
         bool redrawPending = needsRedraw_.load(std::memory_order_relaxed);
 

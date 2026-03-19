@@ -210,11 +210,13 @@ sudo apt install libwayland-dev wayland-protocols libxkbcommon-dev \
 
 ### Build
 
-On first configure, CMake downloads **SDL3** (if not installed), **NanoVG**, **NanoSVG**, and **stb** into your build directory (`_deps/`), similar to SDL3’s fetch fallback. You need **Git** and network access for the first run.
+On first configure, CMake downloads **SDL3** (if not installed), **NanoSVG**, and **stb** into your build directory (`_deps/`), similar to SDL3’s fetch fallback. You need **Git** and network access for the first run.
+
+The **NanoVG** OpenGL backend is optional: pass `-DFLUX_ENABLE_NANOVG=ON` to fetch and build it (default is off; macOS uses the Metal GPU backend by default).
 
 To use fixed revisions, the defaults are `FLUX_NANOVG_GIT_TAG`, `FLUX_NANOSVG_GIT_TAG`, and `FLUX_STB_GIT_TAG` in `CMakeLists.txt` (overridable with `-D` on the `cmake` command line).
 
-Optional offline override: check out those repos under `third_party/nanovg`, `third_party/nanosvg`, and `third_party/stb` (same layout as before); CMake will use them instead of fetching.
+Optional offline override: check out those repos under `third_party/nanovg`, `third_party/nanosvg`, and `third_party/stb` (same layout as before); CMake will use them instead of fetching when the corresponding option is enabled.
 
 ```bash
 mkdir build && cd build

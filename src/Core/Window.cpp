@@ -8,7 +8,6 @@
 #include <Flux/Core/PlatformWindowFactory.hpp>
 #include <Flux/Graphics/Renderer.hpp>
 #include <Flux/Graphics/RenderContext.hpp>
-#include <Flux/Graphics/NanoVGRenderContext.hpp>
 #include <Flux/Platform/PlatformWindow.hpp>
 #include "../Testing/TestServer.hpp"
 #include "../Testing/ScreenCapture.hpp"

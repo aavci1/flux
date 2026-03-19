@@ -10,7 +10,11 @@ add_definitions(-w)
 # Dependencies
 find_package(Threads REQUIRED)
 find_package(Freetype REQUIRED)
-find_package(OpenGL REQUIRED)
+
+option(FLUX_ENABLE_NANOVG "Build NanoVG OpenGL backend (off by default; use -DFLUX_ENABLE_NANOVG=ON)" OFF)
+if(FLUX_ENABLE_NANOVG)
+    find_package(OpenGL REQUIRED)
+endif()
 
 include(FetchContent)
 
@@ -38,22 +42,24 @@ set(FLUX_NANOSVG_GIT_TAG "66579081d84b613daa49a64f76357ce65925e13b" CACHE STRING
 set(FLUX_STB_GIT_REPOSITORY "https://github.com/nothings/stb.git" CACHE STRING "stb Git repository")
 set(FLUX_STB_GIT_TAG "fede005abaf93d9d7f3a679d1999b2db341b360f" CACHE STRING "stb Git tag or commit")
 
-# NanoVG: Populate only (upstream CMake also defines target "nanovg" — would clash with ours)
-if(EXISTS "${CMAKE_SOURCE_DIR}/third_party/nanovg/src/nanovg.c")
-    set(NANOVG_SOURCE_DIR "${CMAKE_SOURCE_DIR}/third_party/nanovg")
-    message(STATUS "NanoVG: using local third_party/nanovg")
-else()
-    FetchContent_Declare(flux_nanovg
-        GIT_REPOSITORY ${FLUX_NANOVG_GIT_REPOSITORY}
-        GIT_TAG ${FLUX_NANOVG_GIT_TAG}
-        GIT_SUBMODULES "" # upstream has optional submodules; not needed for core sources
-    )
-    FetchContent_GetProperties(flux_nanovg)
-    if(NOT flux_nanovg_POPULATED)
-        message(STATUS "NanoVG: fetching ${FLUX_NANOVG_GIT_TAG} from ${FLUX_NANOVG_GIT_REPOSITORY}")
-        FetchContent_Populate(flux_nanovg)
+# NanoVG: Populate only when enabled (upstream CMake also defines target "nanovg" — would clash with ours)
+if(FLUX_ENABLE_NANOVG)
+    if(EXISTS "${CMAKE_SOURCE_DIR}/third_party/nanovg/src/nanovg.c")
+        set(NANOVG_SOURCE_DIR "${CMAKE_SOURCE_DIR}/third_party/nanovg")
+        message(STATUS "NanoVG: using local third_party/nanovg")
+    else()
+        FetchContent_Declare(flux_nanovg
+            GIT_REPOSITORY ${FLUX_NANOVG_GIT_REPOSITORY}
+            GIT_TAG ${FLUX_NANOVG_GIT_TAG}
+            GIT_SUBMODULES "" # upstream has optional submodules; not needed for core sources
+        )
+        FetchContent_GetProperties(flux_nanovg)
+        if(NOT flux_nanovg_POPULATED)
+            message(STATUS "NanoVG: fetching ${FLUX_NANOVG_GIT_TAG} from ${FLUX_NANOVG_GIT_REPOSITORY}")
+            FetchContent_Populate(flux_nanovg)
+        endif()
+        set(NANOVG_SOURCE_DIR "${flux_nanovg_SOURCE_DIR}")
     endif()
-    set(NANOVG_SOURCE_DIR "${flux_nanovg_SOURCE_DIR}")
 endif()
 
 if(EXISTS "${CMAKE_SOURCE_DIR}/third_party/nanosvg/src/nanosvg.h")
@@ -120,7 +126,7 @@ foreach(_flux_stb_shim_h IN LISTS _flux_stb_shim_headers)
 endforeach()
 
 # NanoVG includes <GL/gl.h>; macOS provides OpenGL via framework headers
-if(APPLE)
+if(APPLE AND FLUX_ENABLE_NANOVG)
     set(FLUX_GL_SHIM_DIR "${CMAKE_BINARY_DIR}/flux_gl_shim")
     file(MAKE_DIRECTORY "${FLUX_GL_SHIM_DIR}/GL")
     file(WRITE "${FLUX_GL_SHIM_DIR}/GL/gl.h" "#include <OpenGL/gl.h>\n")
@@ -144,9 +150,6 @@ set(FLUX_SOURCES
     # Graphics
     src/Graphics/Path.cpp
     src/Graphics/Renderer.cpp
-    src/Graphics/NanoVGRenderer.cpp
-    src/Graphics/NanoVGRenderContext.cpp
-    src/Graphics/NanoVGBackend.cpp
     src/Graphics/CommandCompiler.cpp
     src/Graphics/GPURendererBackend.cpp
     src/Graphics/GlyphAtlas.cpp
@@ -165,6 +168,14 @@ set(FLUX_SOURCES
     # Platform (SDL3)
     src/Platform/SDLWindow.cpp
 )
+
+if(FLUX_ENABLE_NANOVG)
+    list(APPEND FLUX_SOURCES
+        src/Graphics/NanoVGRenderer.cpp
+        src/Graphics/NanoVGRenderContext.cpp
+        src/Graphics/NanoVGBackend.cpp
+    )
+endif()
 
 # GPU backend sources
 list(APPEND FLUX_SOURCES src/GPU/DeviceFactory.cpp)
@@ -198,32 +209,34 @@ if(Vulkan_FOUND)
     list(APPEND FLUX_SOURCES src/GPU/Vulkan/VulkanDevice.cpp)
 endif()
 
-# Build NanoVG
-add_library(nanovg STATIC
-    ${NANOVG_SOURCE_DIR}/src/nanovg.c
-    ${NANOVG_SOURCE_DIR}/src/nanovg_gl.c
-    ${NANOVG_SOURCE_DIR}/src/nanovg_gl_utils.c
-)
+# Build NanoVG (optional)
+if(FLUX_ENABLE_NANOVG)
+    add_library(nanovg STATIC
+        ${NANOVG_SOURCE_DIR}/src/nanovg.c
+        ${NANOVG_SOURCE_DIR}/src/nanovg_gl.c
+        ${NANOVG_SOURCE_DIR}/src/nanovg_gl_utils.c
+    )
 
-target_include_directories(nanovg PUBLIC
-    ${NANOVG_SOURCE_DIR}/src
-    ${FLUX_STB_SHIM_DIR}
-)
-if(APPLE)
-    target_include_directories(nanovg PRIVATE ${FLUX_GL_SHIM_DIR})
+    target_include_directories(nanovg PUBLIC
+        ${NANOVG_SOURCE_DIR}/src
+        ${FLUX_STB_SHIM_DIR}
+    )
+    if(APPLE)
+        target_include_directories(nanovg PRIVATE ${FLUX_GL_SHIM_DIR})
+    endif()
+
+    target_link_libraries(nanovg PUBLIC
+        Freetype::Freetype
+        OpenGL::GL
+    )
+
+    set_target_properties(nanovg PROPERTIES
+        C_STANDARD 99
+        C_STANDARD_REQUIRED ON
+    )
+
+    target_compile_definitions(nanovg PRIVATE NANOVG_GL2 FONS_USE_FREETYPE)
 endif()
-
-target_link_libraries(nanovg PUBLIC
-    Freetype::Freetype
-    OpenGL::GL
-)
-
-set_target_properties(nanovg PROPERTIES
-    C_STANDARD 99
-    C_STANDARD_REQUIRED ON
-)
-
-target_compile_definitions(nanovg PRIVATE NANOVG_GL2 FONS_USE_FREETYPE)
 
 # Flux static library
 add_library(flux STATIC ${FLUX_SOURCES})
@@ -238,11 +251,13 @@ target_include_directories(flux PUBLIC
 target_link_libraries(flux PUBLIC
     Threads::Threads
     Freetype::Freetype
-    OpenGL::GL
-    nanovg
     SDL3::SDL3
     libtess2
 )
+if(FLUX_ENABLE_NANOVG)
+    target_link_libraries(flux PUBLIC OpenGL::GL nanovg)
+    target_compile_definitions(flux PUBLIC FLUX_HAS_NANOVG=1)
+endif()
 
 if(APPLE)
     target_link_libraries(flux PRIVATE

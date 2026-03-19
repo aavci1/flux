@@ -42,7 +42,7 @@ public:
 
 private:
     bool sdlInitialized_ = false;
-    RenderBackendType backend_ = RenderBackendType::NanoVG;
+    RenderBackendType backend_ = kDefaultRenderBackend;
 };
 
 PlatformWindowFactory* getDefaultPlatformFactory();

@@ -19,10 +19,18 @@ enum class RenderBackendType {
     GPU_Auto
 };
 
+#if defined(__APPLE__)
+inline constexpr RenderBackendType kDefaultRenderBackend = RenderBackendType::GPU_Auto;
+#elif defined(FLUX_HAS_NANOVG)
+inline constexpr RenderBackendType kDefaultRenderBackend = RenderBackendType::NanoVG;
+#else
+inline constexpr RenderBackendType kDefaultRenderBackend = RenderBackendType::GPU_Auto;
+#endif
+
 class SDLWindow : public PlatformWindow {
 public:
     SDLWindow(const std::string& title, const Size& size, bool resizable, bool fullscreen,
-              RenderBackendType backend = RenderBackendType::NanoVG);
+              RenderBackendType backend = kDefaultRenderBackend);
     ~SDLWindow() override;
 
     void resize(const Size& newSize) override;
@@ -56,7 +64,7 @@ private:
     SDL_GLContext glContext_ = nullptr;
     std::unique_ptr<PlatformRenderer> renderer_;
     Window* fluxWindow_ = nullptr;
-    RenderBackendType backendType_ = RenderBackendType::NanoVG;
+    RenderBackendType backendType_ = kDefaultRenderBackend;
 
     Size size_;
     bool fullscreen_ = false;

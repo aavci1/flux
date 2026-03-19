@@ -1,5 +1,7 @@
 #include <Flux/Platform/SDLWindow.hpp>
+#if defined(FLUX_HAS_NANOVG)
 #include <Flux/Platform/NanoVGRenderer.hpp>
+#endif
 #include <Flux/Platform/GPUPlatformRenderer.hpp>
 #include <Flux/Core/Window.hpp>
 #include <Flux/Core/Log.hpp>
@@ -15,6 +17,12 @@ SDLWindow::SDLWindow(const std::string& title, const Size& size, bool resizable,
     , fullscreen_(fullscreen)
     , backendType_(backend)
 {
+#if !defined(FLUX_HAS_NANOVG)
+    if (backend == RenderBackendType::NanoVG) {
+        throw std::runtime_error(
+            "NanoVG backend was not built; configure CMake with -DFLUX_ENABLE_NANOVG=ON");
+    }
+#endif
     bool useGPU = (backend != RenderBackendType::NanoVG);
 
     if (useGPU && backend == RenderBackendType::GPU_Auto) {
@@ -26,10 +34,12 @@ SDLWindow::SDLWindow(const std::string& title, const Size& size, bool resizable,
     }
 
     if (!useGPU) {
+#if defined(FLUX_HAS_NANOVG)
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
         SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
         SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+#endif
     }
 
     Uint64 flags = SDL_WINDOW_HIGH_PIXEL_DENSITY;
@@ -58,6 +68,7 @@ SDLWindow::SDLWindow(const std::string& title, const Size& size, bool resizable,
     float dpi = SDL_GetWindowDisplayScale(window_);
 
     if (!useGPU) {
+#if defined(FLUX_HAS_NANOVG)
         glContext_ = SDL_GL_CreateContext(window_);
         if (!glContext_) {
             SDL_DestroyWindow(window_);
@@ -75,6 +86,9 @@ SDLWindow::SDLWindow(const std::string& title, const Size& size, bool resizable,
             throw std::runtime_error("Failed to initialize NanoVG renderer");
         }
         renderer_ = std::move(nanoRenderer);
+#else
+        throw std::runtime_error("NanoVG backend unavailable");
+#endif
     } else {
         auto gpuBackendEnum = (backendType_ == RenderBackendType::GPU_Metal)
             ? gpu::Backend::Metal : gpu::Backend::Vulkan;

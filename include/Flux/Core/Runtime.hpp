@@ -54,6 +54,7 @@ private:
 
     bool testMode_ = false;
     int testPort_ = 8435;
+    bool backendArgInvalid_ = false;
 
     static Runtime* current_;
     friend void requestApplicationRedraw();
