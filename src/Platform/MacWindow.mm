@@ -8,6 +8,7 @@
 #include <Flux/Core/Window.hpp>
 #include <Flux/Core/Log.hpp>
 
+#include <algorithm>
 #include <cmath>
 
 namespace flux {
@@ -406,7 +407,9 @@ void MacWindow::notifyCloseRequested() {
 void MacWindow::handleFramebufferResize() {
     if (!impl_ || !impl_->view || !fluxWindow_) return;
     NSRect b = impl_->view.bounds;
-    size_ = {static_cast<float>(b.size.width), static_cast<float>(b.size.height)};
+    float w = std::max(static_cast<float>(b.size.width), 1.f);
+    float h = std::max(static_cast<float>(b.size.height), 1.f);
+    size_ = {w, h};
     float dpi = static_cast<float>(impl_->window.backingScaleFactor);
     if (dpi <= 0.f) dpi = 1.f;
     renderer_->resize(static_cast<int>(size_.width), static_cast<int>(size_.height));
@@ -421,13 +424,20 @@ void* MacWindow::metalContentView() const {
 }
 
 void MacWindow::resize(const Size& newSize) {
-    size_ = newSize;
-    if (impl_->window) {
-        NSRect f = impl_->window.frame;
-        f.size = NSMakeSize(newSize.width, newSize.height);
-        [impl_->window setFrame:f display:YES];
+    float w = std::max(newSize.width, 1.f);
+    float h = std::max(newSize.height, 1.f);
+    size_ = {w, h};
+    if (impl_->window && impl_->view) {
+        NSSize desired = NSMakeSize(w, h);
+        NSSize current = impl_->view.bounds.size;
+        // Content size in points; do not use setFrame — frame size includes title bar and
+        // would shrink the client area each resize (feedback loop → height 0).
+        if (std::fabs(current.width - desired.width) > 0.5f ||
+            std::fabs(current.height - desired.height) > 0.5f) {
+            [impl_->window setContentSize:desired];
+        }
     }
-    renderer_->resize(static_cast<int>(newSize.width), static_cast<int>(newSize.height));
+    renderer_->resize(static_cast<int>(size_.width), static_cast<int>(size_.height));
 }
 
 void MacWindow::setFullscreen(bool fullscreen) {
