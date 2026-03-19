@@ -114,9 +114,11 @@ Font paths are hardcoded per platform in `NanoVGRenderContext.cpp`. Implement a 
 - **Windows:** DirectWrite (`IDWriteFontCollection::FindFamilyName`)
 - **Linux:** Fontconfig (`FcFontMatch`)
 
-### 5.2 Clipboard: Copy/Cut
+### ~~5.2 Clipboard: Copy/Cut~~ **Done**
 
-Paste works via SDL. `CopyCommand` and `CutCommand` are stubs (log only, no-op). Wire `SDL_SetClipboardText()` into them, using the focused text input's selection.
+~~Paste works via SDL. `CopyCommand` and `CutCommand` are stubs (log only, no-op). Wire `SDL_SetClipboardText()` into them, using the focused text input's selection.~~
+
+Implemented: `getSelectedText()`, `cutSelectedText()`, `selectAll()` added to `ViewInterface` → `ViewAdapter` → `View` chain with SFINAE detection. `CopyCommand`, `CutCommand`, `SelectAllCommand` now use `SDL_SetClipboardText()` via focused view. Cmd+C/V/X/A/Q shortcuts registered on macOS.
 
 ### 5.3 Headless Backend
 
@@ -232,9 +234,9 @@ std::string demangleTypeName(const char* name) {
 ### Short-term
 1. Wire `Property<T>` dirty notification to `Element*` back-pointer.
 2. Wire render command buffer into main pipeline.
-3. Implement clipboard copy/cut.
+3. ~~Implement clipboard copy/cut.~~ **Done**
 4. Fix `const_cast` usage in Views.
-5. Fix examples README.
+5. ~~Fix examples README.~~ **Done**
 
 ### Medium-term
 6. Unified event pipeline with capture/bubble.

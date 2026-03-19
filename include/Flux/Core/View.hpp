@@ -141,6 +141,11 @@ public:
     virtual void onMounted() {}
     virtual void onUnmounted() {}
 
+    // Clipboard / selection
+    virtual std::string getSelectedText() const { return ""; }
+    virtual std::string cutSelectedText() { return ""; }
+    virtual void selectAll() {}
+
     // Testing/accessibility introspection
     virtual std::string getTextContent() const { return ""; }
     virtual std::string getAccessibleValue() const { return ""; }
@@ -325,6 +330,23 @@ struct has_selected_bool<T, std::void_t<
     decltype(static_cast<bool>(std::declval<const T&>().selected))
 >> : std::true_type {};
 
+template<typename T, typename = void>
+struct has_selection_state : std::false_type {};
+template<typename T>
+struct has_selection_state<T, std::void_t<
+    decltype(std::declval<const T&>().selStart),
+    decltype(std::declval<const T&>().selEnd),
+    decltype(std::declval<const T&>().caretPos),
+    decltype(std::string{static_cast<std::string>(std::declval<const T&>().value)})
+>> : std::true_type {};
+
+template<typename T, typename = void>
+struct has_onValueChange : std::false_type {};
+template<typename T>
+struct has_onValueChange<T, std::void_t<
+    decltype(std::declval<const T&>().onValueChange)
+>> : std::true_type {};
+
 // Template wrapper that adapts ViewComponent to ViewInterface
 template<ViewComponent T>
 class ViewAdapter : public ViewInterface {
@@ -398,6 +420,11 @@ public:
     // Lifecycle
     void onMounted() override;
     void onUnmounted() override;
+
+    // Clipboard / selection
+    std::string getSelectedText() const override;
+    std::string cutSelectedText() override;
+    void selectAll() override;
 
     // Testing/accessibility introspection
     std::string getTextContent() const override;
@@ -552,6 +579,19 @@ public:
 
     void onUnmounted() {
         if (component_) component_->onUnmounted();
+    }
+
+    // Clipboard / selection delegation
+    std::string getSelectedText() const {
+        return component_ ? component_->getSelectedText() : "";
+    }
+
+    std::string cutSelectedText() {
+        return component_ ? component_->cutSelectedText() : "";
+    }
+
+    void selectAll() {
+        if (component_) component_->selectAll();
     }
 
     // Testing/accessibility introspection delegation
@@ -1049,6 +1089,54 @@ template<ViewComponent T>
 inline void ViewAdapter<T>::onUnmounted() {
     if constexpr (has_onUnmount<T>::value) {
         component.onUnmount();
+    }
+}
+
+template<ViewComponent T>
+inline std::string ViewAdapter<T>::getSelectedText() const {
+    if constexpr (has_selection_state<T>::value) {
+        if (component.selStart != component.selEnd) {
+            std::string val = component.value;
+            size_t sMin = std::min(component.selStart, component.selEnd);
+            size_t sMax = std::max(component.selStart, component.selEnd);
+            if (sMax <= val.size()) {
+                return val.substr(sMin, sMax - sMin);
+            }
+        }
+    }
+    return "";
+}
+
+template<ViewComponent T>
+inline std::string ViewAdapter<T>::cutSelectedText() {
+    if constexpr (has_selection_state<T>::value) {
+        if (component.selStart != component.selEnd) {
+            std::string val = component.value;
+            size_t sMin = std::min(component.selStart, component.selEnd);
+            size_t sMax = std::max(component.selStart, component.selEnd);
+            if (sMax <= val.size()) {
+                std::string selected = val.substr(sMin, sMax - sMin);
+                val.erase(sMin, sMax - sMin);
+                component.caretPos = sMin;
+                component.selStart = component.selEnd = sMin;
+                const_cast<Property<std::string>&>(component.value) = val;
+                if constexpr (has_onValueChange<T>::value) {
+                    if (component.onValueChange) component.onValueChange(val);
+                }
+                return selected;
+            }
+        }
+    }
+    return "";
+}
+
+template<ViewComponent T>
+inline void ViewAdapter<T>::selectAll() {
+    if constexpr (has_selection_state<T>::value) {
+        std::string val = component.value;
+        component.selStart = 0;
+        component.selEnd = component.caretPos = val.size();
+        requestApplicationRedraw();
     }
 }
 

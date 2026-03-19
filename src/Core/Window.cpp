@@ -100,6 +100,29 @@ struct Window::WindowImpl {
             {Key::A, KeyModifier::Ctrl},
             std::make_unique<SelectAllCommand>()
         );
+
+#ifdef __APPLE__
+        shortcutManager->registerShortcut(
+            {Key::Q, KeyModifier::Super},
+            std::make_unique<QuitCommand>()
+        );
+        shortcutManager->registerShortcut(
+            {Key::C, KeyModifier::Super},
+            std::make_unique<CopyCommand>()
+        );
+        shortcutManager->registerShortcut(
+            {Key::V, KeyModifier::Super},
+            std::make_unique<PasteCommand>()
+        );
+        shortcutManager->registerShortcut(
+            {Key::X, KeyModifier::Super},
+            std::make_unique<CutCommand>()
+        );
+        shortcutManager->registerShortcut(
+            {Key::A, KeyModifier::Super},
+            std::make_unique<SelectAllCommand>()
+        );
+#endif
     }
     
     void notifyObservers(std::function<void(WindowEventObserver*, Window*)> callback, Window* window) {

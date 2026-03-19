@@ -1,5 +1,6 @@
 #include <Flux/Core/ShortcutManager.hpp>
 #include <Flux/Core/Window.hpp>
+#include <Flux/Core/FocusState.hpp>
 #include <Flux/Core/Runtime.hpp>
 #include <Flux/Core/Log.hpp>
 #include <SDL3/SDL.h>
@@ -70,8 +71,14 @@ void QuitCommand::execute(Window& window) {
 }
 
 void CopyCommand::execute(Window& window) {
-    (void)window;
-    FLUX_LOG_DEBUG("[SHORTCUT] Copy");
+    View* focused = window.focus().getFocusedView();
+    if (!focused) return;
+
+    std::string selected = focused->getSelectedText();
+    if (!selected.empty()) {
+        SDL_SetClipboardText(selected.c_str());
+        FLUX_LOG_DEBUG("[SHORTCUT] Copy: \"%s\"", selected.c_str());
+    }
 }
 
 void PasteCommand::execute(Window& window) {
@@ -86,12 +93,21 @@ void PasteCommand::execute(Window& window) {
 }
 
 void CutCommand::execute(Window& window) {
-    (void)window;
-    FLUX_LOG_DEBUG("[SHORTCUT] Cut");
+    View* focused = window.focus().getFocusedView();
+    if (!focused) return;
+
+    std::string cut = focused->cutSelectedText();
+    if (!cut.empty()) {
+        SDL_SetClipboardText(cut.c_str());
+        FLUX_LOG_DEBUG("[SHORTCUT] Cut: \"%s\"", cut.c_str());
+    }
 }
 
 void SelectAllCommand::execute(Window& window) {
-    (void)window;
+    View* focused = window.focus().getFocusedView();
+    if (!focused) return;
+
+    focused->selectAll();
     FLUX_LOG_DEBUG("[SHORTCUT] Select All");
 }
 
