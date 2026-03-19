@@ -90,7 +90,11 @@ void GPUPlatformRenderer::updateDPIScale(float dpiScaleX, float dpiScaleY) {
 }
 
 void GPUPlatformRenderer::swapBuffers() {
-    // GPU backends handle presentation internally via device_->endFrame()
+}
+
+bool GPUPlatformRenderer::readPixels(int x, int y, int w, int h, std::vector<uint8_t>& out) {
+    if (!device_) return false;
+    return device_->readPixels(x, y, w, h, out);
 }
 
 } // namespace flux

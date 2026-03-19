@@ -5,6 +5,7 @@
 #ifdef __OBJC__
 #import <Metal/Metal.h>
 #import <QuartzCore/CAMetalLayer.h>
+#import <dispatch/dispatch.h>
 #endif
 
 struct SDL_Window;
@@ -93,6 +94,8 @@ public:
     void resize(uint32_t width, uint32_t height) override;
     PixelFormat swapchainFormat() const override;
 
+    bool readPixels(int x, int y, int w, int h, std::vector<uint8_t>& out) override;
+
 private:
     SDL_Window* window_;
     SDL_MetalView metalView_;
@@ -103,6 +106,12 @@ private:
     id<CAMetalDrawable> currentDrawable_;
     id<MTLCommandBuffer> currentCommandBuffer_;
     std::unique_ptr<MetalRenderPassEncoder> currentEncoder_;
+    dispatch_semaphore_t frameSemaphore_;
+
+    id<MTLTexture> readbackTexture_;
+    id<MTLBuffer> readbackBuffer_;
+    uint32_t readbackWidth_ = 0;
+    uint32_t readbackHeight_ = 0;
 };
 
 #endif // __OBJC__

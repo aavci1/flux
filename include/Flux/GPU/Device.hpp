@@ -2,6 +2,8 @@
 
 #include <Flux/GPU/Types.hpp>
 #include <memory>
+#include <vector>
+#include <cstdint>
 
 struct SDL_Window;
 
@@ -65,6 +67,12 @@ public:
 
     virtual void resize(uint32_t width, uint32_t height) = 0;
     virtual PixelFormat swapchainFormat() const = 0;
+
+    /// Read RGBA8 pixels from the last presented frame. Returns false if unsupported.
+    virtual bool readPixels(int x, int y, int w, int h, std::vector<uint8_t>& out) {
+        (void)x; (void)y; (void)w; (void)h; (void)out;
+        return false;
+    }
 };
 
 std::unique_ptr<Device> createDevice(Backend backend, SDL_Window* window);

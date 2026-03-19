@@ -138,6 +138,10 @@ RenderContext* SDLWindow::renderContext() {
     return renderer_ ? renderer_->renderContext() : nullptr;
 }
 
+PlatformRenderer* SDLWindow::platformRenderer() {
+    return renderer_.get();
+}
+
 void SDLWindow::swapBuffers() {
     if (window_ && glContext_) {
         SDL_GL_SwapWindow(window_);

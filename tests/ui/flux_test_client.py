@@ -161,6 +161,9 @@ class FluxAppProcess:
 
     def start(self):
         cmd = [self.executable, "--test-mode", "--test-port", str(self.port)] + self.extra_args
+        backend = os.environ.get("FLUX_TEST_BACKEND")
+        if backend:
+            cmd.extend(["--backend", backend])
         self.process = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,

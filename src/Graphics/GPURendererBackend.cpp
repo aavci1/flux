@@ -5,31 +5,62 @@
 #include <vector>
 #include <stdexcept>
 
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
+#elif defined(__linux__)
+#include <unistd.h>
+#include <climits>
+#endif
+
 namespace flux {
 
-// MSL shaders embedded as string literals for Metal.
-// SPIR-V loaded from compiled files for Vulkan.
-// These will be loaded from the generated shader directory.
-
-static const char* kSDFQuadVertMSL = nullptr;
-static const char* kRectFragMSL = nullptr;
-static const char* kCircleFragMSL = nullptr;
-static const char* kLineFragMSL = nullptr;
-
-static std::string readFileStr(const std::string& path) {
-    std::ifstream f(path);
-    if (!f) return {};
-    return {std::istreambuf_iterator<char>(f), std::istreambuf_iterator<char>()};
+static std::string getExeDir() {
+#ifdef __APPLE__
+    char buf[4096];
+    uint32_t size = sizeof(buf);
+    if (_NSGetExecutablePath(buf, &size) == 0) {
+        std::string p(buf);
+        auto pos = p.rfind('/');
+        if (pos != std::string::npos) return p.substr(0, pos + 1);
+    }
+#elif defined(__linux__)
+    char buf[PATH_MAX];
+    ssize_t len = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
+    if (len > 0) {
+        buf[len] = '\0';
+        std::string p(buf);
+        auto pos = p.rfind('/');
+        if (pos != std::string::npos) return p.substr(0, pos + 1);
+    }
+#endif
+    return {};
 }
 
-static std::vector<uint8_t> readFileBin(const std::string& path) {
-    std::ifstream f(path, std::ios::binary | std::ios::ate);
-    if (!f) return {};
-    auto sz = f.tellg();
-    std::vector<uint8_t> buf(static_cast<size_t>(sz));
-    f.seekg(0);
-    f.read(reinterpret_cast<char*>(buf.data()), sz);
-    return buf;
+static const std::string& shaderDir() {
+    static std::string dir = getExeDir() + "generated/shaders/";
+    return dir;
+}
+
+static std::string readFileStr(const std::string& name) {
+    // Try exe-relative path first, then CWD-relative fallback
+    for (const auto& base : {shaderDir(), std::string("generated/shaders/")}) {
+        std::ifstream f(base + name);
+        if (f) return {std::istreambuf_iterator<char>(f), std::istreambuf_iterator<char>()};
+    }
+    return {};
+}
+
+static std::vector<uint8_t> readFileBin(const std::string& name) {
+    for (const auto& base : {shaderDir(), std::string("generated/shaders/")}) {
+        std::ifstream f(base + name, std::ios::binary | std::ios::ate);
+        if (!f) continue;
+        auto sz = f.tellg();
+        std::vector<uint8_t> buf(static_cast<size_t>(sz));
+        f.seekg(0);
+        f.read(reinterpret_cast<char*>(buf.data()), sz);
+        return buf;
+    }
+    return {};
 }
 
 // Unit quad: 6 vertices (2 triangles), each is float2
@@ -64,16 +95,15 @@ void GPURendererBackend::ensurePipelines() {
     if (pipelinesReady_) return;
     ensureQuadVertexBuffer();
 
-    // Load shader sources from generated directory
-    static std::string vertMSLStr = readFileStr("generated/shaders/sdf_quad.vert.glsl.metal");
-    static std::string rectMSLStr = readFileStr("generated/shaders/rect.frag.glsl.metal");
-    static std::string circleMSLStr = readFileStr("generated/shaders/circle.frag.glsl.metal");
-    static std::string lineMSLStr = readFileStr("generated/shaders/line.frag.glsl.metal");
+    static std::string vertMSLStr = readFileStr("sdf_quad.vert.glsl.metal");
+    static std::string rectMSLStr = readFileStr("rect.frag.glsl.metal");
+    static std::string circleMSLStr = readFileStr("circle.frag.glsl.metal");
+    static std::string lineMSLStr = readFileStr("line.frag.glsl.metal");
 
-    static auto vertSPV = readFileBin("generated/shaders/sdf_quad.vert.glsl.spv");
-    static auto rectSPV = readFileBin("generated/shaders/rect.frag.glsl.spv");
-    static auto circleSPV = readFileBin("generated/shaders/circle.frag.glsl.spv");
-    static auto lineSPV = readFileBin("generated/shaders/line.frag.glsl.spv");
+    static auto vertSPV = readFileBin("sdf_quad.vert.glsl.spv");
+    static auto rectSPV = readFileBin("rect.frag.glsl.spv");
+    static auto circleSPV = readFileBin("circle.frag.glsl.spv");
+    static auto lineSPV = readFileBin("line.frag.glsl.spv");
 
     // Per-vertex layout: float2 position
     gpu::VertexBufferLayout vertLayout;
@@ -118,10 +148,10 @@ void GPURendererBackend::ensurePipelines() {
     linePipeline_ = makePipeline(lineMSLStr, lineSPV);
 
     // Glyph pipeline
-    static std::string glyphVertMSL = readFileStr("generated/shaders/glyph.vert.glsl.metal");
-    static std::string glyphFragMSL = readFileStr("generated/shaders/glyph.frag.glsl.metal");
-    static auto glyphVertSPV = readFileBin("generated/shaders/glyph.vert.glsl.spv");
-    static auto glyphFragSPV = readFileBin("generated/shaders/glyph.frag.glsl.spv");
+    static std::string glyphVertMSL = readFileStr("glyph.vert.glsl.metal");
+    static std::string glyphFragMSL = readFileStr("glyph.frag.glsl.metal");
+    static auto glyphVertSPV = readFileBin("glyph.vert.glsl.spv");
+    static auto glyphFragSPV = readFileBin("glyph.frag.glsl.spv");
 
     gpu::VertexBufferLayout glyphInstLayout;
     glyphInstLayout.stride = sizeof(GlyphInstance);
@@ -146,10 +176,10 @@ void GPURendererBackend::ensurePipelines() {
     }
 
     // Path pipeline — non-instanced, per-vertex color
-    static std::string pathVertMSL = readFileStr("generated/shaders/path.vert.glsl.metal");
-    static std::string pathFragMSL = readFileStr("generated/shaders/path.frag.glsl.metal");
-    static auto pathVertSPV = readFileBin("generated/shaders/path.vert.glsl.spv");
-    static auto pathFragSPV = readFileBin("generated/shaders/path.frag.glsl.spv");
+    static std::string pathVertMSL = readFileStr("path.vert.glsl.metal");
+    static std::string pathFragMSL = readFileStr("path.frag.glsl.metal");
+    static auto pathVertSPV = readFileBin("path.vert.glsl.spv");
+    static auto pathFragSPV = readFileBin("path.frag.glsl.spv");
 
     {
         gpu::VertexBufferLayout pathVertLayout;
@@ -173,10 +203,10 @@ void GPURendererBackend::ensurePipelines() {
     }
 
     // Image pipeline — instanced textured quads
-    static std::string imageVertMSL = readFileStr("generated/shaders/image.vert.glsl.metal");
-    static std::string imageFragMSL = readFileStr("generated/shaders/image.frag.glsl.metal");
-    static auto imageVertSPV = readFileBin("generated/shaders/image.vert.glsl.spv");
-    static auto imageFragSPV = readFileBin("generated/shaders/image.frag.glsl.spv");
+    static std::string imageVertMSL = readFileStr("image.vert.glsl.metal");
+    static std::string imageFragMSL = readFileStr("image.frag.glsl.metal");
+    static auto imageVertSPV = readFileBin("image.vert.glsl.spv");
+    static auto imageFragSPV = readFileBin("image.frag.glsl.spv");
 
     {
         gpu::VertexBufferLayout imgInstLayout;

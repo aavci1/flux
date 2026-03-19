@@ -33,6 +33,8 @@ public:
 
     void swapBuffers() override;
 
+    bool readPixels(int x, int y, int w, int h, std::vector<uint8_t>& out) override;
+
     NVGcontext* nvgContext() const { return nvgContext_; }
 };
 

@@ -58,7 +58,7 @@ struct Window::WindowImpl {
             cfg.fullscreen
         );
         
-        FLUX_LOG_INFO("Using %s + NanoVG backend", factory->getPlatformName().c_str());
+        FLUX_LOG_INFO("Using %s backend", factory->getPlatformName().c_str());
         
         // Create renderer
         renderer = std::make_unique<ImmediateModeRenderer>(platformWindow->renderContext());

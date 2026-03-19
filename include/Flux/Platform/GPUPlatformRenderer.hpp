@@ -28,6 +28,8 @@ public:
 
     void swapBuffers() override;
 
+    bool readPixels(int x, int y, int w, int h, std::vector<uint8_t>& out) override;
+
     void setWindow(SDL_Window* window) { window_ = window; }
     gpu::Device* device() const { return device_.get(); }
 

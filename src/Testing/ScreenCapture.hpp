@@ -2,14 +2,10 @@
 
 #include <Flux/Core/Window.hpp>
 #include <Flux/Platform/PlatformWindow.hpp>
+#include <Flux/Platform/PlatformRenderer.hpp>
 #include <vector>
 #include <mutex>
 #include <cstring>
-#ifdef __APPLE__
-#include <OpenGL/gl.h>
-#else
-#include <GL/gl.h>
-#endif
 #include "stb_image_write.h"
 
 namespace flux {
@@ -28,20 +24,14 @@ public:
         int h = static_cast<int>(logicalSize.height * dpiY);
         if (w <= 0 || h <= 0) return;
 
-        std::vector<uint8_t> pixels(w * h * 4);
-        glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+        auto* renderer = pw->platformRenderer();
+        if (!renderer) return;
 
-        int stride = w * 4;
-        std::vector<uint8_t> row(stride);
-        for (int y = 0; y < h / 2; y++) {
-            uint8_t* top = pixels.data() + y * stride;
-            uint8_t* bot = pixels.data() + (h - 1 - y) * stride;
-            std::memcpy(row.data(), top, stride);
-            std::memcpy(top, bot, stride);
-            std::memcpy(bot, row.data(), stride);
-        }
+        std::vector<uint8_t> pixels;
+        if (!renderer->readPixels(0, 0, w, h, pixels)) return;
 
-        for (int i = 3; i < w * h * 4; i += 4) {
+        // Force alpha to 255 for screenshot output
+        for (size_t i = 3; i < pixels.size(); i += 4) {
             pixels[i] = 255;
         }
 
@@ -52,7 +42,7 @@ public:
                 auto* bytes = static_cast<uint8_t*>(data);
                 buf->insert(buf->end(), bytes, bytes + size);
             },
-            &pngBuf, w, h, 4, pixels.data(), stride
+            &pngBuf, w, h, 4, pixels.data(), w * 4
         );
 
         std::lock_guard<std::mutex> lock(mutex_);

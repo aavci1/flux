@@ -9,6 +9,8 @@
 
 #include <nanovg_gl.h>
 #include <Flux/Core/Log.hpp>
+#include <cstring>
+#include <vector>
 
 namespace flux {
 
@@ -84,6 +86,24 @@ void NanoVGRenderer::updateDPIScale(float dpiScaleX, float dpiScaleY) {
 }
 
 void NanoVGRenderer::swapBuffers() {
+}
+
+bool NanoVGRenderer::readPixels(int x, int y, int w, int h, std::vector<uint8_t>& out) {
+    if (w <= 0 || h <= 0) return false;
+    out.resize(static_cast<size_t>(w) * h * 4);
+    glReadPixels(x, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, out.data());
+
+    // glReadPixels returns bottom-up; flip to top-down
+    int stride = w * 4;
+    std::vector<uint8_t> row(stride);
+    for (int iy = 0; iy < h / 2; iy++) {
+        uint8_t* top = out.data() + iy * stride;
+        uint8_t* bot = out.data() + (h - 1 - iy) * stride;
+        std::memcpy(row.data(), top, stride);
+        std::memcpy(top, bot, stride);
+        std::memcpy(bot, row.data(), stride);
+    }
+    return true;
 }
 
 } // namespace flux

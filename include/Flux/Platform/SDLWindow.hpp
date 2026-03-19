@@ -31,6 +31,7 @@ public:
     unsigned int windowID() const override;
 
     RenderContext* renderContext() override;
+    PlatformRenderer* platformRenderer() override;
     void swapBuffers() override;
 
     float dpiScaleX() const override;

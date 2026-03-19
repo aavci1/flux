@@ -262,11 +262,13 @@ MetalDevice::MetalDevice(SDL_Window* window)
     layer_ = (__bridge CAMetalLayer*)SDL_Metal_GetLayer(metalView_);
     layer_.device = device_;
     layer_.pixelFormat = MTLPixelFormatBGRA8Unorm;
-    layer_.framebufferOnly = YES;
+    layer_.framebufferOnly = NO;
 
     int w, h;
     SDL_GetWindowSizeInPixels(window_, &w, &h);
     layer_.drawableSize = CGSizeMake(w, h);
+
+    frameSemaphore_ = dispatch_semaphore_create(1);
 }
 
 MetalDevice::~MetalDevice() {
@@ -292,11 +294,20 @@ std::unique_ptr<RenderPipeline> MetalDevice::createRenderPipeline(const RenderPi
 }
 
 bool MetalDevice::beginFrame() {
+    dispatch_semaphore_wait(frameSemaphore_, DISPATCH_TIME_FOREVER);
+
     currentDrawable_ = [layer_ nextDrawable];
-    if (!currentDrawable_) return false;
+    if (!currentDrawable_) {
+        dispatch_semaphore_signal(frameSemaphore_);
+        return false;
+    }
 
     currentCommandBuffer_ = [commandQueue_ commandBuffer];
-    return currentCommandBuffer_ != nil;
+    if (!currentCommandBuffer_) {
+        dispatch_semaphore_signal(frameSemaphore_);
+        return false;
+    }
+    return true;
 }
 
 RenderPassEncoder* MetalDevice::beginRenderPass(const RenderPassDesc& desc) {
@@ -341,8 +352,47 @@ void MetalDevice::endRenderPass() {
 
 void MetalDevice::endFrame() {
     if (currentDrawable_ && currentCommandBuffer_) {
+        id<MTLTexture> drawableTex = currentDrawable_.texture;
+        uint32_t tw = static_cast<uint32_t>(drawableTex.width);
+        uint32_t th = static_cast<uint32_t>(drawableTex.height);
+
+        if (readbackWidth_ != tw || readbackHeight_ != th) {
+            readbackWidth_ = tw;
+            readbackHeight_ = th;
+
+            MTLTextureDescriptor* desc = [[MTLTextureDescriptor alloc] init];
+            desc.width = tw;
+            desc.height = th;
+            desc.pixelFormat = MTLPixelFormatBGRA8Unorm;
+            desc.storageMode = MTLStorageModeManaged;
+            desc.usage = MTLTextureUsageShaderRead;
+            readbackTexture_ = [device_ newTextureWithDescriptor:desc];
+
+            readbackBuffer_ = [device_ newBufferWithLength:(NSUInteger)tw * th * 4
+                                                   options:MTLResourceStorageModeShared];
+        }
+
+        id<MTLBlitCommandEncoder> blit = [currentCommandBuffer_ blitCommandEncoder];
+        [blit copyFromTexture:drawableTex
+                  sourceSlice:0
+                  sourceLevel:0
+                 sourceOrigin:MTLOriginMake(0, 0, 0)
+                   sourceSize:MTLSizeMake(tw, th, 1)
+                    toTexture:readbackTexture_
+             destinationSlice:0
+             destinationLevel:0
+            destinationOrigin:MTLOriginMake(0, 0, 0)];
+        [blit synchronizeTexture:readbackTexture_ slice:0 level:0];
+        [blit endEncoding];
+
+        __block dispatch_semaphore_t sem = frameSemaphore_;
+        [currentCommandBuffer_ addCompletedHandler:^(id<MTLCommandBuffer>) {
+            dispatch_semaphore_signal(sem);
+        }];
         [currentCommandBuffer_ presentDrawable:currentDrawable_];
         [currentCommandBuffer_ commit];
+    } else {
+        dispatch_semaphore_signal(frameSemaphore_);
     }
     currentCommandBuffer_ = nil;
     currentDrawable_ = nil;
@@ -354,6 +404,36 @@ void MetalDevice::resize(uint32_t width, uint32_t height) {
 
 PixelFormat MetalDevice::swapchainFormat() const {
     return PixelFormat::BGRA8;
+}
+
+bool MetalDevice::readPixels(int x, int y, int w, int h, std::vector<uint8_t>& out) {
+    if (!readbackTexture_ || w <= 0 || h <= 0) return false;
+
+    // Wait for the last frame to finish so readbackTexture_ is populated
+    dispatch_semaphore_wait(frameSemaphore_, DISPATCH_TIME_FOREVER);
+    dispatch_semaphore_signal(frameSemaphore_);
+
+    uint32_t tw = static_cast<uint32_t>(readbackTexture_.width);
+    uint32_t th = static_cast<uint32_t>(readbackTexture_.height);
+    uint32_t rx = static_cast<uint32_t>(std::max(x, 0));
+    uint32_t ry = static_cast<uint32_t>(std::max(y, 0));
+    uint32_t rw = std::min(static_cast<uint32_t>(w), tw - rx);
+    uint32_t rh = std::min(static_cast<uint32_t>(h), th - ry);
+
+    out.resize(static_cast<size_t>(rw) * rh * 4);
+    NSUInteger bpr = rw * 4;
+
+    [readbackTexture_ getBytes:out.data()
+                   bytesPerRow:bpr
+                    fromRegion:MTLRegionMake2D(rx, ry, rw, rh)
+                   mipmapLevel:0];
+
+    // BGRA → RGBA conversion
+    for (size_t i = 0; i < out.size(); i += 4) {
+        std::swap(out[i], out[i + 2]);
+    }
+
+    return true;
 }
 
 std::unique_ptr<Device> createMetalDevice(SDL_Window* window) {
