@@ -50,13 +50,12 @@ struct Rect {
 struct EdgeInsets {
     float top, right, bottom, left;
 
-    EdgeInsets() : top(0), right(0), bottom(0), left(0) {}
-    EdgeInsets(float all) : top(all), right(all), bottom(all), left(all) {}
-    EdgeInsets(float v, float h) : top(v), right(h), bottom(v), left(h) {}
-    EdgeInsets(float t, float r, float b, float l) : top(t), right(r), bottom(b), left(l) {}
+    constexpr EdgeInsets() : top(0), right(0), bottom(0), left(0) {}
+    constexpr EdgeInsets(float all) : top(all), right(all), bottom(all), left(all) {}
+    constexpr EdgeInsets(float v, float h) : top(v), right(h), bottom(v), left(h) {}
+    constexpr EdgeInsets(float t, float r, float b, float l) : top(t), right(r), bottom(b), left(l) {}
 
-    // Enable: .padding = 20
-    EdgeInsets& operator=(float value) {
+    constexpr EdgeInsets& operator=(float value) {
         top = right = bottom = left = value;
         return *this;
     }

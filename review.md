@@ -216,14 +216,14 @@ std::string demangleTypeName(const char* name) {
 
 ## 8. Quick Fixes (Independent)
 
-| Fix | File(s) | Effort |
-|-----|---------|--------|
-| Remove `const_cast` throughout Views (SelectInput, TextInput, TextArea, DropdownMenu) | `Views/*.hpp` | 1 hour |
-| Fix examples README listing nonexistent examples (02, 07, 08, etc.) and outdated Wayland-only requirements | `examples/README.md` | 15 min |
-| Add `.clang-format` for consistent formatting | Project root | 15 min |
-| Add `.clang-tidy` for static analysis | Project root | 15 min |
-| Make `EdgeInsets` constructors `constexpr` | `Types.hpp` | 10 min |
-| Move `CursorType` out of `Types.hpp` into platform layer | `Types.hpp`, `PlatformWindow.hpp` | 30 min |
+| Fix | File(s) | Effort | Status |
+|-----|---------|--------|--------|
+| Remove `const_cast` throughout Views (SelectInput, TextInput, TextArea, DropdownMenu) | `Views/*.hpp` | 1 hour | |
+| ~~Fix examples README listing nonexistent examples (02, 07, 08, etc.) and outdated Wayland-only requirements~~ | `examples/README.md` | 15 min | **Done** |
+| ~~Add `.clang-format` for consistent formatting~~ | Project root | 15 min | **Done** |
+| ~~Add `.clang-tidy` for static analysis~~ | Project root | 15 min | **Done** |
+| ~~Make `EdgeInsets` constructors `constexpr`~~ | `Types.hpp` | 10 min | **Done** |
+| Move `CursorType` out of `Types.hpp` into platform layer | `Types.hpp`, `PlatformWindow.hpp` | 30 min | |
 
 ---
 
