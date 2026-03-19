@@ -1,23 +1,48 @@
 #include <Flux/Platform/SDLWindow.hpp>
+#include <Flux/Platform/NanoVGRenderer.hpp>
+#include <Flux/Platform/GPUPlatformRenderer.hpp>
 #include <Flux/Core/Window.hpp>
+#include <Flux/Core/Log.hpp>
 #include <stdexcept>
 
 namespace flux {
 
 std::unordered_map<SDL_WindowID, SDLWindow*> SDLWindow::windowMap_;
 
-SDLWindow::SDLWindow(const std::string& title, const Size& size, bool resizable, bool fullscreen)
+SDLWindow::SDLWindow(const std::string& title, const Size& size, bool resizable, bool fullscreen,
+                     RenderBackendType backend)
     : size_(size)
     , fullscreen_(fullscreen)
+    , backendType_(backend)
 {
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
-    SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    bool useGPU = (backend != RenderBackendType::NanoVG);
 
-    Uint64 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_HIGH_PIXEL_DENSITY;
+    if (useGPU && backend == RenderBackendType::GPU_Auto) {
+#ifdef __APPLE__
+        backendType_ = RenderBackendType::GPU_Metal;
+#else
+        backendType_ = RenderBackendType::GPU_Vulkan;
+#endif
+    }
+
+    if (!useGPU) {
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+        SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+        SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    }
+
+    Uint64 flags = SDL_WINDOW_HIGH_PIXEL_DENSITY;
     if (resizable) flags |= SDL_WINDOW_RESIZABLE;
     if (fullscreen) flags |= SDL_WINDOW_FULLSCREEN;
+
+    if (!useGPU) {
+        flags |= SDL_WINDOW_OPENGL;
+    } else if (backendType_ == RenderBackendType::GPU_Metal) {
+        flags |= SDL_WINDOW_METAL;
+    } else {
+        flags |= SDL_WINDOW_VULKAN;
+    }
 
     window_ = SDL_CreateWindow(
         title.c_str(),
@@ -30,24 +55,38 @@ SDLWindow::SDLWindow(const std::string& title, const Size& size, bool resizable,
         throw std::runtime_error(std::string("Failed to create SDL window: ") + SDL_GetError());
     }
 
-    glContext_ = SDL_GL_CreateContext(window_);
-    if (!glContext_) {
-        SDL_DestroyWindow(window_);
-        window_ = nullptr;
-        throw std::runtime_error(std::string("Failed to create GL context: ") + SDL_GetError());
-    }
-
-    SDL_GL_MakeCurrent(window_, glContext_);
-    SDL_GL_SetSwapInterval(1);
-
     float dpi = SDL_GetWindowDisplayScale(window_);
 
-    renderer_ = std::make_unique<NanoVGRenderer>();
-    if (!renderer_->initialize(
-            static_cast<int>(size.width),
-            static_cast<int>(size.height),
-            dpi, dpi)) {
-        throw std::runtime_error("Failed to initialize NanoVG renderer");
+    if (!useGPU) {
+        glContext_ = SDL_GL_CreateContext(window_);
+        if (!glContext_) {
+            SDL_DestroyWindow(window_);
+            window_ = nullptr;
+            throw std::runtime_error(std::string("Failed to create GL context: ") + SDL_GetError());
+        }
+        SDL_GL_MakeCurrent(window_, glContext_);
+        SDL_GL_SetSwapInterval(1);
+
+        auto nanoRenderer = std::make_unique<NanoVGRenderer>();
+        if (!nanoRenderer->initialize(
+                static_cast<int>(size.width),
+                static_cast<int>(size.height),
+                dpi, dpi)) {
+            throw std::runtime_error("Failed to initialize NanoVG renderer");
+        }
+        renderer_ = std::move(nanoRenderer);
+    } else {
+        auto gpuBackendEnum = (backendType_ == RenderBackendType::GPU_Metal)
+            ? gpu::Backend::Metal : gpu::Backend::Vulkan;
+        auto gpuRenderer = std::make_unique<GPUPlatformRenderer>(gpuBackendEnum);
+        gpuRenderer->setWindow(window_);
+        if (!gpuRenderer->initialize(
+                static_cast<int>(size.width),
+                static_cast<int>(size.height),
+                dpi, dpi)) {
+            throw std::runtime_error("Failed to initialize GPU renderer");
+        }
+        renderer_ = std::move(gpuRenderer);
     }
 
     windowMap_[SDL_GetWindowID(window_)] = this;

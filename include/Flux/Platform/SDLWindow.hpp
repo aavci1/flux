@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Flux/Platform/PlatformWindow.hpp>
-#include <Flux/Platform/NanoVGRenderer.hpp>
+#include <Flux/Platform/PlatformRenderer.hpp>
 #include <Flux/Core/KeyEvent.hpp>
 #include <SDL3/SDL.h>
 #include <string>
@@ -12,9 +12,17 @@ namespace flux {
 
 class Window;
 
+enum class RenderBackendType {
+    NanoVG,
+    GPU_Metal,
+    GPU_Vulkan,
+    GPU_Auto
+};
+
 class SDLWindow : public PlatformWindow {
 public:
-    SDLWindow(const std::string& title, const Size& size, bool resizable, bool fullscreen);
+    SDLWindow(const std::string& title, const Size& size, bool resizable, bool fullscreen,
+              RenderBackendType backend = RenderBackendType::NanoVG);
     ~SDLWindow() override;
 
     void resize(const Size& newSize) override;
@@ -45,8 +53,9 @@ public:
 private:
     SDL_Window* window_ = nullptr;
     SDL_GLContext glContext_ = nullptr;
-    std::unique_ptr<NanoVGRenderer> renderer_;
+    std::unique_ptr<PlatformRenderer> renderer_;
     Window* fluxWindow_ = nullptr;
+    RenderBackendType backendType_ = RenderBackendType::NanoVG;
 
     Size size_;
     bool fullscreen_ = false;

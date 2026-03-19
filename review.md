@@ -205,10 +205,14 @@ FreeType-based glyph rasterization packed into a GPU texture atlas. Instanced gl
 - **Image rendering**: `ImageCache` loads images via `stb_image`, creates GPU textures, caches by path/id. Instanced textured quad rendering with the image pipeline.
 - **Clipping**: Scissor-rect based clipping from `CmdClipPath` bounds.
 
-### 10.6 Record-Only Mode, Make Custom Renderer Default
+### ~~10.6 Record-Only Mode, Make Custom Renderer Default~~ **Done**
 
-- Switch `Renderer` from dual-write (NanoVG + record) to record-only mode.
-- Make `GPURendererBackend` the default render backend.
-- Framework optimizations: text cache, dirty subtrees, visible line culling.
-- Runtime backend selection (Metal/Vulkan).
-- Optional: MSDF text, analytical path AA.
+- `GPURenderContext`: record-only `RenderContext` that writes commands into a `RenderCommandBuffer`, never calls NanoVG. On `present()`, feeds the buffer to `GPURendererBackend::execute()`.
+- `GPUPlatformRenderer`: `PlatformRenderer` implementation owning `Device`, `GPURendererBackend`, `GPURenderContext`, `ImageCache`.
+- `SDLWindow` constructor accepts `RenderBackendType` enum: `NanoVG` (default, OpenGL window), `GPU_Metal` (Metal window), `GPU_Vulkan` (Vulkan window), `GPU_Auto` (platform default).
+- `SDLWindowFactory::setRenderBackend()` for programmatic selection.
+- Runtime CLI flag `--backend metal|vulkan|gpu|nanovg` parsed in `Runtime` constructor.
+- Text measurement cache in `GPURenderContext`: `unordered_map<{text, font, size}, Size>` cleared every 300 frames.
+- NanoVG remains as compile-time fallback (default when no `--backend` specified).
+
+**Remaining:** Dirty-subtree rendering, visible line culling, MSDF text for large sizes.

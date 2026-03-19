@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Flux/Core/Types.hpp>
+#include <Flux/Platform/SDLWindow.hpp>
 #include <memory>
 #include <string>
 
@@ -36,8 +37,12 @@ public:
 
     std::string getPlatformName() const override { return "SDL3"; }
 
+    void setRenderBackend(RenderBackendType backend) { backend_ = backend; }
+    RenderBackendType renderBackend() const { return backend_; }
+
 private:
     bool sdlInitialized_ = false;
+    RenderBackendType backend_ = RenderBackendType::NanoVG;
 };
 
 PlatformWindowFactory* getDefaultPlatformFactory();

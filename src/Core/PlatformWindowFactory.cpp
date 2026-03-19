@@ -25,7 +25,7 @@ std::unique_ptr<PlatformWindow> SDLWindowFactory::createWindow(
     bool resizable,
     bool fullscreen
 ) {
-    return std::make_unique<SDLWindow>(title, size, resizable, fullscreen);
+    return std::make_unique<SDLWindow>(title, size, resizable, fullscreen, backend_);
 }
 
 PlatformWindowFactory* getDefaultPlatformFactory() {

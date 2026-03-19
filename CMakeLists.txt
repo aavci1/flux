@@ -152,6 +152,8 @@ set(FLUX_SOURCES
     src/Graphics/GlyphAtlas.cpp
     src/Graphics/PathFlattener.cpp
     src/Graphics/ImageCache.cpp
+    src/Graphics/GPURenderContext.cpp
+    src/Platform/GPUPlatformRenderer.cpp
 
     # Testing
     src/Testing/ScreenCaptureImpl.cpp

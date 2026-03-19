@@ -1,5 +1,6 @@
 #include <Flux/Core/Runtime.hpp>
 #include <Flux/Core/Window.hpp>
+#include <Flux/Core/PlatformWindowFactory.hpp>
 #include <Flux/Platform/PlatformWindow.hpp>
 #include <Flux/Core/Log.hpp>
 #include <algorithm>
@@ -39,6 +40,19 @@ Runtime::Runtime(int argc, char** argv) {
             testMode_ = true;
         } else if (std::strcmp(argv[i], "--test-port") == 0 && i + 1 < argc) {
             testPort_ = std::atoi(argv[++i]);
+        } else if (std::strcmp(argv[i], "--backend") == 0 && i + 1 < argc) {
+            const char* b = argv[++i];
+            auto* factory = dynamic_cast<SDLWindowFactory*>(getDefaultPlatformFactory());
+            if (factory) {
+                if (std::strcmp(b, "metal") == 0)
+                    factory->setRenderBackend(RenderBackendType::GPU_Metal);
+                else if (std::strcmp(b, "vulkan") == 0)
+                    factory->setRenderBackend(RenderBackendType::GPU_Vulkan);
+                else if (std::strcmp(b, "gpu") == 0)
+                    factory->setRenderBackend(RenderBackendType::GPU_Auto);
+                else if (std::strcmp(b, "nanovg") == 0)
+                    factory->setRenderBackend(RenderBackendType::NanoVG);
+            }
         }
     }
 }

@@ -51,6 +51,7 @@ public:
 
     bool loadFont(const std::string& path, uint16_t fontIndex = 0);
     bool loadFontByName(const std::string& name, FontWeight weight, uint16_t fontIndex = 0);
+    bool hasFont(uint16_t fontIndex = 0) const { return faces_.count(fontIndex) > 0; }
 
     const GlyphInfo* getGlyph(uint32_t codepoint, uint16_t fontSize, uint16_t fontIndex = 0);
 
