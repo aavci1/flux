@@ -180,10 +180,10 @@ See `examples/` directory (32 examples):
 - **14-svg-demo** - SVG rendering
 - **15-render-context-demo** - Custom drawing with RenderContext
 - **17-login-manager** - Form layout example
-- **19-clock** - Animated clock with custom rendering
+- **clock** - Animated clock with custom rendering
 - **22-grid-demo** - Grid layout demonstration
 - **23-spacer-grid-demo** - Grid with spacers
-- **24-calculator** - Full calculator implementation
+- **calculator** - Full calculator implementation
 - **25-cursor-demo** - Custom cursor types
 - **26-declarative-cursor** - Declarative cursor API
 - **27-focus-keyboard-demo** - Focus management and keyboard input

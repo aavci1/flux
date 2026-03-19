@@ -312,24 +312,15 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(BUILD_EXAMPLES "Build example applications" ON)
 
 if(BUILD_EXAMPLES)
-    add_executable(shapes examples/shapes/main.cpp)
-    target_link_libraries(shapes PRIVATE flux)
-
-    add_executable(clock examples/19-clock/main.cpp)
+    add_executable(clock examples/clock/main.cpp)
     target_link_libraries(clock PRIVATE flux)
 
-    add_executable(calculator examples/24-calculator/main.cpp)
+    add_executable(calculator examples/calculator/main.cpp)
     target_link_libraries(calculator PRIVATE flux)
 
     add_executable(llm_studio examples/llm-studio/main.cpp)
     target_include_directories(llm_studio PRIVATE ${CMAKE_SOURCE_DIR}/examples/llm-studio)
     target_link_libraries(llm_studio PRIVATE flux)
-
-    add_executable(gpu_test examples/gpu-test/main.cpp)
-    target_link_libraries(gpu_test PRIVATE flux)
-
-    add_executable(gpu_shapes_test examples/gpu-test/shapes_test.cpp)
-    target_link_libraries(gpu_shapes_test PRIVATE flux)
 
 endif()
 

@@ -4,7 +4,7 @@ This directory contains examples demonstrating core Flux concepts.
 
 ## Examples Overview
 
-### 19. Clock (~50 lines)
+### Clock (~50 lines)
 **Concepts:** Custom rendering, real-time updates, trigonometry, animation
 
 An analog clock rendered with custom drawing, demonstrating:
@@ -12,7 +12,7 @@ An analog clock rendered with custom drawing, demonstrating:
 - Custom drawing with lines and circles
 - Trigonometric calculations for clock hands
 
-### 24. Calculator (~240 lines)
+### Calculator (~240 lines)
 **Concepts:** Complex state management, arithmetic operations, Grid layout with colspan/rowspan, reactive UI updates
 
 A fully functional calculator application featuring:
@@ -33,7 +33,7 @@ A multi-view LLM chat studio application featuring:
 - Chat view with message bubbles
 - Settings view with configuration options
 - Hub view for model browsing
-- Custom theme system
+- Flux defaults for colors and typography
 - Modular component architecture
 
 ## Building Examples
@@ -54,8 +54,8 @@ make
 
 ## Learning Path
 
-1. **19-clock**: Custom rendering and real-time updates
-2. **24-calculator**: Complex state management and grid layout
+1. **clock**: Custom rendering and real-time updates
+2. **calculator**: Complex state management and grid layout
 3. **llm-studio**: Multi-view architecture and sidebars
 
 ## Example Structure

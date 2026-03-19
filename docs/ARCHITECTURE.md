@@ -78,7 +78,7 @@ flux/
     ├── 03-counter/
     ├── 04-todo-app/
     ├── 11-automotive-dashboard/
-    ├── 24-calculator/
+    ├── calculator/
     ├── 27-focus-keyboard-demo/
     ├── 28-event-system-demo/
     ├── 29-color-picker/
