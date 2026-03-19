@@ -40,6 +40,8 @@ public:
 
     void setFluxWindow(Window* window) override;
 
+    void setWindowTranslucency(bool enabled);
+
 private:
     SDL_Window* window_ = nullptr;
     SDL_GLContext glContext_ = nullptr;

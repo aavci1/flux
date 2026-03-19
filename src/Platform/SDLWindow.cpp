@@ -129,6 +129,11 @@ void SDLWindow::setFluxWindow(Window* window) {
     fluxWindow_ = window;
 }
 
+void SDLWindow::setWindowTranslucency(bool /*enabled*/) {
+    // No-op for now. Future: macOS NSVisualEffectView / Windows DwmSetWindowAttribute
+}
+
+
 void SDLWindow::setCursor(CursorType cursor) {
     if (cursor == currentCursor_) return;
     currentCursor_ = cursor;

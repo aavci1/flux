@@ -176,3 +176,39 @@ Added `ci.yml` for macOS/Linux/Windows, `.clang-format` and `.clang-tidy` added 
 13. Accessibility.
 14. ~~CI/CD on all platforms.~~ **Done**
 15. Header hygiene.
+
+---
+
+## 10. Custom GPU Renderer
+
+A native GPU rendering pipeline built from scratch, replacing NanoVG as the sole rendering backend.
+
+### ~~10.1 flux::gpu Abstraction Layer + Metal Backend~~ **Done**
+
+Thin C++ abstraction over Device, Buffer, Texture, RenderPipeline, RenderPassEncoder. Metal backend implemented with drawable management, shader compilation via SPIR-V → MSL cross-compilation pipeline.
+
+### ~~10.2 Vulkan Backend~~ **Done**
+
+Full Vulkan backend with VMA for memory management. Handles instance/device creation, swapchain, render passes, command buffers, synchronization. MoltenVK portability extensions on macOS.
+
+### ~~10.3 SDF Shape Shaders + CommandCompiler + Instanced Batching~~ **Done**
+
+SDF fragment shaders for rounded rects, circles, lines. `CommandCompiler` walks `RenderCommandBuffer` and produces batched `SDFQuadInstance` data. `GPURendererBackend` implements `RenderBackend` using `flux::gpu`. Instanced draw calls for all shape types.
+
+### ~~10.4 GlyphAtlas + FreeType Text Rendering~~ **Done**
+
+FreeType-based glyph rasterization packed into a GPU texture atlas. Instanced glyph rendering with per-glyph screen rect, UV rect, and color. Text measurement and layout (single-line and word-wrapped text box).
+
+### ~~10.5 libtess2 Path Rendering, Images, Clipping~~ **Done**
+
+- **Path rendering**: `PathFlattener` converts `Path` objects (including Bezier curves) into polylines via recursive subdivision, then tessellates using `libtess2` for fill and stroke. Non-instanced triangle rendering.
+- **Image rendering**: `ImageCache` loads images via `stb_image`, creates GPU textures, caches by path/id. Instanced textured quad rendering with the image pipeline.
+- **Clipping**: Scissor-rect based clipping from `CmdClipPath` bounds.
+
+### 10.6 Record-Only Mode, Make Custom Renderer Default
+
+- Switch `Renderer` from dual-write (NanoVG + record) to record-only mode.
+- Make `GPURendererBackend` the default render backend.
+- Framework optimizations: text cache, dirty subtrees, visible line culling.
+- Runtime backend selection (Metal/Vulkan).
+- Optional: MSDF text, analytical path AA.

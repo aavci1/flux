@@ -1,0 +1,72 @@
+#pragma once
+
+#include <Flux/GPU/Types.hpp>
+#include <memory>
+
+struct SDL_Window;
+
+namespace flux::gpu {
+
+class Texture;
+
+struct RenderPassDesc {
+    Texture* colorTarget = nullptr;
+    LoadAction loadAction = LoadAction::Clear;
+    ClearColor clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
+};
+
+class Buffer {
+public:
+    virtual ~Buffer() = default;
+    virtual void write(const void* data, size_t size, size_t offset = 0) = 0;
+    virtual size_t size() const = 0;
+};
+
+class Texture {
+public:
+    virtual ~Texture() = default;
+    virtual void write(const void* data, uint32_t x, uint32_t y, uint32_t w, uint32_t h) = 0;
+    virtual uint32_t width() const = 0;
+    virtual uint32_t height() const = 0;
+};
+
+class RenderPipeline {
+public:
+    virtual ~RenderPipeline() = default;
+};
+
+class RenderPassEncoder {
+public:
+    virtual ~RenderPassEncoder() = default;
+    virtual void setPipeline(RenderPipeline* pipeline) = 0;
+    virtual void setVertexBuffer(uint32_t slot, Buffer* buffer, size_t offset = 0) = 0;
+    virtual void setIndexBuffer(Buffer* buffer) = 0;
+    virtual void setFragmentTexture(uint32_t slot, Texture* texture) = 0;
+    virtual void setScissorRect(uint32_t x, uint32_t y, uint32_t w, uint32_t h) = 0;
+    virtual void draw(uint32_t vertexCount, uint32_t instanceCount = 1,
+                      uint32_t firstVertex = 0, uint32_t firstInstance = 0) = 0;
+    virtual void drawIndexed(uint32_t indexCount, uint32_t instanceCount = 1,
+                             uint32_t firstIndex = 0, uint32_t firstInstance = 0) = 0;
+    virtual void end() = 0;
+};
+
+class Device {
+public:
+    virtual ~Device() = default;
+
+    virtual std::unique_ptr<Buffer> createBuffer(const BufferDesc& desc) = 0;
+    virtual std::unique_ptr<Texture> createTexture(const TextureDesc& desc) = 0;
+    virtual std::unique_ptr<RenderPipeline> createRenderPipeline(const RenderPipelineDesc& desc) = 0;
+
+    virtual bool beginFrame() = 0;
+    virtual RenderPassEncoder* beginRenderPass(const RenderPassDesc& desc) = 0;
+    virtual void endRenderPass() = 0;
+    virtual void endFrame() = 0;
+
+    virtual void resize(uint32_t width, uint32_t height) = 0;
+    virtual PixelFormat swapchainFormat() const = 0;
+};
+
+std::unique_ptr<Device> createDevice(Backend backend, SDL_Window* window);
+
+} // namespace flux::gpu

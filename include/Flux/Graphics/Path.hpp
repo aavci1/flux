@@ -144,6 +144,7 @@ private:
     
     friend class NanoVGRenderContext;
     friend class NanoVGBackend;
+    friend class PathFlattener;
 };
 
 } // namespace flux
