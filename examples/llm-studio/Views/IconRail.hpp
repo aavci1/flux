@@ -26,27 +26,28 @@ struct IconRailButton {
     }
 
     void render(RenderContext& ctx, const Rect& bounds) const {
+        const Theme& th = ctx.environment().theme;
         bool isActive = active;
         bool isHovered = ctx.isCurrentViewHovered();
         bool isPressed = ctx.isCurrentViewPressed();
 
         if (isActive) {
             Rect indicator = {bounds.x, bounds.y + 6, 3, bounds.height - 12};
-            ctx.setFillStyle(FillStyle::solid(Colors::blue));
+            ctx.setFillStyle(FillStyle::solid(th.accent));
             ctx.drawRect(indicator, CornerRadius(1.5f));
         }
 
         if (isPressed) {
-            ctx.setFillStyle(FillStyle::solid(Colors::lightGray.darken(0.05f)));
+            ctx.setFillStyle(FillStyle::solid(th.surfaceElevated.darken(0.08f)));
             ctx.drawRect(bounds, CornerRadius(4.0f));
         } else if (isHovered) {
-            ctx.setFillStyle(FillStyle::solid(Colors::lightGray));
+            ctx.setFillStyle(FillStyle::solid(th.surfaceElevated));
             ctx.drawRect(bounds, CornerRadius(4.0f));
         }
 
-        Color iconColor = isActive ? Colors::blue
-                        : isHovered ? Colors::black
-                        : Colors::darkGray;
+        Color iconColor = isActive ? th.accent
+                        : isHovered ? th.foreground
+                        : th.secondaryForeground;
         ctx.setTextStyle(TextStyle::regular("default", Typography::body));
         ctx.setFillStyle(FillStyle::solid(iconColor));
         ctx.drawText(static_cast<std::string>(icon), bounds.center(),
@@ -70,9 +71,9 @@ struct IconRailView {
 
         return VStack{
             .spacing = 4.0f,
-            .backgroundColor = Colors::lightGray,
+            .backgroundColor = Theme::dark().surface,
             .padding = EdgeInsets(8.0f, 0.0f, 8.0f, 0.0f),
-            .borderColor = Colors::gray,
+            .borderColor = Theme::dark().border,
             .borderWidth = 1.0f,
             .minWidth = 48.0f,
             .maxWidth = 48.0f,

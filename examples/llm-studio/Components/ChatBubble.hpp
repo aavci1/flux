@@ -33,7 +33,8 @@ struct ChatBubble {
         std::string roleLabel = isUser ? "you" : "assistant";
         std::string timeStr = formatTime(msg.timestamp);
 
-        Color bubbleBg = isUser ? Colors::blue.opacity(0.12f) : Colors::white;
+        Theme d = Theme::dark();
+        Color bubbleBg = isUser ? d.accent.opacity(0.22f) : d.surfaceElevated;
 
         std::vector<View> contentViews;
 
@@ -45,13 +46,13 @@ struct ChatBubble {
                     .value = roleLabel,
                     .fontSize = Typography::subheadline,
                     .fontWeight = FontWeight::semibold,
-                    .color = isUser ? Colors::blue : Colors::darkGray,
+                    .color = isUser ? d.accent : d.secondaryForeground,
                     .horizontalAlignment = HorizontalAlignment::leading
                 },
                 Text{
                     .value = timeStr,
                     .fontSize = Typography::caption,
-                    .color = Colors::darkGray,
+                    .color = d.secondaryForeground,
                     .horizontalAlignment = HorizontalAlignment::trailing
                 }
             }
@@ -84,7 +85,7 @@ struct ChatBubble {
                 .backgroundColor = bubbleBg,
                 .padding = EdgeInsets(12.0f, 16.0f, 12.0f, 16.0f),
                 .cornerRadius = 8.0f,
-                .borderColor = Colors::gray,
+                .borderColor = d.borderStrong,
                 .borderWidth = 1.0f,
                 .expansionBias = 1.0f,
                 .maxWidth = 600.0f,
@@ -98,7 +99,7 @@ struct ChatBubble {
                 .backgroundColor = bubbleBg,
                 .padding = EdgeInsets(12.0f, 16.0f, 12.0f, 16.0f),
                 .cornerRadius = 8.0f,
-                .borderColor = Colors::gray,
+                .borderColor = d.borderStrong,
                 .borderWidth = 1.0f,
                 .expansionBias = 1.0f,
                 .maxWidth = 600.0f,

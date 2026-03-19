@@ -39,6 +39,7 @@ struct AppRoot {
     View body() const {
         if (!state) return VStack{};
 
+        Theme palette = Theme::dark();
         AppPage page = state->currentPage;
         bool showSidebars = (page == AppPage::CHAT);
 
@@ -55,12 +56,16 @@ struct AppRoot {
             children.push_back(ModelConfigSidebar{.state = state});
         }
 
-        return HStack{
-            .spacing = 0.0f,
-            .alignItems = AlignItems::stretch,
-            .backgroundColor = Colors::white,
+        return EnvironmentProvider<ThemeKey>{
+            .value = palette,
             .expansionBias = 1.0f,
-            .children = std::move(children)
+            .child = HStack{
+                .spacing = 0.0f,
+                .alignItems = AlignItems::stretch,
+                .backgroundColor = palette.background,
+                .expansionBias = 1.0f,
+                .children = std::move(children)
+            }
         };
     }
 };

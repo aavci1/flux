@@ -30,16 +30,17 @@ struct ChatHistoryItem {
     }
 
     void render(RenderContext& ctx, const Rect& bounds) const {
+        const Theme& th = ctx.environment().theme;
         bool isHovered = ctx.isCurrentViewHovered();
         bool isPressed = ctx.isCurrentViewPressed();
         bool active = isActive;
 
         if (!active) {
             if (isPressed) {
-                ctx.setFillStyle(FillStyle::solid(Colors::lightGray.darken(0.05f)));
+                ctx.setFillStyle(FillStyle::solid(th.surfaceElevated.darken(0.06f)));
                 ctx.drawRect(bounds, CornerRadius(0));
             } else if (isHovered) {
-                ctx.setFillStyle(FillStyle::solid(Colors::lightGray));
+                ctx.setFillStyle(FillStyle::solid(th.surfaceElevated));
                 ctx.drawRect(bounds, CornerRadius(0));
             }
         }
@@ -48,9 +49,10 @@ struct ChatHistoryItem {
     View body() const {
         ChatSession s = session;
         bool active = isActive;
+        Theme d = Theme::dark();
 
-        Color bg = active ? Colors::blue.opacity(0.15f) : Colors::transparent;
-        Color leftBorder = active ? Colors::blue : Colors::transparent;
+        Color bg = active ? d.accent.opacity(0.22f) : Colors::transparent;
+        Color leftBorder = active ? d.accent : Colors::transparent;
 
         std::string title = s.title;
         if (title.empty()) title = "New Chat";
@@ -77,6 +79,7 @@ struct ChatHistoryItem {
                         Text{
                             .value = title,
                             .fontWeight = FontWeight::medium,
+                            .color = d.foreground,
                             .horizontalAlignment = HorizontalAlignment::leading
                         },
                         HStack{
@@ -86,18 +89,18 @@ struct ChatHistoryItem {
                                 Text{
                                     .value = timeStr,
                                     .fontSize = Typography::caption,
-                                    .color = Colors::darkGray,
+                                    .color = d.secondaryForeground,
                                     .horizontalAlignment = HorizontalAlignment::leading
                                 },
                                 Text{
                                     .value = std::string(" \xC2\xB7 "),
                                     .fontSize = Typography::caption,
-                                    .color = Colors::darkGray
+                                    .color = d.secondaryForeground
                                 },
                                 Text{
                                     .value = msgCount,
                                     .fontSize = Typography::caption,
-                                    .color = Colors::darkGray,
+                                    .color = d.secondaryForeground,
                                     .horizontalAlignment = HorizontalAlignment::leading
                                 }
                             }
@@ -117,13 +120,14 @@ struct SidebarView {
     View body() const {
         if (!state) return VStack{};
 
+        Theme d = Theme::dark();
         bool expanded = state->leftSidebarExpanded;
         float sidebarW = expanded ? 260.0f : 48.0f;
 
         if (!expanded) {
             return VStack{
-                .backgroundColor = Colors::lightGray,
-                .borderColor = Colors::gray,
+                .backgroundColor = d.surface,
+                .borderColor = d.border,
                 .borderWidth = 1.0f,
                 .minWidth = sidebarW,
                 .maxWidth = sidebarW,
@@ -131,7 +135,7 @@ struct SidebarView {
                     Button{
                         .text = std::string("\xE2\x89\xA1"),
                         .backgroundColor = Colors::transparent,
-                        .textColor = Colors::black,
+                        .textColor = d.foreground,
                         .padding = EdgeInsets(12),
                         .onClick = [this]() { state->leftSidebarExpanded = true; }
                     }
@@ -167,12 +171,12 @@ struct SidebarView {
                         .children = {
                             Text{
                                 .value = std::string("No chat history"),
-                                .color = Colors::darkGray.opacity(0.55f)
+                                .color = d.secondaryForeground.opacity(0.75f)
                             },
                             Text{
                                 .value = std::string("Start a new chat to begin."),
                                 .fontSize = Typography::subheadline,
-                                .color = Colors::darkGray.opacity(0.45f)
+                                .color = d.tertiaryForeground
                             }
                         }
                     }
@@ -185,8 +189,8 @@ struct SidebarView {
 
         return VStack{
             .spacing = 0.0f,
-            .backgroundColor = Colors::lightGray,
-            .borderColor = Colors::gray,
+            .backgroundColor = d.surface,
+            .borderColor = d.border,
             .borderWidth = 1.0f,
             .minWidth = sidebarW,
             .maxWidth = sidebarW,
@@ -201,13 +205,13 @@ struct SidebarView {
                             .value = std::string("Chats"),
                             .fontSize = Typography::subheadline,
                             .fontWeight = FontWeight::semibold,
-                            .color = Colors::darkGray,
+                            .color = d.foreground,
                             .horizontalAlignment = HorizontalAlignment::leading
                         },
                         Button{
                             .text = std::string("\xC3\x97"),
                             .backgroundColor = Colors::transparent,
-                            .textColor = Colors::black,
+                            .textColor = d.foreground,
                             .padding = EdgeInsets(4),
                             .onClick = [this]() { state->leftSidebarExpanded = false; }
                         }
@@ -216,13 +220,14 @@ struct SidebarView {
 
                 Button{
                     .text = std::string("+ New Chat"),
-                    .backgroundColor = Colors::blue,
+                    .backgroundColor = d.accent,
+                    .textColor = d.onAccent,
                     .padding = EdgeInsets(8, 12, 8, 12),
                     .cornerRadius = 4.0f,
                     .onClick = [this]() { state->createNewChat(); }
                 },
 
-                Divider{.borderColor = Colors::gray},
+                Divider{.borderColor = d.border},
 
                 listContent
             }

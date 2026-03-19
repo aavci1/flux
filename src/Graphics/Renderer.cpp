@@ -7,6 +7,7 @@
 #include <Flux/Core/Runtime.hpp>
 #include <Flux/Core/Property.hpp>
 #include <Flux/Core/EventTypes.hpp>
+#include <Flux/Core/Environment.hpp>
 #include <optional>
 #include <vector>
 
@@ -16,7 +17,7 @@ void Renderer::renderFrame(const Rect& bounds) {
     if (!renderContext_) return;
 
     renderContext_->beginFrame();
-    renderContext_->clear(Color(1, 1, 1, 1));
+    renderContext_->clearEnvironmentStack();
 
     if (rootView_.operator->()) {
         if (window_) {
@@ -28,6 +29,9 @@ void Renderer::renderFrame(const Rect& bounds) {
         resumeRedrawRequests();
         cachedBounds_ = bounds;
         layoutCacheValid_ = true;
+
+        Environment rootEnv = cachedLayoutTree_.environment.value_or(Environment::defaults());
+        renderContext_->clear(rootEnv.theme.background);
 
         // Reconcile persistent element tree
         if (!rootElement_) {
@@ -67,6 +71,8 @@ void Renderer::renderFrame(const Rect& bounds) {
         if (window_) {
             window_->processPendingEvents(cachedLayoutTree_);
         }
+    } else {
+        renderContext_->clear(Color(1, 1, 1, 1));
     }
 
     // Present the frame
@@ -240,6 +246,8 @@ bool Renderer::dispatchPointerEvent(LayoutNode& root, PointerEvent& event) {
 }
 
 void Renderer::renderTree(LayoutNode& node, Element* element, Point parentOrigin) {
+    renderContext_->pushEnvironment(node.environment.value_or(Environment::defaults()));
+
     // Register focusable elements and capture the assigned key
     std::string assignedFocusKey;
     if (window_ && node.view.canBeFocused() && element) {
@@ -276,6 +284,7 @@ void Renderer::renderTree(LayoutNode& node, Element* element, Point parentOrigin
     }
 
     renderContext_->restore();
+    renderContext_->popEnvironment();
 }
 
 void Renderer::handleEvent(const struct Event& event, const Rect& windowBounds) {
@@ -308,6 +317,7 @@ void Renderer::handleEvent(const struct Event& event, const Rect& windowBounds) 
         cachedBounds_.x != windowBounds.x || cachedBounds_.y != windowBounds.y ||
         cachedBounds_.width != windowBounds.width || cachedBounds_.height != windowBounds.height) {
         suppressRedrawRequests();
+        renderContext_->clearEnvironmentStack();
         cachedLayoutTree_ = rootView_.layout(*renderContext_, windowBounds);
         resumeRedrawRequests();
         cachedBounds_ = windowBounds;

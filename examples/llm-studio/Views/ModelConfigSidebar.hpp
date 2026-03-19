@@ -33,10 +33,12 @@ struct ModelConfigSidebar {
         bool expanded = state->rightSidebarExpanded;
         float sidebarW = expanded ? 280.0f : 48.0f;
 
+        Theme d = Theme::dark();
+
         if (!expanded) {
             return VStack{
-                .backgroundColor = Colors::lightGray,
-                .borderColor = Colors::gray,
+                .backgroundColor = d.surface,
+                .borderColor = d.border,
                 .borderWidth = 1.0f,
                 .minWidth = sidebarW,
                 .maxWidth = sidebarW,
@@ -44,7 +46,7 @@ struct ModelConfigSidebar {
                     Button{
                         .text = std::string("\xE2\x89\xA1"),
                         .backgroundColor = Colors::transparent,
-                        .textColor = Colors::black,
+                        .textColor = d.foreground,
                         .padding = EdgeInsets(12),
                         .onClick = [this]() { state->rightSidebarExpanded = true; }
                     }
@@ -68,7 +70,7 @@ struct ModelConfigSidebar {
                     statusDot = "\xE2\x97\x8F";
                     break;
                 case ModelLoadState::LOADING:
-                    statusColor = Colors::blue;
+                    statusColor = Theme::dark().accent;
                     statusDot = "\xE2\x97\x8F";
                     break;
                 case ModelLoadState::ERROR:
@@ -81,8 +83,8 @@ struct ModelConfigSidebar {
 
         return VStack{
             .spacing = 0.0f,
-            .backgroundColor = Colors::lightGray,
-            .borderColor = Colors::gray,
+            .backgroundColor = d.surface,
+            .borderColor = d.border,
             .borderWidth = 1.0f,
             .minWidth = sidebarW,
             .maxWidth = sidebarW,
@@ -97,20 +99,20 @@ struct ModelConfigSidebar {
                             .value = std::string("Configuration"),
                             .fontSize = Typography::subheadline,
                             .fontWeight = FontWeight::semibold,
-                            .color = Colors::darkGray,
+                            .color = d.foreground,
                             .horizontalAlignment = HorizontalAlignment::leading
                         },
                         Button{
                             .text = std::string("\xC3\x97"),
                             .backgroundColor = Colors::transparent,
-                            .textColor = Colors::black,
+                            .textColor = d.foreground,
                             .padding = EdgeInsets(4),
                             .onClick = [this]() { state->rightSidebarExpanded = false; }
                         }
                     }
                 },
 
-                Divider{.borderColor = Colors::gray},
+                Divider{.borderColor = d.border},
 
                 ScrollArea{
                     .expansionBias = 1.0f,
@@ -132,13 +134,14 @@ struct ModelConfigSidebar {
                                         Text{
                                             .value = modelName,
                                             .fontWeight = FontWeight::medium,
+                                            .color = d.foreground,
                                             .horizontalAlignment = HorizontalAlignment::leading,
                                             .expansionBias = 1.0f
                                         }
                                     }
                                 },
 
-                                Divider{.borderColor = Colors::gray},
+                                Divider{.borderColor = d.border},
 
                                 makeParamSlider("Temperature", params.temperature, 0.0f, 2.0f, 0.1f,
                                     [this](float v) { state->updateActiveSession([v](ChatSession& s) { s.params.temperature = v; }); }),
@@ -147,7 +150,7 @@ struct ModelConfigSidebar {
                                 makeParamSlider("Max Tokens", static_cast<float>(params.maxTokens), 256.0f, 8192.0f, 256.0f,
                                     [this](float v) { state->updateActiveSession([v](ChatSession& s) { s.params.maxTokens = static_cast<int>(v); }); }),
 
-                                Divider{.borderColor = Colors::gray},
+                                Divider{.borderColor = d.border},
 
                                 VStack{
                                     .spacing = 12.0f,
@@ -155,7 +158,7 @@ struct ModelConfigSidebar {
                                         Text{
                                             .value = std::string("System Prompt"),
                                             .fontSize = Typography::subheadline,
-                                            .color = Colors::darkGray,
+                                            .color = d.secondaryForeground,
                                             .horizontalAlignment = HorizontalAlignment::leading
                                         },
                                         TextArea{

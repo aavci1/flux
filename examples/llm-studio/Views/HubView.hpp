@@ -38,10 +38,10 @@ struct ModelCardView {
 
         return VStack{
             .spacing = 8.0f,
-            .backgroundColor = Colors::white,
+            .backgroundColor = Theme::dark().surfaceElevated,
             .padding = 16.0f,
             .cornerRadius = 8.0f,
-            .borderColor = Colors::gray,
+            .borderColor = Theme::dark().borderStrong,
             .borderWidth = 1.0f,
             .children = {
                 Text{
@@ -158,6 +158,7 @@ struct HubView {
     View body() const {
         if (!state) return VStack{};
 
+        Theme d = Theme::dark();
         std::vector<ModelCard> results = state->searchResults;
         std::optional<DownloadJob> dl = state->activeDownload;
 
@@ -172,7 +173,7 @@ struct HubView {
         if (resultViews.empty()) {
             resultViews.push_back(Text{
                 .value = std::string("Search for models on HuggingFace above."),
-                .color = Colors::darkGray,
+                .color = d.secondaryForeground,
                 .padding = 32.0f
             });
         }
@@ -198,7 +199,8 @@ struct HubView {
                 },
                 Button{
                     .text = std::string("Search"),
-                    .backgroundColor = Colors::blue,
+                    .backgroundColor = d.accent,
+                    .textColor = d.onAccent,
                     .padding = EdgeInsets(8, 16, 8, 16),
                     .cornerRadius = 4.0f,
                     .onClick = [this]() { populateSearchResults(); }
@@ -228,7 +230,7 @@ struct HubView {
             }
         });
 
-        mainChildren.push_back(Divider{.borderColor = Colors::gray});
+        mainChildren.push_back(Divider{.borderColor = d.border});
 
         mainChildren.push_back(ScrollArea{
             .expansionBias = 1.0f,
@@ -243,10 +245,10 @@ struct HubView {
         });
 
         if (dl.has_value()) {
-            mainChildren.push_back(Divider{.borderColor = Colors::gray});
+            mainChildren.push_back(Divider{.borderColor = d.border});
             mainChildren.push_back(VStack{
                 .spacing = 8.0f,
-                .backgroundColor = Colors::lightGray,
+                .backgroundColor = d.surface,
                 .padding = EdgeInsets(12.0f, 16.0f, 12.0f, 16.0f),
                 .children = {
                     HStack{
@@ -264,7 +266,7 @@ struct HubView {
                                 .value = std::format("{:.0f}%", dl->progress * 100),
                                 .fontSize = Typography::subheadline,
                                 .fontWeight = FontWeight::bold,
-                                .color = Colors::blue
+                                .color = d.accent
                             },
                             Button{
                                 .text = std::string("Cancel"),
@@ -280,8 +282,8 @@ struct HubView {
                     ProgressBar{
                         .value = dl->progress,
                         .height = 6.0f,
-                        .fillColor = Colors::blue,
-                        .trackColor = Colors::gray
+                        .fillColor = d.accent,
+                        .trackColor = d.border
                     }
                 }
             });

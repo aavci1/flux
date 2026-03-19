@@ -1,12 +1,14 @@
 #pragma once
 
 #include <Flux/Core/Types.hpp>
+#include <Flux/Core/Environment.hpp>
 #include <Flux/Core/Property.hpp>
 #include <Flux/Core/ViewHelpers.hpp>
 #include <Flux/Core/KeyEvent.hpp>
 #include <Flux/Core/EventTypes.hpp>
 #include <Flux/Graphics/RenderContext.hpp>
 #include <memory>
+#include <optional>
 #include <vector>
 #include <functional>
 #include <optional>
@@ -659,6 +661,9 @@ struct LayoutNode {
     std::optional<View> resolvedBody;  // Result of body() call
     std::optional<std::vector<View>> resolvedChildren;  // Result of children lambda evaluation
 
+    /** Environment in effect for this node; set explicitly by EnvironmentProvider or by View::layout. */
+    std::optional<Environment> environment;
+
     LayoutNode() : view(), bounds() {}
     LayoutNode(const View& v, const Rect& b) : view(v), bounds(b) {}
     LayoutNode(const View& v, const Rect& b, std::vector<LayoutNode>&& c)
@@ -674,6 +679,9 @@ inline LayoutNode View::layout(RenderContext& ctx, const Rect& bounds) const {
     // position in TextInput).  Re-attach the caller's View so the
     // LayoutNode shares the same ViewAdapter across frames.
     node.view = *this;
+    if (!node.environment.has_value()) {
+        node.environment = ctx.environment();
+    }
     return node;
 }
 
@@ -686,6 +694,7 @@ inline LayoutNode ViewAdapter<T>::layout(RenderContext& ctx, const Rect& bounds)
     } else {
         // Default layout: resolve body() and children, store results in LayoutNode
         LayoutNode node(View(component), bounds);
+        node.environment = ctx.environment();
 
         if constexpr (has_body<T>::value) {
             node.resolvedBody = getCachedBody();

@@ -37,10 +37,10 @@ struct ModelPickerCard {
 
         return VStack{
             .spacing = 4.0f,
-            .backgroundColor = Colors::white,
+            .backgroundColor = Theme::dark().surfaceElevated,
             .padding = EdgeInsets(12.0f, 16.0f, 12.0f, 16.0f),
             .cornerRadius = 8.0f,
-            .borderColor = Colors::gray,
+            .borderColor = Theme::dark().borderStrong,
             .borderWidth = 1.0f,
             .minWidth = 200.0f,
             .children = {
@@ -55,17 +55,17 @@ struct ModelPickerCard {
                         Text{
                             .value = m.quantization,
                             .fontSize = Typography::caption,
-                            .color = Colors::darkGray
+                            .color = Theme::dark().secondaryForeground
                         },
                         Text{
                             .value = std::string("\xC2\xB7"),
                             .fontSize = Typography::caption,
-                            .color = Colors::darkGray
+                            .color = Theme::dark().secondaryForeground
                         },
                         Text{
                             .value = sizeStr,
                             .fontSize = Typography::caption,
-                            .color = Colors::darkGray
+                            .color = Theme::dark().secondaryForeground
                         }
                     }
                 }
@@ -89,6 +89,8 @@ struct ChatView {
         bool hasSession = session.has_value();
         bool hasModel = hasSession && session->model.has_value();
         std::vector<ChatMessage> msgs = hasSession ? session->messages : std::vector<ChatMessage>{};
+
+        Theme d = Theme::dark();
 
         if (!hasSession) {
             return buildWelcomeView(installedModels);
@@ -130,11 +132,11 @@ struct ChatView {
                             Text{
                                 .value = std::string("LLM Studio"),
                                 .fontWeight = FontWeight::bold,
-                                .color = Colors::darkGray.opacity(0.35f)
+                                .color = d.secondaryForeground
                             },
                             Text{
                                 .value = std::string("Model: ") + modelName + ". Start a conversation.",
-                                .color = Colors::darkGray
+                                .color = d.foreground
                             }
                         }
                     }
@@ -143,7 +145,7 @@ struct ChatView {
         }
 
         std::string sendLabel = generating ? "Stop" : "Send";
-        Color sendColor = generating ? Colors::red : Colors::blue;
+        Color sendColor = generating ? Colors::red : d.accent;
 
         return VStack{
             .spacing = 0.0f,
@@ -160,11 +162,11 @@ struct ChatView {
                     }
                 },
 
-                Divider{.borderColor = Colors::gray},
+                Divider{.borderColor = d.border},
 
                 VStack{
                     .spacing = 8.0f,
-                    .backgroundColor = Colors::lightGray,
+                    .backgroundColor = d.surface,
                     .padding = EdgeInsets(12.0f, 16.0f, 12.0f, 16.0f),
                     .children = {
                         HStack{
@@ -185,6 +187,7 @@ struct ChatView {
                                 Button{
                                     .text = sendLabel,
                                     .backgroundColor = sendColor,
+                                    .textColor = generating ? Colors::white : d.onAccent,
                                     .padding = EdgeInsets(10, 20, 10, 20),
                                     .cornerRadius = 8.0f,
                                     .onClick = [this, generating]() {
@@ -205,6 +208,7 @@ struct ChatView {
 
 private:
     View buildWelcomeView(const std::vector<ModelInfo>& /*models*/) const {
+        Theme d = Theme::dark();
         return VStack{
             .spacing = 24.0f,
             .padding = EdgeInsets(48.0f),
@@ -217,11 +221,11 @@ private:
                         Text{
                             .value = std::string("LLM Studio"),
                             .fontWeight = FontWeight::bold,
-                            .color = Colors::darkGray.opacity(0.35f)
+                            .color = d.foreground
                         },
                         Text{
                             .value = std::string("Create a new chat from the sidebar to get started."),
-                            .color = Colors::darkGray
+                            .color = d.secondaryForeground
                         }
                     }
                 },
@@ -231,6 +235,7 @@ private:
     }
 
     View buildModelPickerView(const std::vector<ModelInfo>& models) const {
+        Theme d = Theme::dark();
         std::vector<View> modelCards;
         for (const auto& m : models) {
             ModelInfo captured = m;
@@ -252,11 +257,12 @@ private:
                 .children = {
                     Text{
                         .value = std::string("No models installed."),
-                        .color = Colors::darkGray
+                        .color = d.secondaryForeground
                     },
                     Button{
                         .text = std::string("Browse Models"),
-                        .backgroundColor = Colors::blue,
+                        .backgroundColor = d.accent,
+                        .textColor = d.onAccent,
                         .padding = EdgeInsets(8, 16, 8, 16),
                         .cornerRadius = 4.0f,
                         .onClick = [this]() { state->currentPage = AppPage::MODELS; }
@@ -277,10 +283,11 @@ private:
                         Text{
                             .value = std::string("Select a Model"),
                             .fontWeight = FontWeight::bold,
+                            .color = d.foreground,
                         },
                         Text{
                             .value = std::string("Choose a model to start chatting."),
-                            .color = Colors::darkGray
+                            .color = d.secondaryForeground
                         }
                     },
                     .padding = EdgeInsets(0, 0, 16.0f, 0)

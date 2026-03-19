@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Flux/Core/Environment.hpp>
 #include <Flux/Core/Types.hpp>
 #include <Flux/Graphics/Path.hpp>
 #include <string>
@@ -505,6 +506,28 @@ public:
     void setRecordingBuffer(class RenderCommandBuffer* buffer) { recordingBuffer_ = buffer; }
     class RenderCommandBuffer* recordingBuffer() const { return recordingBuffer_; }
 
+    // Environment (theme, etc.) — inherited during layout/render
+    const Environment& environment() const {
+        static const Environment kDefault = Environment::defaults();
+        if (environmentStack_.empty()) {
+            return kDefault;
+        }
+        return environmentStack_.back();
+    }
+
+    void pushEnvironment(const Environment& env) { environmentStack_.push_back(env); }
+
+    void popEnvironment() {
+        if (!environmentStack_.empty()) {
+            environmentStack_.pop_back();
+        }
+    }
+
+    void clearEnvironmentStack() { environmentStack_.clear(); }
+
+    /** Shorthand for `environment().theme`. */
+    const Theme& theme() const { return environment().theme; }
+
 protected:
     // Focus / hover / pressed state (shared across all backends)
     std::string globalFocusedKey_;
@@ -517,6 +540,8 @@ protected:
     bool hasPressed_ = false;
 
     class RenderCommandBuffer* recordingBuffer_ = nullptr;
+
+    std::vector<Environment> environmentStack_;
 };
 
 } // namespace flux

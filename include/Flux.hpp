@@ -4,6 +4,8 @@
 // Main header - includes everything
 
 #include <Flux/Core/Types.hpp>
+#include <Flux/Core/Theme.hpp>
+#include <Flux/Core/Environment.hpp>
 #include <Flux/Core/Property.hpp>
 #include <Flux/Core/View.hpp>
 #include <Flux/Core/ViewHelpers.hpp>
@@ -20,6 +22,7 @@
 #include <Flux/Views/CodeBlock.hpp>
 #include <Flux/Views/Dialog.hpp>
 #include <Flux/Views/Divider.hpp>
+#include <Flux/Views/EnvironmentProvider.hpp>
 #include <Flux/Views/DropdownMenu.hpp>
 #include <Flux/Views/Grid.hpp>
 #include <Flux/Views/HStack.hpp>
