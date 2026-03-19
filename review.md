@@ -194,9 +194,11 @@ Platform mapping:
 - **macOS:** NSAccessibility
 - **Windows:** UI Automation
 
-### 7.3 CI/CD
+### ~~7.3 CI/CD~~ **Done**
 
-Add `.github/workflows/ci.yml` for all three platforms, `.clang-format`, and `.clang-tidy`.
+~~Add `.github/workflows/ci.yml` for all three platforms, `.clang-format`, and `.clang-tidy`.~~
+
+Added `ci.yml` for macOS/Linux/Windows, `.clang-format` and `.clang-tidy` added in earlier batch.
 
 ### ~~7.4 Portability: demangleTypeName MSVC Fallback~~ **Done**
 
