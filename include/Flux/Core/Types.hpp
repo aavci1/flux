@@ -44,6 +44,9 @@ struct Rect {
     constexpr bool contains(const Point& p) const {
         return p.x >= x && p.x <= x + width && p.y >= y && p.y <= y + height;
     }
+    constexpr Rect inset(float amount) const {
+        return {x + amount, y + amount, width - amount * 2, height - amount * 2};
+    }
     constexpr bool operator==(const Rect& other) const = default;
 };
 
@@ -71,7 +74,7 @@ struct CornerRadius {
 
     constexpr CornerRadius() : topLeft(0), topRight(0), bottomRight(0), bottomLeft(0) {}
     constexpr CornerRadius(float all) : topLeft(all), topRight(all), bottomRight(all), bottomLeft(all) {}
-    constexpr CornerRadius(float tl, float tr, float br, float bl) 
+    constexpr CornerRadius(float tl, float tr, float br, float bl)
         : topLeft(tl), topRight(tr), bottomRight(br), bottomLeft(bl) {}
 
     // Enable: .cornerRadius = 20.0f
