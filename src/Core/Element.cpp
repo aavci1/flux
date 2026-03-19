@@ -18,6 +18,7 @@ Element& Element::operator=(Element&&) noexcept = default;
 std::unique_ptr<Element> Element::buildTree(const LayoutNode& node, size_t index) {
     auto element = std::make_unique<Element>();
     element->typeName = node.view.getTypeName();
+    element->key = node.view.getKey();
     element->structuralIndex = index;
     element->description = std::make_unique<View>(node.view);
     element->cachedBounds = node.bounds;
@@ -34,6 +35,7 @@ std::unique_ptr<Element> Element::buildTree(const LayoutNode& node, size_t index
 void Element::reconcile(const LayoutNode& newNode) {
     *description = newNode.view;
     typeName = newNode.view.getTypeName();
+    key = newNode.view.getKey();
 
     bool boundsChanged = (cachedBounds.x != newNode.bounds.x ||
                           cachedBounds.y != newNode.bounds.y ||
@@ -56,14 +58,28 @@ void Element::reconcileChildren(const std::vector<LayoutNode>& newChildren) {
     for (size_t i = 0; i < newChildren.size(); ++i) {
         const auto& newChild = newChildren[i];
         std::string newTypeName = newChild.view.getTypeName();
+        std::string newKey = newChild.view.getKey();
 
         int matchIdx = -1;
-        for (size_t j = 0; j < children.size(); ++j) {
-            if (!oldMatched[j] &&
-                children[j]->typeName == newTypeName &&
-                children[j]->structuralIndex == i) {
-                matchIdx = static_cast<int>(j);
-                break;
+
+        if (!newKey.empty()) {
+            for (size_t j = 0; j < children.size(); ++j) {
+                if (!oldMatched[j] && children[j]->key == newKey) {
+                    matchIdx = static_cast<int>(j);
+                    break;
+                }
+            }
+        }
+
+        if (matchIdx < 0) {
+            for (size_t j = 0; j < children.size(); ++j) {
+                if (!oldMatched[j] &&
+                    children[j]->key.empty() &&
+                    children[j]->typeName == newTypeName &&
+                    children[j]->structuralIndex == i) {
+                    matchIdx = static_cast<int>(j);
+                    break;
+                }
             }
         }
 

@@ -13,6 +13,7 @@ struct LayoutNode;
 class Element {
 public:
     std::string typeName;
+    std::string key;
     size_t structuralIndex = 0;
 
     std::unique_ptr<View> description;

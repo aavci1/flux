@@ -27,17 +27,11 @@ struct StatefulValue {
 
 ---
 
-## 2. Element Tree: Key-Based Identity
+## ~~2. Element Tree: Key-Based Identity~~ **Done**
 
-The current reconciliation matches children by `typeName` + `structuralIndex` only. There is no support for explicit key-based identity.
+~~The current reconciliation matches children by `typeName` + `structuralIndex` only. There is no support for explicit key-based identity.~~
 
-**Design:** Add a `key` field to `Element`. When a view specifies `.key = "some-key"`, the reconciler uses it for matching instead of structural index:
-
-```cpp
-Button { .key = "submit-button", .text = "Submit" }
-```
-
-Update `reconcileChildren()` to prefer key-based matching when keys are present, falling back to structural identity.
+Implemented: `key` property added to `FLUX_VIEW_PROPERTIES`, propagated through `ViewInterface` → `ViewAdapter` → `View` → `Element`. `reconcileChildren()` now matches by key first (when present), falling back to typeName+structuralIndex for unkeyed elements.
 
 ---
 
@@ -231,7 +225,7 @@ Added `ci.yml` for macOS/Linux/Windows, `.clang-format` and `.clang-tidy` added 
 ### Medium-term
 6. Unified event pipeline with capture/bubble.
 7. Migrate `FocusState` from `View*` to `Element*`.
-8. Key-based identity in reconciler.
+8. ~~Key-based identity in reconciler.~~ **Done**
 9. Font discovery per platform.
 10. Resource manager.
 

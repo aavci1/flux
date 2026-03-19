@@ -43,7 +43,8 @@ std::string demangleTypeName(const char* mangledName);
     Property<int> rowspan = 1; \
     Property<std::optional<CursorType>> cursor = std::nullopt; \
     Property<bool> focusable = false; \
-    Property<std::string> focusKey = ""
+    Property<std::string> focusKey = ""; \
+    Property<std::string> key = ""
 
 // Tier 2: Interactive components add these event callbacks
 #define FLUX_INTERACTIVE_PROPERTIES \
@@ -133,6 +134,9 @@ public:
     virtual std::string getFocusKey() const { return ""; }
     virtual void notifyFocusGained() {}
     virtual void notifyFocusLost() {}
+
+    // Reconciliation identity
+    virtual std::string getKey() const { return ""; }
     
     // Cursor management
     virtual std::optional<CursorType> getCursor() const = 0;
@@ -413,6 +417,9 @@ public:
     std::string getFocusKey() const override;
     void notifyFocusGained() override;
     void notifyFocusLost() override;
+
+    // Reconciliation identity
+    std::string getKey() const override;
     
     // Cursor management
     std::optional<CursorType> getCursor() const override;
@@ -567,6 +574,10 @@ public:
 
     void notifyFocusLost() {
         if (component_) component_->notifyFocusLost();
+    }
+
+    std::string getKey() const {
+        return component_ ? component_->getKey() : "";
     }
 
     std::optional<CursorType> getCursor() const {
@@ -1062,6 +1073,11 @@ inline bool ViewAdapter<T>::canBeFocused() const {
 template<ViewComponent T>
 inline std::string ViewAdapter<T>::getFocusKey() const {
     return component.focusKey;
+}
+
+template<ViewComponent T>
+inline std::string ViewAdapter<T>::getKey() const {
+    return component.key;
 }
 
 template<ViewComponent T>
