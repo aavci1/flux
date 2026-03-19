@@ -15,6 +15,11 @@ Element::~Element() {
 Element::Element(Element&&) noexcept = default;
 Element& Element::operator=(Element&&) noexcept = default;
 
+void Element::markDirty() {
+    bodyDirty = true;
+    requestApplicationRedraw();
+}
+
 std::unique_ptr<Element> Element::buildTree(const LayoutNode& node, size_t index) {
     auto element = std::make_unique<Element>();
     element->typeName = node.view.getTypeName();
@@ -34,6 +39,7 @@ std::unique_ptr<Element> Element::buildTree(const LayoutNode& node, size_t index
 
 void Element::reconcile(const LayoutNode& newNode) {
     *description = newNode.view;
+    description->setPropertyOwner(this);
     typeName = newNode.view.getTypeName();
     key = newNode.view.getKey();
 
@@ -116,6 +122,7 @@ void Element::mountSubtree() {
     if (!isMounted) {
         isMounted = true;
         if (description && description->isValid()) {
+            description->setPropertyOwner(this);
             description->onMounted();
         }
         FLUX_LOG_TRACE("[ELEMENT] Mounted %s", typeName.c_str());

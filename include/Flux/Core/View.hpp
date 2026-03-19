@@ -137,6 +137,9 @@ public:
 
     // Reconciliation identity
     virtual std::string getKey() const { return ""; }
+
+    // Property ownership for targeted dirty marking
+    virtual void setPropertyOwner(Element* owner) { (void)owner; }
     
     // Cursor management
     virtual std::optional<CursorType> getCursor() const = 0;
@@ -420,6 +423,9 @@ public:
 
     // Reconciliation identity
     std::string getKey() const override;
+
+    // Property ownership
+    void setPropertyOwner(Element* owner) override;
     
     // Cursor management
     std::optional<CursorType> getCursor() const override;
@@ -578,6 +584,10 @@ public:
 
     std::string getKey() const {
         return component_ ? component_->getKey() : "";
+    }
+
+    void setPropertyOwner(Element* owner) {
+        if (component_) component_->setPropertyOwner(owner);
     }
 
     std::optional<CursorType> getCursor() const {
@@ -1078,6 +1088,31 @@ inline std::string ViewAdapter<T>::getFocusKey() const {
 template<ViewComponent T>
 inline std::string ViewAdapter<T>::getKey() const {
     return component.key;
+}
+
+template<ViewComponent T>
+inline void ViewAdapter<T>::setPropertyOwner(Element* owner) {
+    component.padding.setOwner(owner);
+    component.backgroundColor.setOwner(owner);
+    component.backgroundImage.setOwner(owner);
+    component.borderColor.setOwner(owner);
+    component.borderWidth.setOwner(owner);
+    component.cornerRadius.setOwner(owner);
+    component.opacity.setOwner(owner);
+    component.visible.setOwner(owner);
+    component.clip.setOwner(owner);
+    component.expansionBias.setOwner(owner);
+    component.compressionBias.setOwner(owner);
+    component.minWidth.setOwner(owner);
+    component.maxWidth.setOwner(owner);
+    component.minHeight.setOwner(owner);
+    component.maxHeight.setOwner(owner);
+    component.colspan.setOwner(owner);
+    component.rowspan.setOwner(owner);
+    component.cursor.setOwner(owner);
+    component.focusable.setOwner(owner);
+    component.focusKey.setOwner(owner);
+    component.key.setOwner(owner);
 }
 
 template<ViewComponent T>

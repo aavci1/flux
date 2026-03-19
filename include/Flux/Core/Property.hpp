@@ -14,6 +14,7 @@
 namespace flux {
 
 // Forward declarations
+class Element;
 void requestApplicationRedraw();
 void suppressRedrawRequests();
 void resumeRedrawRequests();
@@ -26,16 +27,14 @@ uint64_t currentBodyGeneration();
 template<typename T>
 class Property {
 private:
-    // Propertyful value holder with thread-safety
     struct PropertyfulValue {
         T value;
+        Element* owner = nullptr;
         mutable std::shared_mutex mutex;
         
         PropertyfulValue(T initial) : value(std::move(initial)) {}
         
-        void notifyChange() {
-            requestApplicationRedraw();
-        }
+        void notifyChange();
     };
     
     // Store either: stateful value, direct value, or lambda
@@ -331,6 +330,12 @@ public:
     T operator->() const {
         return get();
     }
+
+    void setOwner(Element* elem) {
+        if (isPropertyful()) {
+            getPropertyful()->owner = elem;
+        }
+    }
 };
 
 // Deduction guides for string literals
@@ -351,13 +356,12 @@ class Property<std::vector<T>> {
 private:
     struct PropertyfulValue {
         std::vector<T> value;
+        Element* owner = nullptr;
         mutable std::shared_mutex mutex;
         
         PropertyfulValue(std::vector<T> initial) : value(std::move(initial)) {}
         
-        void notifyChange() {
-            requestApplicationRedraw();
-        }
+        void notifyChange();
     };
     
     std::variant<
@@ -493,7 +497,37 @@ public:
         }
         return nullptr;
     }
+
+    void setOwner(Element* elem) {
+        if (isPropertyful()) {
+            getPropertyful()->owner = elem;
+        }
+    }
 };
+
+} // namespace flux
+
+#include <Flux/Core/Element.hpp>
+
+namespace flux {
+
+template<typename T>
+void Property<T>::PropertyfulValue::notifyChange() {
+    if (owner) {
+        owner->markDirty();
+    } else {
+        requestApplicationRedraw();
+    }
+}
+
+template<typename T>
+void Property<std::vector<T>>::PropertyfulValue::notifyChange() {
+    if (owner) {
+        owner->markDirty();
+    } else {
+        requestApplicationRedraw();
+    }
+}
 
 } // namespace flux
 

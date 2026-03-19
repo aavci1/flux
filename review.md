@@ -1,29 +1,12 @@
 # Flux v2: Remaining Work & Optimization Plan
 
-## 1. State Management: Property<T> Targeted Dirty Marking
+## ~~1. State Management: Property<T> Targeted Dirty Marking~~ **Done**
 
-**Current problem:** `Property<T>` mutations call the global `requestApplicationRedraw()`. The entire UI is redrawn on any change. There is no per-element dirty tracking from Property changes.
+~~**Current problem:** `Property<T>` mutations call the global `requestApplicationRedraw()`.~~
 
-**Recent improvement:** `Property<T>::operator=(T&&)` now checks for equality before calling `notifyChange()`, and `suppressRedrawRequests()` prevents spurious redraws during layout/body evaluation. This dropped idle CPU from ~50% to 0%.
+Implemented: `PropertyfulValue` now holds `Element* owner` back-pointer. `notifyChange()` calls `owner->markDirty()` when set, falling back to global `requestApplicationRedraw()`. `setOwner(Element*)` added to `Property<T>`. `ViewInterface::setPropertyOwner(Element*)` wires all `FLUX_VIEW_PROPERTIES` during mount and reconcile. `Element::markDirty()` sets `bodyDirty = true` and requests redraw.
 
-**Design:** `Property<T>` in stateful mode should hold a back-pointer to its owning `Element`. When mutated, it marks that element dirty. The framework re-evaluates only dirty elements' `body()` calls, diffs the results, and updates the subtree.
-
-```cpp
-struct StatefulValue {
-    T value;
-    Element* owner = nullptr;   // set by element tree during mount
-
-    void notifyChange() {
-        if (owner) {
-            owner->markDirty();  // targeted, not global
-        }
-    }
-};
-```
-
-**Batching:** Multiple property mutations between frames all mark elements dirty. On the next frame, the runtime collects all dirty elements, re-evaluates them top-down, and diffs.
-
-**Thread safety:** Cross-thread mutations should post to the UI thread's event queue via `SDL_PushEvent`.
+**Remaining:** Runtime-level optimization to only re-evaluate dirty subtrees (currently marks dirty + redraws full tree). Batching and thread safety deferred.
 
 ---
 
@@ -214,7 +197,7 @@ Added `ci.yml` for macOS/Linux/Windows, `.clang-format` and `.clang-tidy` added 
 ## 9. Implementation Priority
 
 ### Short-term
-1. Wire `Property<T>` dirty notification to `Element*` back-pointer.
+1. ~~Wire `Property<T>` dirty notification to `Element*` back-pointer.~~ **Done**
 2. Wire render command buffer into main pipeline.
 3. ~~Implement clipboard copy/cut.~~ **Done**
 4. ~~Fix `const_cast` usage in Views.~~ **Done**

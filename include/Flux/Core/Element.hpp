@@ -30,6 +30,8 @@ public:
         return !layoutDirty && cachedBounds.width > 0;
     }
 
+    void markDirty();
+
     Element();
     ~Element();
 
