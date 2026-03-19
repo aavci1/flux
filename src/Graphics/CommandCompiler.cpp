@@ -36,6 +36,8 @@ CompiledBatches CommandCompiler::compile(const RenderCommandBuffer& buffer,
     current_ = State{};
     current_.scaleX = dpiScaleX;
     current_.scaleY = dpiScaleY;
+    current_.fill = FillStyle::none();
+    current_.stroke = StrokeStyle::none();
     stateStack_.clear();
 
     startNewGroup(out);

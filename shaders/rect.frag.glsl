@@ -23,19 +23,22 @@ float roundedRectSDF(vec2 p, vec2 halfSize, vec4 corners) {
 void main() {
     float d = roundedRectSDF(fragLocalPos, fragHalfSize, fragCorners);
 
-    float fillAlpha = 1.0 - smoothstep(-0.75, 0.75, d);
+    float fillCoverage = 1.0 - smoothstep(-0.75, 0.75, d);
 
-    float strokeAlpha = 0.0;
+    float strokeCoverage = 0.0;
     if (fragStrokeWidth > 0.0) {
         float sd = abs(d) - fragStrokeWidth * 0.5;
-        strokeAlpha = 1.0 - smoothstep(-0.75, 0.75, sd);
+        strokeCoverage = 1.0 - smoothstep(-0.75, 0.75, sd);
     }
 
-    vec4 fill = fragFillColor * fillAlpha;
-    vec4 stroke = fragStrokeColor * strokeAlpha * (1.0 - fillAlpha);
-    vec4 color = fill + stroke;
-    color.a *= fragOpacity;
+    // Output straight-alpha color to match pipeline blend state.
+    float fillAlpha = fragFillColor.a * fillCoverage;
+    float strokeAlpha = fragStrokeColor.a * strokeCoverage * (1.0 - fillCoverage);
+    float outAlpha = (fillAlpha + strokeAlpha) * fragOpacity;
 
-    if (color.a < 0.001) discard;
-    outColor = color;
+    if (outAlpha < 0.001) discard;
+
+    vec3 premul = fragFillColor.rgb * fillAlpha + fragStrokeColor.rgb * strokeAlpha;
+    vec3 outRgb = (outAlpha > 0.0) ? (premul / max(fillAlpha + strokeAlpha, 1e-6)) : vec3(0.0);
+    outColor = vec4(outRgb, outAlpha);
 }
