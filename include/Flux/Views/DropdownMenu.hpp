@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 #include <functional>
+#include <Flux/Core/Typography.hpp>
 
 namespace flux {
 
@@ -35,8 +36,8 @@ struct DropdownMenu {
     Property<Color> borderColor_ = Color(0.22f, 0.22f, 0.22f);
     Property<Color> textColor_ = Color(0.92f, 0.92f, 0.92f);
     Property<Color> mutedColor = Color(0.48f, 0.48f, 0.48f);
-    Property<float> itemFontSize = 13.0f;
-    Property<float> subtitleFontSize = 11.0f;
+    Property<float> itemFontSize = Typography::callout;
+    Property<float> subtitleFontSize = Typography::subheadline;
 
     void init() {
         focusable = true;
@@ -78,7 +79,7 @@ struct DropdownMenu {
                 },
                 Text{
                     .value = std::string(isOpen ? "\xE2\x96\xB4" : "\xE2\x96\xBE"),
-                    .fontSize = 10.0f,
+                    .fontSize = Typography::caption,
                     .color = mutedColor
                 }
             }

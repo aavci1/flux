@@ -3,6 +3,7 @@
 #include <Flux/Core/View.hpp>
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/Property.hpp>
+#include <Flux/Core/Typography.hpp>
 #include <Flux/Views/VStack.hpp>
 #include <Flux/Views/HStack.hpp>
 #include <Flux/Views/Text.hpp>
@@ -12,7 +13,6 @@
 #include <Flux/Views/Slider.hpp>
 #include <Flux/Views/Divider.hpp>
 #include <Flux/Views/ScrollArea.hpp>
-#include "../Theme.hpp"
 #include "../AppState.hpp"
 #include <Flux/Views/TextInput.hpp>
 #include <Flux/Views/SectionHeader.hpp>
@@ -39,31 +39,29 @@ struct SettingsRow {
         std::vector<View> labelChildren;
         labelChildren.push_back(Text{
             .value = lbl,
-            .fontSize = Theme::FontBody,
-            .color = Theme::TextPrimary,
             .horizontalAlignment = HorizontalAlignment::leading
         });
         if (!desc.empty()) {
             labelChildren.push_back(Text{
                 .value = desc,
-                .fontSize = Theme::FontSubheadline,
-                .color = Theme::TextMuted,
+                .fontSize = Typography::subheadline,
+                .color = Colors::darkGray,
                 .horizontalAlignment = HorizontalAlignment::leading
             });
         }
 
         return HStack{
-            .spacing = Theme::Space4,
+            .spacing = 24.0f,
             .alignItems = AlignItems::center,
-            .padding = EdgeInsets(Theme::Space2, 0, Theme::Space2, 0),
+            .padding = EdgeInsets(12.0f, 0, 12.0f, 0),
             .children = {
                 VStack{
-                    .spacing = 2.0f,
+                    .spacing = 8.0f,
                     .expansionBias = 1.0f,
                     .children = std::move(labelChildren)
                 },
                 HStack{
-                    .spacing = Theme::Space2,
+                    .spacing = 8.0f,
                     .alignItems = AlignItems::center,
                     .children = std::move(controlVec)
                 }
@@ -87,46 +85,45 @@ struct SettingsView {
             .expansionBias = 1.0f,
             .children = {
                 HStack{
-                    .spacing = Theme::Space2,
+                    .spacing = 8.0f,
                     .justifyContent = JustifyContent::spaceBetween,
                     .alignItems = AlignItems::center,
-                    .padding = EdgeInsets(Theme::Space4),
+                    .padding = EdgeInsets(24.0f),
                     .children = {
                         Text{
                             .value = std::string("Settings"),
-                            .fontSize = Theme::FontTitle1,
                             .fontWeight = FontWeight::bold,
-                            .color = Theme::TextPrimary
                         },
                         HStack{
-                            .spacing = Theme::Space2,
+                            .spacing = 8.0f,
                             .children = {
                                 Button{
                                     .text = std::string("Reset to Defaults"),
-                                    .backgroundColor = Theme::SurfaceRaised,
+                                    .backgroundColor = Colors::white,
+                                    .textColor = Colors::black,
                                     .padding = EdgeInsets(8, 16, 8, 16),
-                                    .cornerRadius = Theme::RadiusSmall,
-                                    .borderColor = Theme::Border,
+                                    .cornerRadius = 4.0f,
+                                    .borderColor = Colors::gray,
                                     .borderWidth = 1.0f,
                                     .onClick = [this]() { state->settings = AppSettings{}; }
                                 },
                                 Button{
                                     .text = std::string("Save"),
-                                    .backgroundColor = Theme::Accent,
+                                    .backgroundColor = Colors::blue,
                                     .padding = EdgeInsets(8, 20, 8, 20),
-                                    .cornerRadius = Theme::RadiusSmall
+                                    .cornerRadius = 4.0f
                                 }
                             }
                         }
                     }
                 },
-                Divider{.borderColor = Theme::Border},
+                Divider{.borderColor = Colors::gray},
                 ScrollArea{
                     .expansionBias = 1.0f,
                     .children = {
                         VStack{
-                            .spacing = Theme::Space2,
-                            .padding = EdgeInsets(Theme::Space4),
+                            .spacing = 16.0f,
+                            .padding = EdgeInsets(16.0f),
                             .expansionBias = 1.0f,
                             .maxWidth = 700.0f,
                             .children = {
@@ -169,8 +166,8 @@ struct SettingsView {
                                             .minValue = 0.0f,
                                             .maxValue = 100.0f,
                                             .step = 1.0f,
-                                            .activeColor = Theme::Accent,
-                                            .inactiveColor = Theme::Border,
+                                            .activeColor = Colors::blue,
+                                            .inactiveColor = Colors::gray,
                                             .maxWidth = 120.0f,
                                             .onValueChange = [this](float v) {
                                                 state->updateSettings([v](AppSettings& s) { s.gpuLayers = static_cast<int>(v); });
@@ -178,9 +175,8 @@ struct SettingsView {
                                         },
                                         Text{
                                             .value = std::to_string(settings.gpuLayers),
-                                            .fontSize = Theme::FontBody,
                                             .fontWeight = FontWeight::medium,
-                                            .color = Theme::Accent,
+                                            .color = Colors::blue,
                                             .minWidth = 30.0f
                                         }
                                     }
@@ -194,8 +190,8 @@ struct SettingsView {
                                             .minValue = 1.0f,
                                             .maxValue = 32.0f,
                                             .step = 1.0f,
-                                            .activeColor = Theme::Accent,
-                                            .inactiveColor = Theme::Border,
+                                            .activeColor = Colors::blue,
+                                            .inactiveColor = Colors::gray,
                                             .maxWidth = 120.0f,
                                             .onValueChange = [this](float v) {
                                                 state->updateSettings([v](AppSettings& s) { s.threads = static_cast<int>(v); });
@@ -203,9 +199,8 @@ struct SettingsView {
                                         },
                                         Text{
                                             .value = std::to_string(settings.threads),
-                                            .fontSize = Theme::FontBody,
                                             .fontWeight = FontWeight::medium,
-                                            .color = Theme::Accent,
+                                            .color = Colors::blue,
                                             .minWidth = 30.0f
                                         }
                                     }
@@ -234,8 +229,8 @@ struct SettingsView {
                                             .minValue = 10.0f,
                                             .maxValue = 22.0f,
                                             .step = 1.0f,
-                                            .activeColor = Theme::Accent,
-                                            .inactiveColor = Theme::Border,
+                                            .activeColor = Colors::blue,
+                                            .inactiveColor = Colors::gray,
                                             .maxWidth = 100.0f,
                                             .onValueChange = [this](float v) {
                                                 state->updateSettings([v](AppSettings& s) { s.fontSize = v; });
@@ -243,8 +238,7 @@ struct SettingsView {
                                         },
                                         Text{
                                             .value = std::format("{:.0f}px", settings.fontSize),
-                                            .fontSize = Theme::FontBody,
-                                            .color = Theme::Accent,
+                                            .color = Colors::blue,
                                             .minWidth = 40.0f
                                         }
                                     }

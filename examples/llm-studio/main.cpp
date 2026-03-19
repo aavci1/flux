@@ -1,5 +1,4 @@
 #include <Flux.hpp>
-#include "Theme.hpp"
 #include "AppState.hpp"
 #include "Views/IconRail.hpp"
 #include "Views/Sidebar.hpp"
@@ -59,7 +58,7 @@ struct AppRoot {
         return HStack{
             .spacing = 0.0f,
             .alignItems = AlignItems::stretch,
-            .backgroundColor = Theme::Background,
+            .backgroundColor = Colors::white,
             .expansionBias = 1.0f,
             .children = std::move(children)
         };

@@ -5,6 +5,7 @@
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/Property.hpp>
 #include <Flux/Core/KeyEvent.hpp>
+#include <Flux/Core/Typography.hpp>
 #include <string>
 #include <functional>
 #include <algorithm>
@@ -23,7 +24,7 @@ struct TextInput {
     Property<bool> readOnly = false;
     Property<int> maxLength = -1;
 
-    Property<float> fontSize = 13.0f;
+    Property<float> fontSize = Typography::body;
     Property<Color> textColor = Color(0.92f, 0.92f, 0.92f);
     Property<Color> placeholderColor = Color(0.48f, 0.48f, 0.48f);
     Property<Color> bgColor = Color(0.12f, 0.12f, 0.12f);
@@ -189,7 +190,9 @@ struct TextInput {
             displayText = val;
         }
 
-        ctx.setTextStyle(TextStyle::regular("default", fs));
+        const TextStyle textStyle = makeTextStyle("default", FontWeight::regular, fs,
+            Typography::lineHeightTight, Typography::trackingFor(fs, FontWeight::regular));
+        ctx.setTextStyle(textStyle);
 
         if (val.empty() && !isFocused) {
             std::string ph = placeholder;
@@ -215,8 +218,8 @@ struct TextInput {
             size_t sMax = std::max(selStart, selEnd);
             std::string beforeSel = displayText.substr(0, sMin);
             std::string selText = displayText.substr(sMin, sMax - sMin);
-            Size beforeSize = ctx.measureText(beforeSel, TextStyle::regular("default", fs));
-            Size selSize = ctx.measureText(selText, TextStyle::regular("default", fs));
+            Size beforeSize = ctx.measureText(beforeSel, textStyle);
+            Size selSize = ctx.measureText(selText, textStyle);
             Rect selRect = {textArea.x + beforeSize.width, bounds.y + 4,
                            selSize.width, bounds.height - 8};
             ctx.setFillStyle(FillStyle::solid(static_cast<Color>(selectionColor).opacity(0.3f)));
@@ -234,7 +237,7 @@ struct TextInput {
             bool caretVisible = std::fmod(secs, 1.0f) < 0.5f;
             if (caretVisible) {
                 std::string beforeCaret = displayText.substr(0, caretPos);
-                Size caretSize = ctx.measureText(beforeCaret, TextStyle::regular("default", fs));
+                Size caretSize = ctx.measureText(beforeCaret, textStyle);
                 float cx = textArea.x + caretSize.width;
                 ctx.setFillStyle(FillStyle::none());
                 ctx.setStrokeStyle(StrokeStyle::solid(static_cast<Color>(textColor), 1.5f));

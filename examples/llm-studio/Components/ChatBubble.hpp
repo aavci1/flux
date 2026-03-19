@@ -3,11 +3,11 @@
 #include <Flux/Core/View.hpp>
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/Property.hpp>
+#include <Flux/Core/Typography.hpp>
 #include <Flux/Views/VStack.hpp>
 #include <Flux/Views/HStack.hpp>
 #include <Flux/Views/Text.hpp>
 #include <Flux/Views/Spacer.hpp>
-#include "../Theme.hpp"
 #include "../AppState.hpp"
 #include <Flux/Views/TypingIndicator.hpp>
 #include <Flux/Views/CodeBlock.hpp>
@@ -29,30 +29,29 @@ struct ChatBubble {
         ChatMessage msg = message;
         bool streaming = isStreaming;
         bool isUser = msg.role == ChatMessage::Role::User;
-        bool isAssistant = msg.role == ChatMessage::Role::Assistant;
 
         std::string roleLabel = isUser ? "you" : "assistant";
         std::string timeStr = formatTime(msg.timestamp);
 
-        Color bubbleBg = isUser ? Color(0.15f, 0.20f, 0.35f) : Theme::SurfaceRaised;
+        Color bubbleBg = isUser ? Colors::blue.opacity(0.12f) : Colors::white;
 
         std::vector<View> contentViews;
 
         contentViews.push_back(HStack{
-            .spacing = Theme::Space2,
+            .spacing = 8.0f,
             .justifyContent = JustifyContent::spaceBetween,
             .children = {
                 Text{
                     .value = roleLabel,
-                    .fontSize = Theme::FontSubheadline,
+                    .fontSize = Typography::subheadline,
                     .fontWeight = FontWeight::semibold,
-                    .color = isUser ? Theme::Accent : Theme::TextMuted,
+                    .color = isUser ? Colors::blue : Colors::darkGray,
                     .horizontalAlignment = HorizontalAlignment::leading
                 },
                 Text{
                     .value = timeStr,
-                    .fontSize = Theme::FontCaption,
-                    .color = Theme::TextMuted,
+                    .fontSize = Typography::caption,
+                    .color = Colors::darkGray,
                     .horizontalAlignment = HorizontalAlignment::trailing
                 }
             }
@@ -72,8 +71,6 @@ struct ChatBubble {
                 } else {
                     contentViews.push_back(Text{
                         .value = part.text,
-                        .fontSize = Theme::FontBody,
-                        .color = Theme::TextPrimary,
                         .horizontalAlignment = HorizontalAlignment::leading
                     });
                 }
@@ -83,10 +80,12 @@ struct ChatBubble {
         std::vector<View> rowChildren;
         if (!isUser) {
             rowChildren.push_back(VStack{
-                .spacing = Theme::Space2,
+                .spacing = 8.0f,
                 .backgroundColor = bubbleBg,
-                .padding = EdgeInsets(Theme::Space3, Theme::Space4, Theme::Space3, Theme::Space4),
-                .cornerRadius = Theme::RadiusCard,
+                .padding = EdgeInsets(12.0f, 16.0f, 12.0f, 16.0f),
+                .cornerRadius = 8.0f,
+                .borderColor = Colors::gray,
+                .borderWidth = 1.0f,
                 .expansionBias = 1.0f,
                 .maxWidth = 600.0f,
                 .children = std::move(contentViews)
@@ -95,10 +94,12 @@ struct ChatBubble {
         } else {
             rowChildren.push_back(Spacer{});
             rowChildren.push_back(VStack{
-                .spacing = Theme::Space2,
+                .spacing = 8.0f,
                 .backgroundColor = bubbleBg,
-                .padding = EdgeInsets(Theme::Space3, Theme::Space4, Theme::Space3, Theme::Space4),
-                .cornerRadius = Theme::RadiusCard,
+                .padding = EdgeInsets(12.0f, 16.0f, 12.0f, 16.0f),
+                .cornerRadius = 8.0f,
+                .borderColor = Colors::gray,
+                .borderWidth = 1.0f,
                 .expansionBias = 1.0f,
                 .maxWidth = 600.0f,
                 .children = std::move(contentViews)
@@ -107,7 +108,7 @@ struct ChatBubble {
 
         return HStack{
             .spacing = 0.0f,
-            .padding = EdgeInsets(Theme::Space1, Theme::Space4, Theme::Space1, Theme::Space4),
+            .padding = EdgeInsets(4.0f, 16.0f, 4.0f, 16.0f),
             .children = std::move(rowChildren)
         };
     }

@@ -225,7 +225,8 @@ struct StrokeStyle {
 struct TextStyle {
     std::string fontName = "default";
     FontWeight weight = FontWeight::regular;
-    float size = 16.0f;
+    /** Default matches macOS body (SF ~17pt). */
+    float size = 17.0f;
     float letterSpacing = 0.0f;
     float lineHeight = 1.0f;
 
@@ -257,6 +258,18 @@ struct TextStyle {
         return style;
     }
 };
+
+/** Full text style (weight, line-height multiplier, tracking). Prefer with Typography helpers. */
+inline TextStyle makeTextStyle(const std::string& fontName, FontWeight weight, float size,
+                               float lineHeightMultiplier = 1.0f, float letterSpacing = 0.0f) {
+    TextStyle s;
+    s.fontName = fontName;
+    s.weight = weight;
+    s.size = size;
+    s.lineHeight = lineHeightMultiplier;
+    s.letterSpacing = letterSpacing;
+    return s;
+}
 
 class RenderContext : public TextMeasurement {
 public:

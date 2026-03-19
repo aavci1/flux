@@ -4,6 +4,7 @@
 #include <Flux/Core/ViewHelpers.hpp>
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/Property.hpp>
+#include <Flux/Core/Typography.hpp>
 #include <string>
 
 namespace flux {
@@ -14,7 +15,7 @@ struct Badge {
     Property<std::string> text = "";
     Property<Color> badgeColor = Colors::red;
     Property<Color> textColor = Colors::white;
-    Property<float> fontSize = 10.0f;
+    Property<float> fontSize = Typography::caption;
     Property<float> paddingHorizontal = 8.0f;
     Property<float> paddingVertical = 4.0f;
 
@@ -30,9 +31,11 @@ struct Badge {
         float padH = paddingHorizontal;
         float padV = paddingVertical;
 
-        // Measure text
-        ctx.setTextStyle(TextStyle::bold("default", fontSize));
-        Size textSize = ctx.measureText(content, TextStyle::bold("default", fontSize));
+        float fs = fontSize;
+        TextStyle style = makeTextStyle("default", FontWeight::bold, fs, Typography::lineHeightTight,
+            Typography::trackingCaption(fs));
+        ctx.setTextStyle(style);
+        Size textSize = ctx.measureText(content, style);
 
         // Calculate badge dimensions
         float badgeWidth = textSize.width + padH * 2;
@@ -50,7 +53,7 @@ struct Badge {
         float textX = badgeX + padH;
         float textY = badgeY + padV + textSize.height;
 
-        ctx.setTextStyle(TextStyle::bold("default", fontSize));
+        ctx.setTextStyle(style);
         ctx.setFillStyle(FillStyle::solid(textColor));
         ctx.drawText(content, {textX, textY}, HorizontalAlignment::leading, VerticalAlignment::bottom);
     }
@@ -66,7 +69,10 @@ struct Badge {
         float padH = paddingHorizontal;
         float padV = paddingVertical;
 
-        Size textSize = textMeasurer.measureText(content, TextStyle::bold("default", fontSize));
+        float fs = fontSize;
+        Size textSize = textMeasurer.measureText(content,
+            makeTextStyle("default", FontWeight::bold, fs, Typography::lineHeightTight,
+                Typography::trackingCaption(fs)));
         
         return {
             textSize.width + padH * 2 + paddingVal.horizontal(),

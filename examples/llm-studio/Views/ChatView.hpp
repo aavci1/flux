@@ -3,6 +3,7 @@
 #include <Flux/Core/View.hpp>
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/Property.hpp>
+#include <Flux/Core/Typography.hpp>
 #include <Flux/Views/VStack.hpp>
 #include <Flux/Views/HStack.hpp>
 #include <Flux/Views/Text.hpp>
@@ -10,11 +11,11 @@
 #include <Flux/Views/Spacer.hpp>
 #include <Flux/Views/ScrollArea.hpp>
 #include <Flux/Views/Divider.hpp>
-#include "../Theme.hpp"
 #include "../AppState.hpp"
 #include <Flux/Views/TextArea.hpp>
 #include "../Components/ChatBubble.hpp"
 #include <chrono>
+#include <thread>
 
 namespace llm_studio {
 
@@ -35,38 +36,36 @@ struct ModelPickerCard {
         std::string sizeStr = formatBytes(m.sizeBytes);
 
         return VStack{
-            .spacing = Theme::Space1,
-            .backgroundColor = Theme::SurfaceRaised,
-            .padding = EdgeInsets(Theme::Space3, Theme::Space4, Theme::Space3, Theme::Space4),
-            .cornerRadius = Theme::RadiusCard,
-            .borderColor = Theme::Border,
+            .spacing = 4.0f,
+            .backgroundColor = Colors::white,
+            .padding = EdgeInsets(12.0f, 16.0f, 12.0f, 16.0f),
+            .cornerRadius = 8.0f,
+            .borderColor = Colors::gray,
             .borderWidth = 1.0f,
             .minWidth = 200.0f,
             .children = {
                 Text{
                     .value = m.name,
-                    .fontSize = Theme::FontBody,
                     .fontWeight = FontWeight::semibold,
-                    .color = Theme::TextPrimary,
                     .horizontalAlignment = HorizontalAlignment::leading
                 },
                 HStack{
-                    .spacing = Theme::Space2,
+                    .spacing = 8.0f,
                     .children = {
                         Text{
                             .value = m.quantization,
-                            .fontSize = Theme::FontCaption,
-                            .color = Theme::TextMuted
+                            .fontSize = Typography::caption,
+                            .color = Colors::darkGray
                         },
                         Text{
                             .value = std::string("\xC2\xB7"),
-                            .fontSize = Theme::FontCaption,
-                            .color = Theme::TextMuted
+                            .fontSize = Typography::caption,
+                            .color = Colors::darkGray
                         },
                         Text{
                             .value = sizeStr,
-                            .fontSize = Theme::FontCaption,
-                            .color = Theme::TextMuted
+                            .fontSize = Typography::caption,
+                            .color = Colors::darkGray
                         }
                     }
                 }
@@ -85,7 +84,6 @@ struct ChatView {
 
         auto session = state->getActiveSessionCopy();
         bool generating = state->isGenerating;
-        std::string inputVal = state->chatInput;
         std::vector<ModelInfo> installedModels = state->installedModels;
 
         bool hasSession = session.has_value();
@@ -122,61 +120,62 @@ struct ChatView {
         if (msgViews.empty()) {
             std::string modelName = hasModel ? session->model->name : "";
             msgViews.push_back(VStack{
-                .spacing = Theme::Space2,
-                .padding = EdgeInsets(Theme::Space12),
+                .spacing = 16.0f,
+                .padding = EdgeInsets(48.0f),
                 .expansionBias = 1.0f,
                 .children = {
-                    Text{
-                        .value = std::string("LLM Studio"),
-                        .fontSize = Theme::FontLargeTitle,
-                        .fontWeight = FontWeight::bold,
-                        .color = Theme::TextMuted.opacity(0.3f)
-                    },
-                    Text{
-                        .value = std::string("Model: ") + modelName + ". Start a conversation.",
-                        .fontSize = Theme::FontBody,
-                        .color = Theme::TextMuted
+                    VStack{
+                        .spacing = 24.0f,
+                        .children = {
+                            Text{
+                                .value = std::string("LLM Studio"),
+                                .fontWeight = FontWeight::bold,
+                                .color = Colors::darkGray.opacity(0.35f)
+                            },
+                            Text{
+                                .value = std::string("Model: ") + modelName + ". Start a conversation.",
+                                .color = Colors::darkGray
+                            }
+                        }
                     }
                 }
             });
         }
 
         std::string sendLabel = generating ? "Stop" : "Send";
-        Color sendColor = generating ? Theme::Destructive : Theme::Accent;
+        Color sendColor = generating ? Colors::red : Colors::blue;
 
         return VStack{
             .spacing = 0.0f,
             .expansionBias = 1.0f,
             .children = {
                 ScrollArea{
-                    .padding = EdgeInsets(Theme::Space2),
+                    .padding = EdgeInsets(8.0f),
                     .expansionBias = 1.0f,
                     .children = {
                         VStack{
-                            .spacing = Theme::Space2,
+                            .spacing = 8.0f,
                             .children = std::move(msgViews)
                         }
                     }
                 },
 
-                Divider{.borderColor = Theme::Border},
+                Divider{.borderColor = Colors::gray},
 
                 VStack{
-                    .spacing = Theme::Space2,
-                    .backgroundColor = Theme::Surface,
-                    .padding = EdgeInsets(Theme::Space3, Theme::Space4, Theme::Space3, Theme::Space4),
+                    .spacing = 8.0f,
+                    .backgroundColor = Colors::lightGray,
+                    .padding = EdgeInsets(12.0f, 16.0f, 12.0f, 16.0f),
                     .children = {
                         HStack{
-                            .spacing = Theme::Space2,
+                            .spacing = 8.0f,
                             .alignItems = AlignItems::end,
                             .children = {
                                 TextArea{
                                     .value = state->chatInput,
                                     .placeholder = std::string("Type a message..."),
-                                    .fontSize = Theme::FontBody,
                                     .areaMinHeight = 40.0f,
                                     .areaMaxHeight = 150.0f,
-                                    .bgColor = Theme::Background,
                                     .expansionBias = 1.0f,
                                     .onValueChange = [this](const std::string& val) {
                                         state->chatInput = val;
@@ -187,7 +186,7 @@ struct ChatView {
                                     .text = sendLabel,
                                     .backgroundColor = sendColor,
                                     .padding = EdgeInsets(10, 20, 10, 20),
-                                    .cornerRadius = Theme::RadiusCard,
+                                    .cornerRadius = 8.0f,
                                     .onClick = [this, generating]() {
                                         if (generating) {
                                             state->isGenerating = false;
@@ -205,23 +204,26 @@ struct ChatView {
     }
 
 private:
-    View buildWelcomeView(const std::vector<ModelInfo>& models) const {
+    View buildWelcomeView(const std::vector<ModelInfo>& /*models*/) const {
         return VStack{
-            .spacing = Theme::Space4,
-            .padding = EdgeInsets(Theme::Space12),
+            .spacing = 24.0f,
+            .padding = EdgeInsets(48.0f),
             .expansionBias = 1.0f,
             .children = {
                 Spacer{},
-                Text{
-                    .value = std::string("LLM Studio"),
-                    .fontSize = Theme::FontLargeTitle,
-                    .fontWeight = FontWeight::bold,
-                    .color = Theme::TextMuted.opacity(0.3f)
-                },
-                Text{
-                    .value = std::string("Create a new chat from the sidebar to get started."),
-                    .fontSize = Theme::FontBody,
-                    .color = Theme::TextMuted
+                VStack{
+                    .spacing = 24.0f,
+                    .children = {
+                        Text{
+                            .value = std::string("LLM Studio"),
+                            .fontWeight = FontWeight::bold,
+                            .color = Colors::darkGray.opacity(0.35f)
+                        },
+                        Text{
+                            .value = std::string("Create a new chat from the sidebar to get started."),
+                            .color = Colors::darkGray
+                        }
+                    }
                 },
                 Spacer{}
             }
@@ -246,18 +248,17 @@ private:
 
         if (modelCards.empty()) {
             modelCards.push_back(VStack{
-                .spacing = Theme::Space2,
+                .spacing = 8.0f,
                 .children = {
                     Text{
                         .value = std::string("No models installed."),
-                        .fontSize = Theme::FontBody,
-                        .color = Theme::TextMuted
+                        .color = Colors::darkGray
                     },
                     Button{
                         .text = std::string("Browse Models"),
-                        .backgroundColor = Theme::Accent,
+                        .backgroundColor = Colors::blue,
                         .padding = EdgeInsets(8, 16, 8, 16),
-                        .cornerRadius = Theme::RadiusSmall,
+                        .cornerRadius = 4.0f,
                         .onClick = [this]() { state->currentPage = AppPage::MODELS; }
                     }
                 }
@@ -265,25 +266,27 @@ private:
         }
 
         return VStack{
-            .spacing = Theme::Space4,
-            .padding = EdgeInsets(Theme::Space12),
+            .spacing = 24.0f,
+            .padding = EdgeInsets(48.0f),
             .expansionBias = 1.0f,
             .children = {
                 Spacer{},
-                Text{
-                    .value = std::string("Select a Model"),
-                    .fontSize = Theme::FontTitle1,
-                    .fontWeight = FontWeight::bold,
-                    .color = Theme::TextPrimary
-                },
-                Text{
-                    .value = std::string("Choose a model to start chatting."),
-                    .fontSize = Theme::FontBody,
-                    .color = Theme::TextMuted,
-                    .padding = EdgeInsets(0, 0, Theme::Space4, 0)
+                VStack{
+                    .spacing = 24.0f,
+                    .children = {
+                        Text{
+                            .value = std::string("Select a Model"),
+                            .fontWeight = FontWeight::bold,
+                        },
+                        Text{
+                            .value = std::string("Choose a model to start chatting."),
+                            .color = Colors::darkGray
+                        }
+                    },
+                    .padding = EdgeInsets(0, 0, 16.0f, 0)
                 },
                 HStack{
-                    .spacing = Theme::Space3,
+                    .spacing = 12.0f,
                     .justifyContent = JustifyContent::center,
                     .children = std::move(modelCards)
                 },

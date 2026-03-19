@@ -4,6 +4,7 @@
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/Property.hpp>
 #include <Flux/Core/KeyEvent.hpp>
+#include <Flux/Core/Typography.hpp>
 #include <functional>
 #include <string>
 
@@ -56,7 +57,9 @@ struct Button {
             ctx.drawPath(focusRing);
         }
 
-        ctx.setTextStyle(TextStyle::regular("default", 13));
+        float labelSize = Typography::callout;
+        ctx.setTextStyle(makeTextStyle("default", FontWeight::regular, labelSize, Typography::lineHeightTight,
+            Typography::trackingFor(labelSize, FontWeight::regular)));
         ctx.setFillStyle(FillStyle::solid(textColor));
         ctx.drawText(static_cast<std::string>(text), bounds.center(), HorizontalAlignment::center, VerticalAlignment::center);
     }
@@ -70,7 +73,10 @@ struct Button {
         std::string buttonText = text;
 
         // Use accurate measurement from renderer
-        Size textSize = textMeasurer.measureText(buttonText, TextStyle::regular("default", 13));
+        float labelSize = Typography::callout;
+        Size textSize = textMeasurer.measureText(buttonText,
+            makeTextStyle("default", FontWeight::regular, labelSize, Typography::lineHeightTight,
+                Typography::trackingFor(labelSize, FontWeight::regular)));
         return {textSize.width + paddingVal.horizontal(),
                 textSize.height + paddingVal.vertical()};
     }

@@ -3,6 +3,7 @@
 #include <Flux/Core/View.hpp>
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/Property.hpp>
+#include <Flux/Core/Typography.hpp>
 #include <Flux/Views/VStack.hpp>
 #include <Flux/Views/HStack.hpp>
 #include <Flux/Views/Text.hpp>
@@ -12,11 +13,12 @@
 #include <Flux/Views/ProgressBar.hpp>
 #include <Flux/Views/Divider.hpp>
 #include <Flux/Views/Badge.hpp>
-#include "../Theme.hpp"
 #include "../AppState.hpp"
 #include <Flux/Views/TextInput.hpp>
 #include <Flux/Views/DropdownMenu.hpp>
 #include <format>
+#include <thread>
+#include <chrono>
 
 namespace llm_studio {
 
@@ -35,51 +37,46 @@ struct ModelCardView {
         std::string likesStr = std::format("\xE2\x98\x85 {}k", c.likes / 1000);
 
         return VStack{
-            .spacing = Theme::Space2,
-            .backgroundColor = Theme::SurfaceRaised,
-            .padding = Theme::Space4,
-            .cornerRadius = Theme::RadiusCard,
-            .borderColor = Theme::Border,
+            .spacing = 8.0f,
+            .backgroundColor = Colors::white,
+            .padding = 16.0f,
+            .cornerRadius = 8.0f,
+            .borderColor = Colors::gray,
             .borderWidth = 1.0f,
             .children = {
                 Text{
                     .value = c.repoId,
-                    .fontSize = Theme::FontBody,
                     .fontWeight = FontWeight::semibold,
-                    .color = Theme::TextPrimary,
                     .horizontalAlignment = HorizontalAlignment::leading
                 },
                 HStack{
-                    .spacing = Theme::Space3,
+                    .spacing = 12.0f,
                     .alignItems = AlignItems::center,
                     .children = {
                         Badge{
                             .text = likesStr,
-                            .badgeColor = Color(0.3f, 0.3f, 0.1f),
-                            .textColor = Color(1.0f, 0.85f, 0.0f),
-                            .fontSize = Theme::FontCaption
+                            .badgeColor = Colors::yellow,
+                            .textColor = Colors::black,
                         },
                         Badge{
                             .text = c.format,
-                            .badgeColor = Theme::Accent.opacity(0.2f),
-                            .textColor = Theme::Accent,
-                            .fontSize = Theme::FontCaption
+                            .badgeColor = Colors::blue.opacity(0.2f),
+                            .textColor = Colors::blue,
                         },
                         Badge{
                             .text = c.parameterSize,
-                            .badgeColor = Theme::Surface,
-                            .textColor = Theme::TextMuted,
-                            .fontSize = Theme::FontCaption
+                            .badgeColor = Colors::lightGray,
+                            .textColor = Colors::darkGray,
                         },
                         Text{
                             .value = sizeStr,
-                            .fontSize = Theme::FontCaption,
-                            .color = Theme::TextMuted
+                            .fontSize = Typography::caption,
+                            .color = Colors::darkGray
                         }
                     }
                 },
                 HStack{
-                    .spacing = Theme::Space2,
+                    .spacing = 8.0f,
                     .children = {
                         DropdownMenu{
                             .label = std::string("Download"),
@@ -98,9 +95,10 @@ struct ModelCardView {
                         Button{
                             .text = std::string("View on HF"),
                             .backgroundColor = Colors::transparent,
+                            .textColor = Colors::black,
                             .padding = EdgeInsets(6, 12, 6, 12),
-                            .cornerRadius = Theme::RadiusSmall,
-                            .borderColor = Theme::Border,
+                            .cornerRadius = 4.0f,
+                            .borderColor = Colors::gray,
                             .borderWidth = 1.0f
                         }
                     }
@@ -162,7 +160,6 @@ struct HubView {
 
         std::vector<ModelCard> results = state->searchResults;
         std::optional<DownloadJob> dl = state->activeDownload;
-        std::string query = state->hubSearchQuery;
 
         std::vector<View> resultViews;
         for (const auto& card : results) {
@@ -175,18 +172,17 @@ struct HubView {
         if (resultViews.empty()) {
             resultViews.push_back(Text{
                 .value = std::string("Search for models on HuggingFace above."),
-                .fontSize = Theme::FontBody,
-                .color = Theme::TextMuted,
-                .padding = Theme::Space8
+                .color = Colors::darkGray,
+                .padding = 32.0f
             });
         }
 
         std::vector<View> mainChildren;
 
         mainChildren.push_back(HStack{
-            .spacing = Theme::Space2,
+            .spacing = 8.0f,
             .alignItems = AlignItems::center,
-            .padding = EdgeInsets(Theme::Space4),
+            .padding = EdgeInsets(16.0f),
             .children = {
                 TextInput{
                     .value = state->hubSearchQuery,
@@ -202,47 +198,44 @@ struct HubView {
                 },
                 Button{
                     .text = std::string("Search"),
-                    .backgroundColor = Theme::Accent,
+                    .backgroundColor = Colors::blue,
                     .padding = EdgeInsets(8, 16, 8, 16),
-                    .cornerRadius = Theme::RadiusSmall,
+                    .cornerRadius = 4.0f,
                     .onClick = [this]() { populateSearchResults(); }
                 }
             }
         });
 
         mainChildren.push_back(HStack{
-            .spacing = Theme::Space2,
-            .padding = EdgeInsets(0, Theme::Space4, Theme::Space2, Theme::Space4),
+            .spacing = 8.0f,
+            .padding = EdgeInsets(0, 16.0f, 8.0f, 16.0f),
             .children = {
                 Badge{
                     .text = std::string("Text Gen"),
-                    .badgeColor = Theme::Accent.opacity(0.2f),
-                    .textColor = Theme::Accent,
-                    .fontSize = Theme::FontCaption
+                    .badgeColor = Colors::blue.opacity(0.2f),
+                    .textColor = Colors::blue,
                 },
                 Badge{
                     .text = std::string("GGUF"),
-                    .badgeColor = Theme::SurfaceRaised,
-                    .textColor = Theme::TextMuted,
-                    .fontSize = Theme::FontCaption
+                    .badgeColor = Colors::white,
+                    .textColor = Colors::darkGray,
                 },
                 Badge{
                     .text = std::string("\xE2\x89\xA4 7B"),
-                    .badgeColor = Theme::SurfaceRaised,
-                    .textColor = Theme::TextMuted,
-                    .fontSize = Theme::FontCaption
+                    .badgeColor = Colors::white,
+                    .textColor = Colors::darkGray,
                 }
             }
         });
 
-        mainChildren.push_back(Divider{.borderColor = Theme::Border});
+        mainChildren.push_back(Divider{.borderColor = Colors::gray});
 
         mainChildren.push_back(ScrollArea{
             .expansionBias = 1.0f,
             .children = {
                 VStack{
-                    .spacing = Theme::Space3,
-                    .padding = Theme::Space4,
+                    .spacing = 12.0f,
+                    .padding = 16.0f,
                     .expansionBias = 1.0f,
                     .children = std::move(resultViews)
                 }
@@ -250,35 +243,34 @@ struct HubView {
         });
 
         if (dl.has_value()) {
-            mainChildren.push_back(Divider{.borderColor = Theme::Border});
+            mainChildren.push_back(Divider{.borderColor = Colors::gray});
             mainChildren.push_back(VStack{
-                .spacing = Theme::Space2,
-                .backgroundColor = Theme::Surface,
-                .padding = EdgeInsets(Theme::Space3, Theme::Space4, Theme::Space3, Theme::Space4),
+                .spacing = 8.0f,
+                .backgroundColor = Colors::lightGray,
+                .padding = EdgeInsets(12.0f, 16.0f, 12.0f, 16.0f),
                 .children = {
                     HStack{
-                        .spacing = Theme::Space2,
+                        .spacing = 8.0f,
                         .alignItems = AlignItems::center,
                         .children = {
                             Text{
                                 .value = std::string("Downloading: ") + dl->modelId + " " + dl->variant,
-                                .fontSize = Theme::FontSubheadline,
+                                .fontSize = Typography::subheadline,
                                 .fontWeight = FontWeight::medium,
-                                .color = Theme::TextPrimary,
                                 .horizontalAlignment = HorizontalAlignment::leading,
                                 .expansionBias = 1.0f
                             },
                             Text{
                                 .value = std::format("{:.0f}%", dl->progress * 100),
-                                .fontSize = Theme::FontSubheadline,
+                                .fontSize = Typography::subheadline,
                                 .fontWeight = FontWeight::bold,
-                                .color = Theme::Accent
+                                .color = Colors::blue
                             },
                             Button{
                                 .text = std::string("Cancel"),
-                                .backgroundColor = Theme::Destructive.opacity(0.2f),
+                                .backgroundColor = Colors::red.opacity(0.2f),
                                 .padding = EdgeInsets(4, 8, 4, 8),
-                                .cornerRadius = Theme::RadiusSmall,
+                                .cornerRadius = 4.0f,
                                 .onClick = [this]() {
                                     state->activeDownload = std::optional<DownloadJob>(std::nullopt);
                                 }
@@ -288,8 +280,8 @@ struct HubView {
                     ProgressBar{
                         .value = dl->progress,
                         .height = 6.0f,
-                        .fillColor = Theme::Accent,
-                        .trackColor = Theme::Border
+                        .fillColor = Colors::blue,
+                        .trackColor = Colors::gray
                     }
                 }
             });

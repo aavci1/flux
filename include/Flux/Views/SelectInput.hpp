@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 #include <functional>
+#include <Flux/Core/Typography.hpp>
 
 namespace flux {
 
@@ -29,7 +30,7 @@ struct SelectInput {
     Property<Color> textColor_ = Color(0.92f, 0.92f, 0.92f);
     Property<Color> mutedColor = Color(0.48f, 0.48f, 0.48f);
     Property<Color> accentColor = Colors::blue;
-    Property<float> itemFontSize = 13.0f;
+    Property<float> itemFontSize = Typography::callout;
 
     mutable bool isOpen = false;
 
@@ -98,7 +99,7 @@ struct SelectInput {
                 },
                 Text{
                     .value = std::string(isOpen ? "\xE2\x96\xB4" : "\xE2\x96\xBE"),
-                    .fontSize = 10.0f,
+                    .fontSize = Typography::caption,
                     .color = mutedColor
                 }
             }
@@ -116,7 +117,7 @@ struct SelectInput {
                 if (selected) {
                     itemContent.push_back(Text{
                         .value = std::string("\xE2\x9C\x93"),
-                        .fontSize = 12.0f,
+                        .fontSize = Typography::caption,
                         .color = accentColor
                     });
                 }

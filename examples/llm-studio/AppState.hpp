@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Flux/Core/Property.hpp>
+#include <Flux/Core/Typography.hpp>
 #include <string>
 #include <vector>
 #include <chrono>
@@ -78,7 +79,7 @@ struct AppSettings {
     int gpuLayers = 0;
     int threads = 4;
     std::string theme = "dark";
-    float fontSize = 13.0f;
+    float fontSize = flux::Typography::body;
     std::filesystem::path modelDirectory = "~/.local/share/llm-studio/models";
     std::string hfToken;
 };

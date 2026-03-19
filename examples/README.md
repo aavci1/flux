@@ -56,13 +56,13 @@ make
 
 1. **19-clock**: Custom rendering and real-time updates
 2. **24-calculator**: Complex state management and grid layout
-3. **llm-studio**: Multi-view architecture and theming
+3. **llm-studio**: Multi-view architecture and sidebars
 
 ## Example Structure
 
 Each example contains:
 - `main.cpp` - The complete source code
-- Additional headers for larger examples (e.g., `Theme.hpp`, component headers)
+- Additional headers for larger examples (e.g., `AppState.hpp`, view headers)
 
 ## Requirements
 

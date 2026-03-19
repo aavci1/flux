@@ -3,6 +3,7 @@
 #include <Flux/Core/View.hpp>
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/Property.hpp>
+#include <Flux/Core/Typography.hpp>
 #include <Flux/Views/VStack.hpp>
 #include <Flux/Views/HStack.hpp>
 #include <Flux/Views/Text.hpp>
@@ -13,9 +14,9 @@
 #include <Flux/Views/ScrollArea.hpp>
 #include <Flux/Views/TextArea.hpp>
 #include <Flux/Views/TextInput.hpp>
-#include "../Theme.hpp"
 #include "../AppState.hpp"
 #include <format>
+#include <algorithm>
 
 namespace llm_studio {
 
@@ -34,8 +35,8 @@ struct ModelConfigSidebar {
 
         if (!expanded) {
             return VStack{
-                .backgroundColor = Theme::Surface,
-                .borderColor = Theme::Border,
+                .backgroundColor = Colors::lightGray,
+                .borderColor = Colors::gray,
                 .borderWidth = 1.0f,
                 .minWidth = sidebarW,
                 .maxWidth = sidebarW,
@@ -43,6 +44,7 @@ struct ModelConfigSidebar {
                     Button{
                         .text = std::string("\xE2\x89\xA1"),
                         .backgroundColor = Colors::transparent,
+                        .textColor = Colors::black,
                         .padding = EdgeInsets(12),
                         .onClick = [this]() { state->rightSidebarExpanded = true; }
                     }
@@ -57,20 +59,20 @@ struct ModelConfigSidebar {
         std::string modelName = activeModel.has_value() ? activeModel->name : "No model selected";
         ModelLoadState loadSt = state->loadState;
 
-        Color statusColor = Theme::TextMuted;
+        Color statusColor = Colors::darkGray;
         std::string statusDot = "\xE2\x97\x8B";
         if (activeModel.has_value()) {
             switch (loadSt) {
                 case ModelLoadState::READY:
-                    statusColor = Theme::Success;
+                    statusColor = Colors::green;
                     statusDot = "\xE2\x97\x8F";
                     break;
                 case ModelLoadState::LOADING:
-                    statusColor = Theme::Accent;
+                    statusColor = Colors::blue;
                     statusDot = "\xE2\x97\x8F";
                     break;
                 case ModelLoadState::ERROR:
-                    statusColor = Theme::Destructive;
+                    statusColor = Colors::red;
                     statusDot = "\xE2\x97\x8F";
                     break;
                 default: break;
@@ -79,65 +81,64 @@ struct ModelConfigSidebar {
 
         return VStack{
             .spacing = 0.0f,
-            .backgroundColor = Theme::Surface,
-            .borderColor = Theme::Border,
+            .backgroundColor = Colors::lightGray,
+            .borderColor = Colors::gray,
             .borderWidth = 1.0f,
             .minWidth = sidebarW,
             .maxWidth = sidebarW,
             .children = {
                 HStack{
-                    .spacing = Theme::Space2,
+                    .spacing = 8.0f,
                     .justifyContent = JustifyContent::spaceBetween,
                     .alignItems = AlignItems::center,
-                    .padding = EdgeInsets(Theme::Space3),
+                    .padding = EdgeInsets(12.0f),
                     .children = {
                         Text{
                             .value = std::string("Configuration"),
-                            .fontSize = Theme::FontSubheadline,
+                            .fontSize = Typography::subheadline,
                             .fontWeight = FontWeight::semibold,
-                            .color = Theme::TextMuted,
+                            .color = Colors::darkGray,
                             .horizontalAlignment = HorizontalAlignment::leading
                         },
                         Button{
                             .text = std::string("\xC3\x97"),
                             .backgroundColor = Colors::transparent,
+                            .textColor = Colors::black,
                             .padding = EdgeInsets(4),
                             .onClick = [this]() { state->rightSidebarExpanded = false; }
                         }
                     }
                 },
 
-                Divider{.borderColor = Theme::Border},
+                Divider{.borderColor = Colors::gray},
 
                 ScrollArea{
                     .expansionBias = 1.0f,
                     .children = {
                         VStack{
-                            .spacing = Theme::Space4,
-                            .padding = Theme::Space3,
+                            .spacing = 16.0f,
+                            .padding = 12.0f,
                             .expansionBias = 1.0f,
                             .children = {
                                 HStack{
-                                    .spacing = Theme::Space2,
+                                    .spacing = 8.0f,
                                     .alignItems = AlignItems::center,
                                     .children = {
                                         Text{
                                             .value = statusDot,
-                                            .fontSize = 10.0f,
+                                            .fontSize = Typography::caption,
                                             .color = statusColor
                                         },
                                         Text{
                                             .value = modelName,
-                                            .fontSize = Theme::FontBody,
                                             .fontWeight = FontWeight::medium,
-                                            .color = Theme::TextPrimary,
                                             .horizontalAlignment = HorizontalAlignment::leading,
                                             .expansionBias = 1.0f
                                         }
                                     }
                                 },
 
-                                Divider{.borderColor = Theme::Border},
+                                Divider{.borderColor = Colors::gray},
 
                                 makeParamSlider("Temperature", params.temperature, 0.0f, 2.0f, 0.1f,
                                     [this](float v) { state->updateActiveSession([v](ChatSession& s) { s.params.temperature = v; }); }),
@@ -146,24 +147,22 @@ struct ModelConfigSidebar {
                                 makeParamSlider("Max Tokens", static_cast<float>(params.maxTokens), 256.0f, 8192.0f, 256.0f,
                                     [this](float v) { state->updateActiveSession([v](ChatSession& s) { s.params.maxTokens = static_cast<int>(v); }); }),
 
-                                Divider{.borderColor = Theme::Border},
+                                Divider{.borderColor = Colors::gray},
 
                                 VStack{
-                                    .spacing = Theme::Space1,
+                                    .spacing = 12.0f,
                                     .children = {
                                         Text{
                                             .value = std::string("System Prompt"),
-                                            .fontSize = Theme::FontSubheadline,
-                                            .color = Theme::TextMuted,
+                                            .fontSize = Typography::subheadline,
+                                            .color = Colors::darkGray,
                                             .horizontalAlignment = HorizontalAlignment::leading
                                         },
                                         TextArea{
                                             .value = params.systemPrompt,
                                             .placeholder = std::string("You are a helpful assistant..."),
-                                            .fontSize = Theme::FontCallout,
                                             .areaMinHeight = 80.0f,
                                             .areaMaxHeight = 200.0f,
-                                            .bgColor = Theme::Background,
                                             .areaWidth = 248.0f,
                                             .onValueChange = [this](const std::string& val) {
                                                 state->updateActiveSession([&](ChatSession& s) {
@@ -189,32 +188,30 @@ private:
             ? std::format("{:.0f}", value)
             : std::format("{:.2f}", value);
 
-        // Fixed-width label sized for the widest possible formatted value
-        // so the slider doesn't jump when the number changes.
         std::string widestStr = integerFormat
             ? std::format("{:.0f}", maxV)
             : std::format("{:.2f}", maxV);
         float valueLabelWidth = std::max(28.0f, widestStr.size() * 8.0f);
 
         return VStack{
-            .spacing = Theme::Space1,
+            .spacing = 12.0f,
             .children = {
                 HStack{
-                    .spacing = Theme::Space2,
+                    .spacing = 8.0f,
                     .justifyContent = JustifyContent::spaceBetween,
                     .alignItems = AlignItems::center,
                     .children = {
                         Text{
                             .value = label,
-                            .fontSize = Theme::FontSubheadline,
-                            .color = Theme::TextMuted,
+                            .fontSize = Typography::subheadline,
+                            .color = Colors::darkGray,
                             .horizontalAlignment = HorizontalAlignment::leading
                         },
                         Text{
                             .value = valStr,
-                            .fontSize = Theme::FontSubheadline,
+                            .fontSize = Typography::subheadline,
                             .fontWeight = FontWeight::medium,
-                            .color = Theme::Accent,
+                            .color = Colors::blue,
                             .horizontalAlignment = HorizontalAlignment::trailing,
                             .minWidth = valueLabelWidth
                         }
@@ -225,8 +222,8 @@ private:
                     .minValue = minV,
                     .maxValue = maxV,
                     .step = step,
-                    .activeColor = Theme::Accent,
-                    .inactiveColor = Theme::Border,
+                    .activeColor = Colors::blue,
+                    .inactiveColor = Colors::gray,
                     .onValueChange = std::move(callback)
                 }
             }

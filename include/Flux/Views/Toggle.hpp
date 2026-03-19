@@ -7,6 +7,7 @@
 #include <Flux/Core/KeyEvent.hpp>
 #include <Flux/Views/HStack.hpp>
 #include <Flux/Views/Text.hpp>
+#include <Flux/Core/Typography.hpp>
 #include <string>
 
 namespace flux {
@@ -81,7 +82,7 @@ struct Toggle {
     Property<Color> onColor = Colors::green;
     Property<Color> offColor = Colors::gray;
     Property<Color> labelColor = Colors::black;
-    Property<float> labelFontSize = 13.0f;
+    Property<float> labelFontSize = Typography::callout;
     Property<LabelPosition> labelPosition = LabelPosition::trailing;
     Property<JustifyContent> justifyContent = JustifyContent::start;
     Property<float> spacing = 8.0f;
@@ -160,7 +161,10 @@ struct Toggle {
         float toggleWidth = width;
         float toggleHeight = height;
         
-        Size textSize = textMeasurer.measureText(labelText, TextStyle::regular("default", labelFontSize));
+        float lf = labelFontSize;
+        Size textSize = textMeasurer.measureText(labelText,
+            makeTextStyle("default", FontWeight::regular, lf, Typography::lineHeightTight,
+                Typography::trackingFor(lf, FontWeight::regular)));
         float totalWidth = toggleWidth + static_cast<float>(spacing) + textSize.width + paddingVal.horizontal();
         float totalHeight = std::max(toggleHeight, textSize.height) + paddingVal.vertical();
         

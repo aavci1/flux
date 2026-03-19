@@ -6,6 +6,7 @@
 #include <Flux/Core/Property.hpp>
 #include <Flux/Views/VStack.hpp>
 #include <Flux/Views/Text.hpp>
+#include <Flux/Core/Typography.hpp>
 #include <Flux/Views/Divider.hpp>
 #include <string>
 #include <algorithm>
@@ -16,7 +17,7 @@ struct SectionHeader {
     FLUX_VIEW_PROPERTIES;
 
     Property<std::string> title = std::string("");
-    Property<float> fontSize = 11.0f;
+    Property<float> fontSize = Typography::subheadline;
     Property<Color> color = Color(0.48f, 0.48f, 0.48f);
     Property<Color> dividerColor = Color(0.22f, 0.22f, 0.22f);
     Property<float> topPad = 20.0f;

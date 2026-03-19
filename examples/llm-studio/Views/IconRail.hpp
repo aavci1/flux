@@ -3,10 +3,10 @@
 #include <Flux/Core/View.hpp>
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/Property.hpp>
+#include <Flux/Core/Typography.hpp>
 #include <Flux/Views/VStack.hpp>
 #include <Flux/Views/Text.hpp>
 #include <Flux/Views/Spacer.hpp>
-#include "../Theme.hpp"
 #include "../AppState.hpp"
 
 namespace llm_studio {
@@ -32,22 +32,22 @@ struct IconRailButton {
 
         if (isActive) {
             Rect indicator = {bounds.x, bounds.y + 6, 3, bounds.height - 12};
-            ctx.setFillStyle(FillStyle::solid(Theme::Accent));
+            ctx.setFillStyle(FillStyle::solid(Colors::blue));
             ctx.drawRect(indicator, CornerRadius(1.5f));
         }
 
         if (isPressed) {
-            ctx.setFillStyle(FillStyle::solid(Theme::SurfaceRaised.darken(0.1f)));
-            ctx.drawRect(bounds, CornerRadius(Theme::RadiusSmall));
+            ctx.setFillStyle(FillStyle::solid(Colors::lightGray.darken(0.05f)));
+            ctx.drawRect(bounds, CornerRadius(4.0f));
         } else if (isHovered) {
-            ctx.setFillStyle(FillStyle::solid(Theme::SurfaceRaised));
-            ctx.drawRect(bounds, CornerRadius(Theme::RadiusSmall));
+            ctx.setFillStyle(FillStyle::solid(Colors::lightGray));
+            ctx.drawRect(bounds, CornerRadius(4.0f));
         }
 
-        Color iconColor = isActive ? Theme::Accent
-                        : isHovered ? Theme::TextPrimary
-                        : Theme::TextMuted;
-        ctx.setTextStyle(TextStyle::regular("default", 20.0f));
+        Color iconColor = isActive ? Colors::blue
+                        : isHovered ? Colors::black
+                        : Colors::darkGray;
+        ctx.setTextStyle(TextStyle::regular("default", Typography::body));
         ctx.setFillStyle(FillStyle::solid(iconColor));
         ctx.drawText(static_cast<std::string>(icon), bounds.center(),
             HorizontalAlignment::center, VerticalAlignment::center);
@@ -70,9 +70,9 @@ struct IconRailView {
 
         return VStack{
             .spacing = 4.0f,
-            .backgroundColor = Color(0.06f, 0.06f, 0.06f),
+            .backgroundColor = Colors::lightGray,
             .padding = EdgeInsets(8.0f, 0.0f, 8.0f, 0.0f),
-            .borderColor = Theme::Border,
+            .borderColor = Colors::gray,
             .borderWidth = 1.0f,
             .minWidth = 48.0f,
             .maxWidth = 48.0f,

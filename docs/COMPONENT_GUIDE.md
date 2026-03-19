@@ -615,9 +615,9 @@ Always implement all three methods, even if `body()` returns an empty vector or 
 ### Leaf Views
 
 #### Text
-Displays text with formatting and alignment.
+Displays text with formatting and alignment. Defaults follow macOS/SF conventions (see `Flux/Core/Typography.hpp`): ~17pt body, automatic tracking, `lineHeightMultiplier` ≈1.35 when wrapped (use `Typography::lineHeightBody` for long reading text).
 
-**Properties**: `value`, `fontSize`, `fontWeight`, `color`, `textAlign`, `verticalAlign`, `lineHeight`
+**Properties**: `value`, `fontSize`, `fontWeight`, `color`, `horizontalAlignment`, `verticalAlignment`, `lineHeightMultiplier`, `automaticLetterSpacing`, `letterSpacing`
 
 **Type**: Leaf view (no children)
 

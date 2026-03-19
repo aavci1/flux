@@ -5,6 +5,7 @@
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/Property.hpp>
 #include <Flux/Core/KeyEvent.hpp>
+#include <Flux/Core/Typography.hpp>
 #include <string>
 #include <functional>
 #include <vector>
@@ -22,7 +23,7 @@ struct TextArea {
     Property<std::string> value = std::string("");
     Property<std::string> placeholder = std::string("");
     Property<bool> readOnly = false;
-    Property<float> fontSize = 13.0f;
+    Property<float> fontSize = Typography::body;
     Property<float> areaMinHeight = 72.0f;
     Property<float> areaMaxHeight = 200.0f;
     Property<bool> autoExpand = true;
@@ -149,11 +150,13 @@ struct TextArea {
         float fs = fontSize;
         std::string val = value;
         if (caretPos > val.size()) caretPos = val.size();
-        ctx.setTextStyle(TextStyle::regular("default", fs));
+        const TextStyle textStyle = makeTextStyle("default", FontWeight::regular, fs,
+            Typography::lineHeightBody, Typography::trackingFor(fs, FontWeight::regular));
+        ctx.setTextStyle(textStyle);
 
         float textX = bounds.x + pad;
         float textY = bounds.y + pad + fs;
-        float lineHeight = fs * 1.4f;
+        float lineHeight = fs * Typography::lineHeightBody;
 
         if (val.empty()) {
             std::string ph = placeholder;
@@ -195,7 +198,7 @@ struct TextArea {
                 getLineCol(val, caretPos, lineIdx, col);
                 std::string beforeCaret = (lineIdx < lines.size() && col <= lines[lineIdx].size())
                     ? lines[lineIdx].substr(0, col) : "";
-                Size cs = ctx.measureText(beforeCaret, TextStyle::regular("default", fs));
+                Size cs = ctx.measureText(beforeCaret, textStyle);
                 float cx = textX + cs.width;
                 float cy = bounds.y + pad + lineIdx * lineHeight - scrollY;
                 ctx.setStrokeStyle(StrokeStyle::solid(static_cast<Color>(textColor), 1.0f));
@@ -217,7 +220,7 @@ struct TextArea {
         int lineCount = 1;
         for (char c : val) if (c == '\n') lineCount++;
 
-        float contentH = pad * 2 + lineCount * fs * 1.4f;
+        float contentH = pad * 2 + lineCount * fs * Typography::lineHeightBody;
         float h = std::clamp(contentH, minH, maxH);
         return {w, h};
     }

@@ -9,6 +9,7 @@
 #include <thread>
 #include <atomic>
 #include <memory>
+#include <Flux/Core/Typography.hpp>
 
 namespace flux {
 
@@ -26,7 +27,7 @@ struct ProgressBar {
     Property<Color> fillColor = Colors::blue;
     Property<Color> trackColor = Colors::lightGray;
     Property<bool> showLabel = false;
-    Property<float> labelFontSize = 10.0f;
+    Property<float> labelFontSize = Typography::caption;
     
     // Animation property for indeterminate mode
     Property<float> animationPhase = 0.0f;
@@ -95,10 +96,13 @@ struct ProgressBar {
                 int percentage = static_cast<int>(progress * 100);
                 std::string labelText = std::to_string(percentage) + "%";
                 
-                ctx.setTextStyle(TextStyle::regular("default", labelFontSize));
+                float lf = labelFontSize;
+                TextStyle ls = makeTextStyle("default", FontWeight::regular, lf, Typography::lineHeightTight,
+                    Typography::trackingFor(lf, FontWeight::regular));
+                ctx.setTextStyle(ls);
                 ctx.setFillStyle(FillStyle::solid(Colors::black));
                 
-                Size textSize = ctx.measureText(labelText, TextStyle::regular("default", labelFontSize));
+                Size textSize = ctx.measureText(labelText, ls);
                 float labelX = barX + barWidth / 2 - textSize.width / 2;
                 float labelY = bounds.y + paddingVal.top + textSize.height;
                 

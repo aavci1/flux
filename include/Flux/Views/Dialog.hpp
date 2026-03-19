@@ -10,6 +10,7 @@
 #include <Flux/Views/Text.hpp>
 #include <Flux/Views/Button.hpp>
 #include <Flux/Views/Spacer.hpp>
+#include <Flux/Core/Typography.hpp>
 #include <string>
 #include <vector>
 #include <functional>
@@ -41,8 +42,8 @@ struct Dialog {
     Property<Color> primaryColor = Colors::blue;
     Property<Color> destructiveColor = Colors::red;
     Property<Color> defaultButtonColor = Color(0.16f, 0.16f, 0.16f);
-    Property<float> titleFontSize = 15.0f;
-    Property<float> messageFontSize = 13.0f;
+    Property<float> titleFontSize = Typography::body;
+    Property<float> messageFontSize = Typography::body;
 
     void init() {
         focusable = true;
@@ -105,6 +106,7 @@ struct Dialog {
             contentViews.push_back(Text{
                 .value = msgStr,
                 .fontSize = messageFontSize,
+                .lineHeightMultiplier = Typography::lineHeightBody,
                 .color = messageColor,
                 .horizontalAlignment = HorizontalAlignment::leading,
                 .padding = EdgeInsets(4, 0, 12, 0)
