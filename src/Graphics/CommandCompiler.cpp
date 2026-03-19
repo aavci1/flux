@@ -276,8 +276,6 @@ void CommandCompiler::pushText(CompiledBatches& out, const CmdDrawText& cmd) {
 
 void CommandCompiler::pushPath(CompiledBatches& out, const CmdDrawPath& cmd) {
     auto subpaths = PathFlattener::flattenSubpaths(cmd.path);
-
-    // Apply transform to each subpath
     for (auto& sub : subpaths) {
         for (auto& p : sub) applyTransform(p.x, p.y);
     }
@@ -285,34 +283,37 @@ void CommandCompiler::pushPath(CompiledBatches& out, const CmdDrawPath& cmd) {
     size_t pathStart = out.pathVertices.size();
     auto& g = out.groups.back();
 
-    // Fill: tessellate each subpath separately (each with >= 3 points)
+    auto appendPathVerts = [&](TessellatedPath&& t) {
+        const auto n = t.vertices.size();
+        if (n == 0) return;
+        out.pathVertices.insert(out.pathVertices.end(), t.vertices.begin(), t.vertices.end());
+        g.pathCount += static_cast<uint32_t>(n);
+    };
+
     if (current_.fill.type != FillStyle::Type::None) {
         Color fc = current_.fill.color;
         fc.a *= current_.opacity;
         for (const auto& sub : subpaths) {
             if (sub.size() < 3) continue;
-            auto filled = PathFlattener::tessellateFill(sub, fc, out.viewportWidth, out.viewportHeight);
-            out.pathVertices.insert(out.pathVertices.end(), filled.vertices.begin(), filled.vertices.end());
-            g.pathCount += static_cast<uint32_t>(filled.vertices.size());
+            appendPathVerts(PathFlattener::tessellateFill(sub, fc, out.viewportWidth, out.viewportHeight));
         }
     }
 
-    // Stroke: stroke each subpath separately so moveTo does not connect segments
     if (current_.stroke.type != StrokeStyle::Type::None && current_.stroke.width > 0) {
         Color sc = current_.stroke.color;
         sc.a *= current_.opacity;
-        float sw = current_.stroke.width * current_.scaleX;
+        const float sw = current_.stroke.width * current_.scaleX;
         for (const auto& sub : subpaths) {
             if (sub.size() < 2) continue;
-            auto stroked = PathFlattener::tessellateStroke(sub, sw, sc, out.viewportWidth, out.viewportHeight);
-            out.pathVertices.insert(out.pathVertices.end(), stroked.vertices.begin(), stroked.vertices.end());
-            g.pathCount += static_cast<uint32_t>(stroked.vertices.size());
+            appendPathVerts(PathFlattener::tessellateStroke(sub, sw, sc, out.viewportWidth, out.viewportHeight));
         }
     }
 
-    size_t pathEnd = out.pathVertices.size();
-    if (pathEnd > pathStart)
-        g.drawOps.push_back({DrawOpType::Path, static_cast<uint32_t>(pathStart - g.pathOffset), static_cast<uint32_t>(pathEnd - pathStart)});
+    const size_t pathEnd = out.pathVertices.size();
+    if (pathEnd > pathStart) {
+        g.drawOps.push_back({DrawOpType::Path, static_cast<uint32_t>(pathStart - g.pathOffset),
+                             static_cast<uint32_t>(pathEnd - pathStart)});
+    }
 }
 
 void CommandCompiler::pushTextBox(CompiledBatches& out, const CmdDrawTextBox& cmd) {

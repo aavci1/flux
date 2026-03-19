@@ -7,7 +7,6 @@
 #include <Flux/Core/Types.hpp>
 #include <vector>
 #include <array>
-#include <cmath>
 
 namespace flux {
 
@@ -80,6 +79,7 @@ struct CompiledBatches {
     float viewportHeight = 0;
 };
 
+/** Walks a recorded command buffer and produces batched GPU instance data (SDF quads, glyphs, tessellated paths). */
 class CommandCompiler {
 public:
     void setGlyphAtlas(GlyphAtlas* atlas) { atlas_ = atlas; }
