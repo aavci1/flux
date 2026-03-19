@@ -82,7 +82,7 @@ struct PointerEvent : Event {
 
 **Drag detection:** `mouseDown` + movement beyond threshold → `onDragStart` → `onDrag` → `onDragEnd`/`onDrop`.
 
-**Focus:** Migrate `FocusState` from `View*` to `Element*` (stable across frames since elements persist).
+**Focus:** ~~Migrate `FocusState` from `View*` to `Element*`~~ **Done** — FocusState now stores Element* (stable across frames since elements persist). View* accessed through `element->description` for dispatch.
 
 ---
 
@@ -222,7 +222,7 @@ Added `ci.yml` for macOS/Linux/Windows, `.clang-format` and `.clang-tidy` added 
 
 ### Medium-term
 6. Unified event pipeline with capture/bubble.
-7. Migrate `FocusState` from `View*` to `Element*`.
+7. ~~Migrate `FocusState` from `View*` to `Element*`.~~ **Done**
 8. ~~Key-based identity in reconciler.~~ **Done**
 9. ~~Font discovery per platform.~~ **Done**
 10. Resource manager.

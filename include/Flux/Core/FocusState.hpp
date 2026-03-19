@@ -10,6 +10,7 @@ namespace flux {
 
 // Forward declarations
 struct LayoutNode;
+class Element;
 
 /**
  * @brief Manages keyboard focus state for views
@@ -26,10 +27,10 @@ public:
     ~FocusState() = default;
 
     /**
-     * @brief Register a view as focusable
-     * @return The focus key assigned to the view (auto-generated if not set)
+     * @brief Register an element as focusable
+     * @return The focus key assigned to the element (auto-generated if not set)
      */
-    std::string registerFocusableView(View* view, const Rect& bounds);
+    std::string registerFocusableElement(Element* element, const Rect& bounds);
     
     /**
      * @brief Clear all registered focusable views
@@ -47,9 +48,14 @@ public:
     void focusPrevious();
     
     /**
-     * @brief Get currently focused view
+     * @brief Get currently focused view (via its owning Element)
      */
     View* getFocusedView() const;
+
+    /**
+     * @brief Get currently focused element
+     */
+    Element* getFocusedElement() const;
     
     /**
      * @brief Clear focus (no view will have focus)
@@ -98,7 +104,7 @@ public:
 
 private:
     struct FocusableViewInfo {
-        View* view;
+        Element* element;
         Rect bounds;
         std::string key;
     };
@@ -109,7 +115,7 @@ private:
     std::string pendingFocusKey_;
     
     int findViewIndexByKey(const std::string& key) const;
-    std::string generateAutoKey(const View* view, int registrationIndex) const;
+    std::string generateAutoKey(const Element* element, int registrationIndex) const;
     void notifyFocusChange(const std::string& newKey);
 };
 

@@ -1,4 +1,5 @@
 #include <Flux/Core/FocusState.hpp>
+#include <Flux/Core/Element.hpp>
 #include <Flux/Core/LayoutTree.hpp>
 #include <Flux/Core/Property.hpp>
 #include <Flux/Core/Log.hpp>
@@ -12,27 +13,28 @@ FocusState::FocusState()
     FLUX_LOG_DEBUG("[FOCUS] Focus management initialized (key-based tracking)");
 }
 
-std::string FocusState::registerFocusableView(View* view, const Rect& bounds) {
-    if (!view) {
-        FLUX_LOG_WARN("[FOCUS] Attempted to register null view");
+std::string FocusState::registerFocusableElement(Element* element, const Rect& bounds) {
+    if (!element || !element->description) {
+        FLUX_LOG_WARN("[FOCUS] Attempted to register null element");
         return "";
     }
 
     if (bounds.width <= 0 || bounds.height <= 0) {
-        FLUX_LOG_WARN("[FOCUS] Skipping view with invalid bounds");
+        FLUX_LOG_WARN("[FOCUS] Skipping element with invalid bounds");
         return "";
     }
 
+    View* view = element->description.get();
     std::string key = view->getFocusKey();
     if (key.empty()) {
-        key = generateAutoKey(view, static_cast<int>(focusableViews_.size()));
+        key = generateAutoKey(element, static_cast<int>(focusableViews_.size()));
     }
     
     FLUX_LOG_DEBUG("[FOCUS] Registered focusable view #%zu (%s) with key '%s' at (%.0f, %.0f, %.0fx%.0f)",
                    focusableViews_.size(), view->getTypeName().c_str(), key.c_str(),
                    bounds.x, bounds.y, bounds.width, bounds.height);
 
-    focusableViews_.push_back({view, bounds, key});
+    focusableViews_.push_back({element, bounds, key});
     return key;
 }
 
@@ -90,9 +92,17 @@ void FocusState::focusPrevious() {
 }
 
 View* FocusState::getFocusedView() const {
+    Element* elem = getFocusedElement();
+    if (elem && elem->description) {
+        return elem->description.get();
+    }
+    return nullptr;
+}
+
+Element* FocusState::getFocusedElement() const {
     int focusedIndex = findViewIndexByKey(focusedKey_);
     if (focusedIndex >= 0 && focusedIndex < static_cast<int>(focusableViews_.size())) {
-        return focusableViews_[focusedIndex].view;
+        return focusableViews_[focusedIndex].element;
     }
     return nullptr;
 }
@@ -144,19 +154,11 @@ View* FocusState::findViewByKey(LayoutNode& root, const std::string& key) {
 bool FocusState::dispatchKeyDownToFocused(LayoutNode& root, const KeyEvent& event) {
     (void)root;
     
-    if (focusedKey_.empty()) {
-        return false;
-    }
+    if (focusedKey_.empty()) return false;
     
-    int focusedIndex = findViewIndexByKey(focusedKey_);
-    if (focusedIndex < 0 || focusedIndex >= static_cast<int>(focusableViews_.size())) {
-        FLUX_LOG_WARN("[FOCUS] Focused view '%s' not found in current frame", focusedKey_.c_str());
-        return false;
-    }
-
-    View* focusedView = focusableViews_[focusedIndex].view;
+    View* focusedView = getFocusedView();
     if (!focusedView) {
-        FLUX_LOG_WARN("[FOCUS] Focused view pointer is null");
+        FLUX_LOG_WARN("[FOCUS] Focused view '%s' not found in current frame", focusedKey_.c_str());
         return false;
     }
     
@@ -172,19 +174,10 @@ bool FocusState::dispatchKeyDownToFocused(LayoutNode& root, const KeyEvent& even
 bool FocusState::dispatchKeyUpToFocused(LayoutNode& root, const KeyEvent& event) {
     (void)root;
     
-    if (focusedKey_.empty()) {
-        return false;
-    }
+    if (focusedKey_.empty()) return false;
     
-    int focusedIndex = findViewIndexByKey(focusedKey_);
-    if (focusedIndex < 0 || focusedIndex >= static_cast<int>(focusableViews_.size())) {
-        return false;
-    }
-    
-    View* focusedView = focusableViews_[focusedIndex].view;
-    if (!focusedView) {
-        return false;
-    }
+    View* focusedView = getFocusedView();
+    if (!focusedView) return false;
     
     bool handled = focusedView->handleKeyUp(event);
     if (handled) {
@@ -196,19 +189,10 @@ bool FocusState::dispatchKeyUpToFocused(LayoutNode& root, const KeyEvent& event)
 bool FocusState::dispatchTextInputToFocused(LayoutNode& root, const TextInputEvent& event) {
     (void)root;
     
-    if (focusedKey_.empty()) {
-        return false;
-    }
+    if (focusedKey_.empty()) return false;
     
-    int focusedIndex = findViewIndexByKey(focusedKey_);
-    if (focusedIndex < 0 || focusedIndex >= static_cast<int>(focusableViews_.size())) {
-        return false;
-    }
-    
-    View* focusedView = focusableViews_[focusedIndex].view;
-    if (!focusedView) {
-        return false;
-    }
+    View* focusedView = getFocusedView();
+    if (!focusedView) return false;
     
     bool handled = focusedView->handleTextInput(event);
     if (handled) {
@@ -232,9 +216,14 @@ int FocusState::findViewIndexByKey(const std::string& key) const {
     return -1;
 }
 
-std::string FocusState::generateAutoKey(const View* view, int registrationIndex) const {
+std::string FocusState::generateAutoKey(const Element* element, int registrationIndex) const {
     std::ostringstream oss;
-    oss << view->getTypeName() << "_" << registrationIndex;
+    if (element && element->description) {
+        oss << element->description->getTypeName();
+    } else {
+        oss << "unknown";
+    }
+    oss << "_" << registrationIndex;
     return oss.str();
 }
 
@@ -250,8 +239,9 @@ void FocusState::dispatchPendingFocusNotifications() {
     if (!pendingBlurKey_.empty()) {
         int idx = findViewIndexByKey(pendingBlurKey_);
         if (idx >= 0 && idx < static_cast<int>(focusableViews_.size())) {
-            if (View* v = focusableViews_[idx].view) {
-                v->notifyFocusLost();
+            Element* elem = focusableViews_[idx].element;
+            if (elem && elem->description) {
+                elem->description->notifyFocusLost();
             }
         }
         pendingBlurKey_.clear();
@@ -259,8 +249,9 @@ void FocusState::dispatchPendingFocusNotifications() {
     if (!pendingFocusKey_.empty()) {
         int idx = findViewIndexByKey(pendingFocusKey_);
         if (idx >= 0 && idx < static_cast<int>(focusableViews_.size())) {
-            if (View* v = focusableViews_[idx].view) {
-                v->notifyFocusGained();
+            Element* elem = focusableViews_[idx].element;
+            if (elem && elem->description) {
+                elem->description->notifyFocusGained();
             }
         }
         pendingFocusKey_.clear();

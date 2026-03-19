@@ -50,8 +50,8 @@ void Renderer::renderFrame(const Rect& bounds) {
             renderContext_->clearPressedBounds();
         }
 
-        // Render the tree (this also registers focusable views)
-        renderTree(cachedLayoutTree_);
+        // Render the tree (this also registers focusable elements)
+        renderTree(cachedLayoutTree_, rootElement_.get());
 
         // Dispatch deferred focus/blur notifications now that views are valid
         if (window_) {
@@ -142,12 +142,12 @@ LayoutNode* Renderer::findNodeByPath(LayoutNode& root, const std::vector<size_t>
     return current;
 }
 
-void Renderer::renderTree(LayoutNode& node, Point parentOrigin) {
-    // Register focusable views and capture the assigned key
+void Renderer::renderTree(LayoutNode& node, Element* element, Point parentOrigin) {
+    // Register focusable elements and capture the assigned key
     std::string assignedFocusKey;
-    if (window_ && node.view.canBeFocused()) {
-        assignedFocusKey = window_->focus().registerFocusableView(
-            &node.view,
+    if (window_ && node.view.canBeFocused() && element) {
+        assignedFocusKey = window_->focus().registerFocusableElement(
+            element,
             node.bounds
         );
     }
@@ -166,20 +166,18 @@ void Renderer::renderTree(LayoutNode& node, Point parentOrigin) {
         renderContext_->clipPath(clipPath);
     }
 
-    // Use the key returned by registerFocusableView (includes auto-generated keys)
     renderContext_->setCurrentFocusKey(assignedFocusKey.empty() ? node.view.getFocusKey() : assignedFocusKey);
     renderContext_->setCurrentViewGlobalBounds(node.bounds);
 
-    // Render the view with local coordinates
     node.view->render(*renderContext_, localBounds);
 
-    // Recursively render children with current view's position as their parent origin
     Point currentOrigin = {node.bounds.x, node.bounds.y};
-    for (auto& child : node.children) {
-        renderTree(child, currentOrigin);
+    size_t elemChildCount = element ? element->children.size() : 0;
+    for (size_t i = 0; i < node.children.size(); ++i) {
+        Element* childElement = (i < elemChildCount) ? element->children[i].get() : nullptr;
+        renderTree(node.children[i], childElement, currentOrigin);
     }
 
-    // Restore the rendering state
     renderContext_->restore();
 }
 

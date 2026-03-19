@@ -113,7 +113,7 @@ public:
     bool isCursorBlinkActive() const { return cursorBlinkActive_; }
 
 private:
-    void renderTree(LayoutNode& node, Point parentOrigin = {0, 0});
+    void renderTree(LayoutNode& node, Element* element, Point parentOrigin = {0, 0});
 
     bool findAndDispatchEvent(LayoutNode& node, const Event& event, const Point& point);
     
