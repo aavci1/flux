@@ -15,6 +15,7 @@ public:
     void execute(const RenderCommandBuffer& buffer) override;
 
     void setViewportSize(float width, float height);
+    void setDPIScale(float scaleX, float scaleY);
     GlyphAtlas* glyphAtlas() { return glyphAtlas_.get(); }
     ImageCache* imageCache() { return imageCache_.get(); }
 
@@ -28,6 +29,8 @@ private:
 
     float viewportWidth_ = 0;
     float viewportHeight_ = 0;
+    float dpiScaleX_ = 1.0f;
+    float dpiScaleY_ = 1.0f;
 
     std::unique_ptr<gpu::RenderPipeline> rectPipeline_;
     std::unique_ptr<gpu::RenderPipeline> circlePipeline_;

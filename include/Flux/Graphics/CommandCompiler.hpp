@@ -37,15 +37,35 @@ struct ImageDrawCmd {
     ImageInstance instance;
 };
 
+struct ScissorState {
+    bool active = false;
+    float x = 0, y = 0, width = 0, height = 0;
+
+    bool operator==(const ScissorState& o) const {
+        if (active != o.active) return false;
+        if (!active) return true;
+        return x == o.x && y == o.y && width == o.width && height == o.height;
+    }
+    bool operator!=(const ScissorState& o) const { return !(*this == o); }
+};
+
+struct DrawGroup {
+    ScissorState scissor;
+    uint32_t rectOffset = 0, rectCount = 0;
+    uint32_t circleOffset = 0, circleCount = 0;
+    uint32_t lineOffset = 0, lineCount = 0;
+    uint32_t glyphOffset = 0, glyphCount = 0;
+    uint32_t pathOffset = 0, pathCount = 0;
+    std::vector<ImageDrawCmd> imageDraws;
+};
+
 struct CompiledBatches {
     std::vector<SDFQuadInstance> rects;
     std::vector<SDFQuadInstance> circles;
     std::vector<SDFQuadInstance> lines;
     std::vector<GlyphInstance> glyphs;
     std::vector<PathVertex> pathVertices;
-    std::vector<ImageDrawCmd> imageDraws;
-    Rect scissor;
-    bool hasScissor = false;
+    std::vector<DrawGroup> groups;
     gpu::ClearColor clearColor;
     float viewportWidth = 0;
     float viewportHeight = 0;
@@ -54,7 +74,8 @@ struct CompiledBatches {
 class CommandCompiler {
 public:
     void setGlyphAtlas(GlyphAtlas* atlas) { atlas_ = atlas; }
-    CompiledBatches compile(const RenderCommandBuffer& buffer, float vpWidth, float vpHeight);
+    CompiledBatches compile(const RenderCommandBuffer& buffer, float vpWidth, float vpHeight,
+                            float dpiScaleX = 1.0f, float dpiScaleY = 1.0f);
 
 private:
     struct State {
@@ -63,6 +84,7 @@ private:
         float opacity = 1;
         FillStyle fill;
         StrokeStyle stroke;
+        ScissorState scissor;
     };
 
     GlyphAtlas* atlas_ = nullptr;
@@ -71,6 +93,7 @@ private:
     TextStyle currentText_;
 
     void applyTransform(float& x, float& y) const;
+    void startNewGroup(CompiledBatches& out);
     void pushRect(CompiledBatches& out, const CmdDrawRect& cmd);
     void pushCircle(CompiledBatches& out, const CmdDrawCircle& cmd);
     void pushLine(CompiledBatches& out, const CmdDrawLine& cmd);

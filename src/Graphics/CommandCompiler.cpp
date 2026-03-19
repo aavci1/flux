@@ -1,17 +1,44 @@
 #include <Flux/Graphics/CommandCompiler.hpp>
 #include <cstring>
 #include <cmath>
+#include <algorithm>
 
 namespace flux {
 
+static ScissorState intersectScissor(const ScissorState& a, const ScissorState& b) {
+    if (!a.active) return b;
+    if (!b.active) return a;
+    float x1 = std::max(a.x, b.x);
+    float y1 = std::max(a.y, b.y);
+    float x2 = std::min(a.x + a.width, b.x + b.width);
+    float y2 = std::min(a.y + a.height, b.y + b.height);
+    return {true, x1, y1, std::max(0.0f, x2 - x1), std::max(0.0f, y2 - y1)};
+}
+
+void CommandCompiler::startNewGroup(CompiledBatches& out) {
+    DrawGroup g;
+    g.scissor = current_.scissor;
+    g.rectOffset   = static_cast<uint32_t>(out.rects.size());
+    g.circleOffset = static_cast<uint32_t>(out.circles.size());
+    g.lineOffset   = static_cast<uint32_t>(out.lines.size());
+    g.glyphOffset  = static_cast<uint32_t>(out.glyphs.size());
+    g.pathOffset   = static_cast<uint32_t>(out.pathVertices.size());
+    out.groups.push_back(std::move(g));
+}
+
 CompiledBatches CommandCompiler::compile(const RenderCommandBuffer& buffer,
-                                         float vpWidth, float vpHeight) {
+                                         float vpWidth, float vpHeight,
+                                         float dpiScaleX, float dpiScaleY) {
     CompiledBatches out;
     out.viewportWidth = vpWidth;
     out.viewportHeight = vpHeight;
 
     current_ = State{};
+    current_.scaleX = dpiScaleX;
+    current_.scaleY = dpiScaleY;
     stateStack_.clear();
+
+    startNewGroup(out);
 
     for (const auto& cmd : buffer.commands()) {
         std::visit([&](const auto& c) {
@@ -25,8 +52,11 @@ CompiledBatches CommandCompiler::compile(const RenderCommandBuffer& buffer,
             }
             else if constexpr (std::is_same_v<T, CmdRestore>) {
                 if (!stateStack_.empty()) {
+                    ScissorState prevScissor = current_.scissor;
                     current_ = stateStack_.back();
                     stateStack_.pop_back();
+                    if (current_.scissor != prevScissor)
+                        startNewGroup(out);
                 }
             }
             else if constexpr (std::is_same_v<T, CmdTranslate>) {
@@ -71,8 +101,14 @@ CompiledBatches CommandCompiler::compile(const RenderCommandBuffer& buffer,
                 auto bounds = c.path.getBounds();
                 float bx = bounds.x, by = bounds.y;
                 applyTransform(bx, by);
-                out.scissor = {bx, by, bounds.width * current_.scaleX, bounds.height * current_.scaleY};
-                out.hasScissor = true;
+                ScissorState newClip{true, bx, by,
+                                     bounds.width * current_.scaleX,
+                                     bounds.height * current_.scaleY};
+                ScissorState merged = intersectScissor(current_.scissor, newClip);
+                if (merged != current_.scissor) {
+                    current_.scissor = merged;
+                    startNewGroup(out);
+                }
             }
             else if constexpr (std::is_same_v<T, CmdDrawImage>) {
                 pushImage(out, c);
@@ -80,7 +116,6 @@ CompiledBatches CommandCompiler::compile(const RenderCommandBuffer& buffer,
             else if constexpr (std::is_same_v<T, CmdDrawImagePath>) {
                 pushImagePath(out, c);
             }
-            // CmdRotate — future
         }, cmd);
     }
 
@@ -141,6 +176,7 @@ void CommandCompiler::pushRect(CompiledBatches& out, const CmdDrawRect& cmd) {
     inst.viewport[1] = out.viewportHeight;
     fillInstanceColors(inst);
     out.rects.push_back(inst);
+    out.groups.back().rectCount++;
 }
 
 void CommandCompiler::pushCircle(CompiledBatches& out, const CmdDrawCircle& cmd) {
@@ -159,6 +195,7 @@ void CommandCompiler::pushCircle(CompiledBatches& out, const CmdDrawCircle& cmd)
     inst.viewport[1] = out.viewportHeight;
     fillInstanceColors(inst);
     out.circles.push_back(inst);
+    out.groups.back().circleCount++;
 }
 
 void CommandCompiler::pushLine(CompiledBatches& out, const CmdDrawLine& cmd) {
@@ -190,6 +227,7 @@ void CommandCompiler::pushLine(CompiledBatches& out, const CmdDrawLine& cmd) {
     inst.viewport[1] = out.viewportHeight;
 
     out.lines.push_back(inst);
+    out.groups.back().lineCount++;
 }
 
 void CommandCompiler::pushText(CompiledBatches& out, const CmdDrawText& cmd) {
@@ -215,6 +253,7 @@ void CommandCompiler::pushText(CompiledBatches& out, const CmdDrawText& cmd) {
     auto glyphs = atlas_->layoutText(cmd.text, drawX, drawY, fontSize, textColor,
                                       out.viewportWidth, out.viewportHeight);
     out.glyphs.insert(out.glyphs.end(), glyphs.begin(), glyphs.end());
+    out.groups.back().glyphCount += static_cast<uint32_t>(glyphs.size());
 }
 
 void CommandCompiler::pushPath(CompiledBatches& out, const CmdDrawPath& cmd) {
@@ -230,6 +269,7 @@ void CommandCompiler::pushPath(CompiledBatches& out, const CmdDrawPath& cmd) {
         fc.a *= current_.opacity;
         auto filled = PathFlattener::tessellateFill(polyline, fc, out.viewportWidth, out.viewportHeight);
         out.pathVertices.insert(out.pathVertices.end(), filled.vertices.begin(), filled.vertices.end());
+        out.groups.back().pathCount += static_cast<uint32_t>(filled.vertices.size());
     }
 
     // Stroke
@@ -239,6 +279,7 @@ void CommandCompiler::pushPath(CompiledBatches& out, const CmdDrawPath& cmd) {
         float sw = current_.stroke.width * current_.scaleX;
         auto stroked = PathFlattener::tessellateStroke(polyline, sw, sc, out.viewportWidth, out.viewportHeight);
         out.pathVertices.insert(out.pathVertices.end(), stroked.vertices.begin(), stroked.vertices.end());
+        out.groups.back().pathCount += static_cast<uint32_t>(stroked.vertices.size());
     }
 }
 
@@ -257,6 +298,7 @@ void CommandCompiler::pushTextBox(CompiledBatches& out, const CmdDrawTextBox& cm
                                          textColor, out.viewportWidth, out.viewportHeight,
                                          cmd.hAlign);
     out.glyphs.insert(out.glyphs.end(), glyphs.begin(), glyphs.end());
+    out.groups.back().glyphCount += static_cast<uint32_t>(glyphs.size());
 }
 
 ImageInstance CommandCompiler::makeImageInstance(const Rect& rect, float alpha) const {
@@ -288,7 +330,7 @@ void CommandCompiler::pushImage(CompiledBatches& out, const CmdDrawImage& cmd) {
     draw.instance = makeImageInstance(transformed, cmd.alpha);
     draw.instance.viewport[0] = out.viewportWidth;
     draw.instance.viewport[1] = out.viewportHeight;
-    out.imageDraws.push_back(std::move(draw));
+    out.groups.back().imageDraws.push_back(std::move(draw));
 }
 
 void CommandCompiler::pushImagePath(CompiledBatches& out, const CmdDrawImagePath& cmd) {
@@ -301,7 +343,7 @@ void CommandCompiler::pushImagePath(CompiledBatches& out, const CmdDrawImagePath
     draw.instance = makeImageInstance(transformed, cmd.alpha);
     draw.instance.viewport[0] = out.viewportWidth;
     draw.instance.viewport[1] = out.viewportHeight;
-    out.imageDraws.push_back(std::move(draw));
+    out.groups.back().imageDraws.push_back(std::move(draw));
 }
 
 } // namespace flux

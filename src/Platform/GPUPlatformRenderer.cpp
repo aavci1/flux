@@ -28,6 +28,7 @@ bool GPUPlatformRenderer::initialize(int width, int height, float dpiScaleX, flo
         int pw = static_cast<int>(width * dpiScaleX);
         int ph = static_cast<int>(height * dpiScaleY);
         gpuBackend_->setViewportSize(static_cast<float>(pw), static_cast<float>(ph));
+        gpuBackend_->setDPIScale(dpiScaleX, dpiScaleY);
 
         auto* atlas = gpuBackend_->glyphAtlas();
         auto* imgCache = gpuBackend_->imageCache();
@@ -78,7 +79,10 @@ void GPUPlatformRenderer::resize(int width, int height) {
     int pw = static_cast<int>(width * dpiScaleX_);
     int ph = static_cast<int>(height * dpiScaleY_);
     if (device_) device_->resize(static_cast<uint32_t>(pw), static_cast<uint32_t>(ph));
-    if (gpuBackend_) gpuBackend_->setViewportSize(static_cast<float>(pw), static_cast<float>(ph));
+    if (gpuBackend_) {
+        gpuBackend_->setViewportSize(static_cast<float>(pw), static_cast<float>(ph));
+        gpuBackend_->setDPIScale(dpiScaleX_, dpiScaleY_);
+    }
     if (renderCtx_) renderCtx_->resize(width, height);
 }
 

@@ -82,6 +82,11 @@ void GPURendererBackend::setViewportSize(float width, float height) {
     viewportHeight_ = height;
 }
 
+void GPURendererBackend::setDPIScale(float scaleX, float scaleY) {
+    dpiScaleX_ = scaleX;
+    dpiScaleY_ = scaleY;
+}
+
 void GPURendererBackend::ensureQuadVertexBuffer() {
     if (quadVB_) return;
     gpu::BufferDesc desc;
@@ -253,17 +258,17 @@ void GPURendererBackend::execute(const RenderCommandBuffer& buffer) {
 
     ensurePipelines();
 
-    auto batches = compiler_.compile(buffer, viewportWidth_, viewportHeight_);
+    auto batches = compiler_.compile(buffer, viewportWidth_, viewportHeight_,
+                                     dpiScaleX_, dpiScaleY_);
     uploadAndDraw(batches);
 }
 
 void GPURendererBackend::uploadAndDraw(const CompiledBatches& batches) {
-    // Ensure instance buffers
+    // Ensure and upload all instance buffers (shared across draw groups)
     ensureBuffer(device_, rectInstanceBuffer_, rectBufferCapacity_, batches.rects.size());
     ensureBuffer(device_, circleInstanceBuffer_, circleBufferCapacity_, batches.circles.size());
     ensureBuffer(device_, lineInstanceBuffer_, lineBufferCapacity_, batches.lines.size());
 
-    // Upload instance data
     if (!batches.rects.empty())
         rectInstanceBuffer_->write(batches.rects.data(),
                                    batches.rects.size() * sizeof(SDFQuadInstance));
@@ -274,6 +279,25 @@ void GPURendererBackend::uploadAndDraw(const CompiledBatches& batches) {
         lineInstanceBuffer_->write(batches.lines.data(),
                                    batches.lines.size() * sizeof(SDFQuadInstance));
 
+    if (!batches.glyphs.empty() && glyphAtlas_) {
+        glyphAtlas_->uploadIfDirty();
+        ensureBuffer(device_, glyphInstanceBuffer_, glyphBufferCapacity_, batches.glyphs.size());
+        glyphInstanceBuffer_->write(batches.glyphs.data(),
+                                     batches.glyphs.size() * sizeof(GlyphInstance));
+    }
+
+    if (!batches.pathVertices.empty()) {
+        size_t pathCount = batches.pathVertices.size();
+        if (!pathVertexBuffer_ || pathBufferCapacity_ < pathCount) {
+            pathBufferCapacity_ = std::max(pathCount, size_t(256));
+            gpu::BufferDesc desc;
+            desc.size = pathBufferCapacity_ * sizeof(PathVertex);
+            desc.usage = gpu::BufferUsage::Vertex;
+            pathVertexBuffer_ = device_->createBuffer(desc);
+        }
+        pathVertexBuffer_->write(batches.pathVertices.data(), pathCount * sizeof(PathVertex));
+    }
+
     if (!device_->beginFrame()) return;
 
     gpu::RenderPassDesc passDesc;
@@ -281,48 +305,56 @@ void GPURendererBackend::uploadAndDraw(const CompiledBatches& batches) {
     auto* enc = device_->beginRenderPass(passDesc);
     if (!enc) { device_->endFrame(); return; }
 
-    if (batches.hasScissor) {
-        enc->setScissorRect(
-            static_cast<uint32_t>(batches.scissor.x),
-            static_cast<uint32_t>(batches.scissor.y),
-            static_cast<uint32_t>(batches.scissor.width),
-            static_cast<uint32_t>(batches.scissor.height));
-    }
+    uint32_t vpW = static_cast<uint32_t>(viewportWidth_);
+    uint32_t vpH = static_cast<uint32_t>(viewportHeight_);
 
-    auto drawBatch = [&](gpu::RenderPipeline* pipeline, gpu::Buffer* instBuf, uint32_t count) {
-        if (count == 0) return;
-        enc->setPipeline(pipeline);
-        enc->setVertexBuffer(0, quadVB_.get());
-        enc->setVertexBuffer(1, instBuf);
-        enc->draw(6, count);
-    };
+    for (const auto& group : batches.groups) {
+        // Set scissor for this group
+        if (group.scissor.active) {
+            enc->setScissorRect(
+                static_cast<uint32_t>(group.scissor.x),
+                static_cast<uint32_t>(group.scissor.y),
+                static_cast<uint32_t>(std::max(0.0f, group.scissor.width)),
+                static_cast<uint32_t>(std::max(0.0f, group.scissor.height)));
+        } else {
+            enc->setScissorRect(0, 0, vpW, vpH);
+        }
 
-    drawBatch(rectPipeline_.get(), rectInstanceBuffer_.get(),
-              static_cast<uint32_t>(batches.rects.size()));
-    drawBatch(circlePipeline_.get(), circleInstanceBuffer_.get(),
-              static_cast<uint32_t>(batches.circles.size()));
-    drawBatch(linePipeline_.get(), lineInstanceBuffer_.get(),
-              static_cast<uint32_t>(batches.lines.size()));
+        // Rects
+        if (group.rectCount > 0) {
+            enc->setPipeline(rectPipeline_.get());
+            enc->setVertexBuffer(0, quadVB_.get());
+            enc->setVertexBuffer(1, rectInstanceBuffer_.get());
+            enc->draw(6, group.rectCount, 0, group.rectOffset);
+        }
 
-    // Glyph rendering
-    if (!batches.glyphs.empty() && glyphAtlas_) {
-        glyphAtlas_->uploadIfDirty();
+        // Circles
+        if (group.circleCount > 0) {
+            enc->setPipeline(circlePipeline_.get());
+            enc->setVertexBuffer(0, quadVB_.get());
+            enc->setVertexBuffer(1, circleInstanceBuffer_.get());
+            enc->draw(6, group.circleCount, 0, group.circleOffset);
+        }
 
-        ensureBuffer(device_, glyphInstanceBuffer_, glyphBufferCapacity_, batches.glyphs.size());
-        glyphInstanceBuffer_->write(batches.glyphs.data(),
-                                     batches.glyphs.size() * sizeof(GlyphInstance));
+        // Lines
+        if (group.lineCount > 0) {
+            enc->setPipeline(linePipeline_.get());
+            enc->setVertexBuffer(0, quadVB_.get());
+            enc->setVertexBuffer(1, lineInstanceBuffer_.get());
+            enc->draw(6, group.lineCount, 0, group.lineOffset);
+        }
 
-        enc->setPipeline(glyphPipeline_.get());
-        enc->setVertexBuffer(0, quadVB_.get());
-        enc->setVertexBuffer(1, glyphInstanceBuffer_.get());
-        if (glyphAtlas_->texture())
+        // Glyphs
+        if (group.glyphCount > 0 && glyphAtlas_ && glyphAtlas_->texture()) {
+            enc->setPipeline(glyphPipeline_.get());
+            enc->setVertexBuffer(0, quadVB_.get());
+            enc->setVertexBuffer(1, glyphInstanceBuffer_.get());
             enc->setFragmentTexture(0, glyphAtlas_->texture());
-        enc->draw(6, static_cast<uint32_t>(batches.glyphs.size()));
-    }
+            enc->draw(6, group.glyphCount, 0, group.glyphOffset);
+        }
 
-    // Image rendering — one draw per unique texture
-    if (!batches.imageDraws.empty()) {
-        for (const auto& draw : batches.imageDraws) {
+        // Images — one draw per unique texture
+        for (const auto& draw : group.imageDraws) {
             gpu::Texture* tex = nullptr;
             if (!draw.path.empty())
                 tex = imageCache_->getOrLoad(draw.path);
@@ -330,9 +362,8 @@ void GPURendererBackend::uploadAndDraw(const CompiledBatches& batches) {
                 tex = imageCache_->getById(draw.imageId);
             if (!tex) continue;
 
-            size_t needed = 1;
-            if (!imageInstanceBuffer_ || imageBufferCapacity_ < needed) {
-                imageBufferCapacity_ = std::max(needed, size_t(16));
+            if (!imageInstanceBuffer_ || imageBufferCapacity_ < 1) {
+                imageBufferCapacity_ = 16;
                 gpu::BufferDesc desc;
                 desc.size = imageBufferCapacity_ * sizeof(ImageInstance);
                 desc.usage = gpu::BufferUsage::Vertex;
@@ -346,24 +377,13 @@ void GPURendererBackend::uploadAndDraw(const CompiledBatches& batches) {
             enc->setFragmentTexture(0, tex);
             enc->draw(6, 1);
         }
-    }
 
-    // Path rendering (non-instanced triangles)
-    if (!batches.pathVertices.empty()) {
-        size_t pathCount = batches.pathVertices.size();
-        size_t pathBytes = pathCount * sizeof(PathVertex);
-        if (!pathVertexBuffer_ || pathBufferCapacity_ < pathCount) {
-            pathBufferCapacity_ = std::max(pathCount, size_t(256));
-            gpu::BufferDesc desc;
-            desc.size = pathBufferCapacity_ * sizeof(PathVertex);
-            desc.usage = gpu::BufferUsage::Vertex;
-            pathVertexBuffer_ = device_->createBuffer(desc);
+        // Paths (non-instanced triangles)
+        if (group.pathCount > 0) {
+            enc->setPipeline(pathPipeline_.get());
+            enc->setVertexBuffer(0, pathVertexBuffer_.get());
+            enc->draw(group.pathCount, 1, group.pathOffset, 0);
         }
-        pathVertexBuffer_->write(batches.pathVertices.data(), pathBytes);
-
-        enc->setPipeline(pathPipeline_.get());
-        enc->setVertexBuffer(0, pathVertexBuffer_.get());
-        enc->draw(static_cast<uint32_t>(pathCount), 1);
     }
 
     device_->endRenderPass();
