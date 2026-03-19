@@ -24,7 +24,7 @@ Implemented: `key` property added to `FLUX_VIEW_PROPERTIES`, propagated through 
 
 1. **Split dispatch:** Mouse events go through `Renderer::findAndDispatchEvent()`. Keyboard events go through `KeyboardInputHandler` → `FocusState`. These two paths don't compose.
 2. **No bubbling:** A parent can't intercept a child's click.
-3. **Raw View* in FocusState:** Can dangle between frames.
+3. ~~**Raw View* in FocusState:** Can dangle between frames.~~ **Fixed** — FocusState now stores Element*.
 4. **Drag events not implemented.**
 
 ### 3.2 Unified Event Pipeline
@@ -107,21 +107,11 @@ public:
 };
 ```
 
-### 5.4 Resource Management
+### ~~5.4 Resource Management~~ **Done**
 
-Fonts, images, and SVGs are cached in global `std::map`s with no eviction. Implement a `ResourceManager` owned by `Runtime`:
+~~Fonts, images, and SVGs are cached in global `std::map`s with no eviction.~~
 
-```cpp
-class ResourceManager {
-public:
-    FontHandle loadFont(std::string_view path, FontWeight weight = FontWeight::regular);
-    ImageHandle loadImage(std::string_view path);
-    SVGHandle loadSVG(std::string_view svgContent);
-    void setMaxCacheSize(size_t bytes);
-    void collectUnused();
-    size_t memoryUsage() const;
-};
-```
+Implemented `ResourceManager` singleton with centralized tracking of fonts, images, and SVGs. Tracks per-resource last-used frame for LRU eviction via `collectUnused()` (300-frame threshold). `memoryUsage()` estimates total cache footprint. `NanoVGRenderContext` font and image loading now registers with ResourceManager.
 
 ---
 
@@ -208,11 +198,11 @@ Added `ci.yml` for macOS/Linux/Windows, `.clang-format` and `.clang-tidy` added 
 7. ~~Migrate `FocusState` from `View*` to `Element*`.~~ **Done**
 8. ~~Key-based identity in reconciler.~~ **Done**
 9. ~~Font discovery per platform.~~ **Done**
-10. Resource manager.
+10. ~~Resource manager.~~ **Done**
 
 ### Long-term
 11. Environment value propagation.
 12. Headless backend.
 13. Accessibility.
-14. CI/CD on all platforms.
+14. ~~CI/CD on all platforms.~~ **Done**
 15. Header hygiene.

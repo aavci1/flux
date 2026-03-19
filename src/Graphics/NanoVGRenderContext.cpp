@@ -1,5 +1,6 @@
 #include <Flux/Graphics/NanoVGRenderContext.hpp>
 #include <Flux/Core/FontDiscovery.hpp>
+#include <Flux/Core/ResourceManager.hpp>
 #include <Flux/Core/Log.hpp>
 #include <cmath>
 
@@ -473,14 +474,20 @@ Rect NanoVGRenderContext::getTextBounds(const std::string& text, const Point& po
 // ============================================================================
 
 int NanoVGRenderContext::createImage(const std::string& filename) {
+    auto& mgr = ResourceManager::instance();
+    ImageHandle cached = mgr.findImage(filename);
+    if (cached >= 0) return cached;
+
     auto it = imageCache_.find(filename);
     if (it != imageCache_.end()) {
+        mgr.registerImage(filename, it->second);
         return it->second;
     }
 
     int imageId = nvgCreateImage(nvgContext_, filename.c_str(), 0);
     if (imageId != -1) {
         imageCache_[filename] = imageId;
+        mgr.registerImage(filename, imageId);
     }
     return imageId;
 }
@@ -727,14 +734,18 @@ NVGpaint NanoVGRenderContext::toNVGFillStyle(const FillStyle& fillStyle) const {
 int NanoVGRenderContext::getFont(const std::string& fontName, FontWeight weight) {
     std::string fontKey = fontName + "_" + std::to_string(static_cast<int>(weight));
 
+    auto& mgr = ResourceManager::instance();
+    FontHandle cached = mgr.findFont(fontKey);
+    if (cached >= 0) return cached;
+
     auto it = fontCache_.find(fontKey);
     if (it != fontCache_.end()) {
+        mgr.registerFont(fontKey, it->second);
         return it->second;
     }
 
     int font = -1;
 
-    // Use platform font discovery to resolve family name → file path
     std::string family = (fontName == "default") ? "Helvetica" : fontName;
     auto discovered = FontDiscovery::findFontPath(family, weight);
     if (discovered) {
@@ -753,6 +764,7 @@ int NanoVGRenderContext::getFont(const std::string& fontName, FontWeight weight)
     }
 
     fontCache_[fontKey] = font;
+    mgr.registerFont(fontKey, font);
     return font;
 }
 

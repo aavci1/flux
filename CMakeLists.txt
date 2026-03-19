@@ -119,6 +119,7 @@ set(FLUX_SOURCES
     src/Core/Demangle.cpp
     src/Core/Element.cpp
     src/Core/FontDiscovery.cpp
+    src/Core/ResourceManager.cpp
 
     # Graphics
     src/Graphics/Path.cpp
