@@ -243,9 +243,9 @@ struct has_handleKeyUp {
 template<typename T>
 struct has_handleTextInput {
     template<typename U>
-    static auto test(const U& u) -> decltype(u.handleTextInput(std::declval<const TextInputEvent&>()), std::true_type{});
+    static auto test(U& u) -> decltype(u.handleTextInput(std::declval<const TextInputEvent&>()), std::true_type{});
     static std::false_type test(...);
-    static constexpr bool value = decltype(test(std::declval<const T&>()))::value;
+    static constexpr bool value = decltype(test(std::declval<T&>()))::value;
 };
 
 template<typename T>
@@ -1119,7 +1119,7 @@ inline std::string ViewAdapter<T>::cutSelectedText() {
                 val.erase(sMin, sMax - sMin);
                 component.caretPos = sMin;
                 component.selStart = component.selEnd = sMin;
-                const_cast<Property<std::string>&>(component.value) = val;
+                component.value = val;
                 if constexpr (has_onValueChange<T>::value) {
                     if (component.onValueChange) component.onValueChange(val);
                 }

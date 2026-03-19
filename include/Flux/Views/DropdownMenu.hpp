@@ -26,7 +26,7 @@ struct DropdownMenu {
     FLUX_INTERACTIVE_PROPERTIES;
 
     Property<std::string> label = std::string("");
-    Property<bool> open = false;
+    mutable Property<bool> open = false;
     Property<std::vector<DropdownMenuItem>> items;
     Property<float> menuWidth = 180.0f;
 
@@ -47,9 +47,9 @@ struct DropdownMenu {
         };
     }
 
-    bool handleKeyDown(const KeyEvent& event) const {
+    bool handleKeyDown(const KeyEvent& event) {
         if (event.key == Key::Escape && static_cast<bool>(open)) {
-            const_cast<Property<bool>&>(open) = false;
+            open = false;
             return true;
         }
         return false;
@@ -112,7 +112,7 @@ struct DropdownMenu {
                     .cursor = en ? std::optional(CursorType::Pointer) : std::nullopt,
                     .onClick = (en && cb) ? [cb, this]() {
                         cb();
-                        const_cast<Property<bool>&>(open) = false;
+                        open = false;
                     } : std::function<void()>(nullptr),
                     .children = std::move(itemContent)
                 });

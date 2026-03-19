@@ -54,12 +54,11 @@ struct TextInput {
         };
     }
 
-    bool handleTextInput(const TextInputEvent& event) const {
+    bool handleTextInput(const TextInputEvent& event) {
         if (static_cast<bool>(readOnly)) return false;
         std::string val = value;
         int maxLen = maxLength;
 
-        // Value may have been externally changed (e.g. reset button)
         if (caretPos > val.size()) caretPos = val.size();
         if (selStart > val.size()) selStart = val.size();
         if (selEnd > val.size()) selEnd = val.size();
@@ -73,15 +72,14 @@ struct TextInput {
         caretPos += event.text.size();
         selStart = selEnd = caretPos;
 
-        const_cast<Property<std::string>&>(value) = val;
+        value = val;
         if (onValueChange) onValueChange(val);
         return true;
     }
 
-    bool handleKeyDown(const KeyEvent& event) const {
+    bool handleKeyDown(const KeyEvent& event) {
         std::string val = value;
 
-        // Value may have been externally changed (e.g. reset button)
         if (caretPos > val.size()) caretPos = val.size();
         if (selStart > val.size()) selStart = val.size();
         if (selEnd > val.size()) selEnd = val.size();
@@ -95,7 +93,7 @@ struct TextInput {
                 caretPos--;
             }
             selStart = selEnd = caretPos;
-            const_cast<Property<std::string>&>(value) = val;
+            value = val;
             if (onValueChange) onValueChange(val);
             return true;
         }
@@ -108,7 +106,7 @@ struct TextInput {
                 val.erase(caretPos, 1);
             }
             selStart = selEnd = caretPos;
-            const_cast<Property<std::string>&>(value) = val;
+            value = val;
             if (onValueChange) onValueChange(val);
             return true;
         }

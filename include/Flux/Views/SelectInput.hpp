@@ -18,7 +18,7 @@ struct SelectInput {
     FLUX_VIEW_PROPERTIES;
     FLUX_INTERACTIVE_PROPERTIES;
 
-    Property<int> selectedIndex = 0;
+    mutable Property<int> selectedIndex = 0;
     Property<std::vector<std::string>> options;
     Property<float> selectWidth = 200.0f;
     std::function<void(int, const std::string&)> onSelect;
@@ -43,7 +43,7 @@ struct SelectInput {
         };
     }
 
-    bool handleKeyDown(const KeyEvent& event) const {
+    bool handleKeyDown(const KeyEvent& event) {
         if (event.key == Key::Escape && isOpen) {
             isOpen = false;
             requestApplicationRedraw();
@@ -55,13 +55,13 @@ struct SelectInput {
 
         if (event.key == Key::Up && idx > 0) {
             idx--;
-            const_cast<Property<int>&>(selectedIndex) = idx;
+            selectedIndex = idx;
             if (onSelect) onSelect(idx, opts[idx]);
             return true;
         }
         if (event.key == Key::Down && idx < static_cast<int>(opts.size()) - 1) {
             idx++;
-            const_cast<Property<int>&>(selectedIndex) = idx;
+            selectedIndex = idx;
             if (onSelect) onSelect(idx, opts[idx]);
             return true;
         }
@@ -134,7 +134,7 @@ struct SelectInput {
                     .padding = EdgeInsets(6, 10, 6, 10),
                     .cursor = CursorType::Pointer,
                     .onClick = [this, capturedIdx, capturedLabel]() {
-                        const_cast<Property<int>&>(selectedIndex) = capturedIdx;
+                        selectedIndex = capturedIdx;
                         isOpen = false;
                         if (onSelect) onSelect(capturedIdx, capturedLabel);
                     },

@@ -220,7 +220,7 @@ std::string demangleTypeName(const char* name) {
 
 | Fix | File(s) | Effort | Status |
 |-----|---------|--------|--------|
-| Remove `const_cast` throughout Views (SelectInput, TextInput, TextArea, DropdownMenu) | `Views/*.hpp` | 1 hour | |
+| ~~Remove `const_cast` throughout Views (SelectInput, TextInput, TextArea, DropdownMenu)~~ | `Views/*.hpp` | 1 hour | **Done** |
 | ~~Fix examples README listing nonexistent examples (02, 07, 08, etc.) and outdated Wayland-only requirements~~ | `examples/README.md` | 15 min | **Done** |
 | ~~Add `.clang-format` for consistent formatting~~ | Project root | 15 min | **Done** |
 | ~~Add `.clang-tidy` for static analysis~~ | Project root | 15 min | **Done** |
@@ -235,7 +235,7 @@ std::string demangleTypeName(const char* name) {
 1. Wire `Property<T>` dirty notification to `Element*` back-pointer.
 2. Wire render command buffer into main pipeline.
 3. ~~Implement clipboard copy/cut.~~ **Done**
-4. Fix `const_cast` usage in Views.
+4. ~~Fix `const_cast` usage in Views.~~ **Done**
 5. ~~Fix examples README.~~ **Done**
 
 ### Medium-term

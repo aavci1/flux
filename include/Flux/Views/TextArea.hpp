@@ -50,18 +50,18 @@ struct TextArea {
         };
     }
 
-    bool handleTextInput(const TextInputEvent& event) const {
+    bool handleTextInput(const TextInputEvent& event) {
         if (static_cast<bool>(readOnly)) return false;
         std::string val = value;
         if (caretPos > val.size()) caretPos = val.size();
         val.insert(caretPos, event.text);
         caretPos += event.text.size();
-        const_cast<Property<std::string>&>(value) = val;
+        value = val;
         if (onValueChange) onValueChange(val);
         return true;
     }
 
-    bool handleKeyDown(const KeyEvent& event) const {
+    bool handleKeyDown(const KeyEvent& event) {
         std::string val = value;
         if (caretPos > val.size()) caretPos = val.size();
 
@@ -73,7 +73,7 @@ struct TextArea {
             if (!static_cast<bool>(readOnly)) {
                 val.insert(caretPos, "\n");
                 caretPos++;
-                const_cast<Property<std::string>&>(value) = val;
+                value = val;
                 if (onValueChange) onValueChange(val);
             }
             return true;
@@ -83,7 +83,7 @@ struct TextArea {
             if (caretPos > 0) {
                 val.erase(caretPos - 1, 1);
                 caretPos--;
-                const_cast<Property<std::string>&>(value) = val;
+                value = val;
                 if (onValueChange) onValueChange(val);
             }
             return true;
@@ -92,7 +92,7 @@ struct TextArea {
         if (event.key == Key::Delete && !static_cast<bool>(readOnly)) {
             if (caretPos < val.size()) {
                 val.erase(caretPos, 1);
-                const_cast<Property<std::string>&>(value) = val;
+                value = val;
                 if (onValueChange) onValueChange(val);
             }
             return true;
