@@ -1,4 +1,5 @@
 #include <Flux/Graphics/NanoVGRenderContext.hpp>
+#include <Flux/Core/FontDiscovery.hpp>
 #include <Flux/Core/Log.hpp>
 #include <cmath>
 
@@ -731,43 +732,23 @@ int NanoVGRenderContext::getFont(const std::string& fontName, FontWeight weight)
         return it->second;
     }
 
-    // Try to create a font with a fallback approach
     int font = -1;
 
-    // Try common system fonts on different platforms
-    const char* fontPaths[] = {
-        // Linux fonts
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-        "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
-        "/usr/share/fonts/TTF/DejaVuSans.ttf",
-        "/usr/share/fonts/liberation/LiberationSans-Regular.ttf",
-        // macOS fonts
-        "/System/Library/Fonts/Arial.ttf",
-        "/System/Library/Fonts/Helvetica.ttc",
-        "/System/Library/Fonts/SF-Pro-Display-Regular.otf",
-        "/System/Library/Fonts/HelveticaNeue.ttc",
-        // Windows fonts (if running on Wine or WSL)
-        "C:\\Windows\\Fonts\\arial.ttf",
-        nullptr
-    };
-
-    for (int i = 0; fontPaths[i] != nullptr; i++) {
-        font = nvgCreateFont(nvgContext_, fontKey.c_str(), fontPaths[i]);
+    // Use platform font discovery to resolve family name → file path
+    std::string family = (fontName == "default") ? "Helvetica" : fontName;
+    auto discovered = FontDiscovery::findFontPath(family, weight);
+    if (discovered) {
+        font = nvgCreateFont(nvgContext_, fontKey.c_str(), discovered->c_str());
         if (font != -1) {
-            FLUX_LOG_DEBUG("[NanoVGRenderContext] Loaded font: %s", fontPaths[i]);
-            break;
+            FLUX_LOG_DEBUG("[NanoVGRenderContext] Loaded font: %s", discovered->c_str());
         }
     }
 
-    // If all font files fail, try using the default font
     if (font == -1) {
         font = nvgCreateFont(nvgContext_, fontKey.c_str(), nullptr);
         if (font == -1) {
-            FLUX_LOG_ERROR("[NanoVGRenderContext] Failed to load any font!");
+            FLUX_LOG_ERROR("[NanoVGRenderContext] Failed to load any font for '%s'!", fontName.c_str());
             font = 0;
-        } else {
-            FLUX_LOG_INFO("[NanoVGRenderContext] Using default font");
         }
     }
 

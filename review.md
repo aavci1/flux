@@ -100,13 +100,11 @@ struct PointerEvent : Event {
 
 ## 5. Platform Polish
 
-### 5.1 Font Discovery
+### ~~5.1 Font Discovery~~ **Done**
 
-Font paths are hardcoded per platform in `NanoVGRenderContext.cpp`. Implement a `FontDiscovery` utility:
+~~Font paths are hardcoded per platform in `NanoVGRenderContext.cpp`.~~
 
-- **macOS:** CoreText (`CTFontDescriptorCreateMatchingFontDescriptors`)
-- **Windows:** DirectWrite (`IDWriteFontCollection::FindFamilyName`)
-- **Linux:** Fontconfig (`FcFontMatch`)
+Implemented `FontDiscovery` utility (`FontDiscovery.hpp`/`.cpp`). macOS uses CoreText `CTFontDescriptorCreateWithAttributes` to resolve family name + weight to a file path. Linux/Windows use file-path fallback (fontconfig/DirectWrite integration deferred). `NanoVGRenderContext::getFont()` now delegates to `FontDiscovery` instead of iterating hardcoded paths.
 
 ### ~~5.2 Clipboard: Copy/Cut~~ **Done**
 
@@ -226,7 +224,7 @@ Added `ci.yml` for macOS/Linux/Windows, `.clang-format` and `.clang-tidy` added 
 6. Unified event pipeline with capture/bubble.
 7. Migrate `FocusState` from `View*` to `Element*`.
 8. ~~Key-based identity in reconciler.~~ **Done**
-9. Font discovery per platform.
+9. ~~Font discovery per platform.~~ **Done**
 10. Resource manager.
 
 ### Long-term

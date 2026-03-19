@@ -118,6 +118,7 @@ set(FLUX_SOURCES
     src/Core/PlatformWindowFactory.cpp
     src/Core/Demangle.cpp
     src/Core/Element.cpp
+    src/Core/FontDiscovery.cpp
 
     # Graphics
     src/Graphics/Path.cpp
@@ -181,6 +182,13 @@ target_link_libraries(flux PUBLIC
     nanovg
     SDL3::SDL3
 )
+
+if(APPLE)
+    target_link_libraries(flux PRIVATE
+        "-framework CoreText"
+        "-framework CoreFoundation"
+    )
+endif()
 
 target_compile_options(flux PRIVATE
     -Wall -Wextra -Wpedantic
