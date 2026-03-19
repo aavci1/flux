@@ -4,6 +4,10 @@
 
 #if defined(__GNUC__) || defined(__clang__)
 #include <cxxabi.h>
+#elif defined(_MSC_VER)
+#include <Windows.h>
+#include <DbgHelp.h>
+#pragma comment(lib, "DbgHelp.lib")
 #endif
 
 namespace flux {
@@ -16,6 +20,11 @@ std::string demangleTypeName(const char* mangledName) {
         std::string result(demangled);
         std::free(demangled);
         return result;
+    }
+#elif defined(_MSC_VER)
+    char buf[1024];
+    if (UnDecorateSymbolName(mangledName, buf, sizeof(buf), UNDNAME_COMPLETE)) {
+        return std::string(buf);
     }
 #endif
     return std::string(mangledName);

@@ -198,21 +198,9 @@ Platform mapping:
 
 Add `.github/workflows/ci.yml` for all three platforms, `.clang-format`, and `.clang-tidy`.
 
-### 7.4 Portability: demangleTypeName MSVC Fallback
+### ~~7.4 Portability: demangleTypeName MSVC Fallback~~ **Done**
 
-`Demangle.cpp` only handles GCC/Clang. Add MSVC support:
-
-```cpp
-#elif defined(_MSC_VER)
-#include <DbgHelp.h>
-std::string demangleTypeName(const char* name) {
-    char buf[1024];
-    if (UnDecorateSymbolName(name, buf, sizeof(buf), UNDNAME_COMPLETE))
-        return buf;
-    return name;
-}
-#endif
-```
+~~`Demangle.cpp` only handles GCC/Clang.~~ MSVC support added via `UnDecorateSymbolName` from DbgHelp.
 
 ---
 
@@ -225,7 +213,7 @@ std::string demangleTypeName(const char* name) {
 | ~~Add `.clang-format` for consistent formatting~~ | Project root | 15 min | **Done** |
 | ~~Add `.clang-tidy` for static analysis~~ | Project root | 15 min | **Done** |
 | ~~Make `EdgeInsets` constructors `constexpr`~~ | `Types.hpp` | 10 min | **Done** |
-| Move `CursorType` out of `Types.hpp` into platform layer | `Types.hpp`, `PlatformWindow.hpp` | 30 min | |
+| ~~Move `CursorType` out of `Types.hpp` into own header~~ | `Types.hpp`, `CursorType.hpp` | 30 min | **Done** |
 
 ---
 
