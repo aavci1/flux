@@ -22,6 +22,9 @@ class PathFlattener {
 public:
     static std::vector<Point> flatten(const Path& path, float tolerance = 0.5f);
 
+    /** Flatten path into one polyline per subpath (each moveTo starts a new subpath). */
+    static std::vector<std::vector<Point>> flattenSubpaths(const Path& path, float tolerance = 0.5f);
+
     static TessellatedPath tessellateFill(const std::vector<Point>& polyline,
                                            const Color& color,
                                            float vpW, float vpH);

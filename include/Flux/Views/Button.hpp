@@ -14,14 +14,11 @@ struct Button {
     FLUX_INTERACTIVE_PROPERTIES;
 
     Property<std::string> text;
-    
-    // Focus state is now tracked by Window, no need for local state
-    
+    Property<Color> textColor = Colors::white;
+
     void init() {
         focusable = true;
     }
-
-    Property<Color> textColor = Colors::white;
 
     void render(RenderContext& ctx, const Rect& bounds) const {
         bool hasFocus = ctx.isCurrentViewFocused();
@@ -59,6 +56,7 @@ struct Button {
             ctx.drawPath(focusRing);
         }
 
+        ctx.setTextStyle(TextStyle::regular("default", 13));
         ctx.setFillStyle(FillStyle::solid(textColor));
         ctx.drawText(static_cast<std::string>(text), bounds.center(), HorizontalAlignment::center, VerticalAlignment::center);
     }
@@ -76,7 +74,7 @@ struct Button {
         return {textSize.width + paddingVal.horizontal(),
                 textSize.height + paddingVal.vertical()};
     }
-    
+
     // Handle keyboard activation (Enter/Space)
     bool handleKeyDown(const KeyEvent& event) const {
         if ((event.key == Key::Enter || event.key == Key::Space) && !event.isRepeat) {

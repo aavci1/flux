@@ -88,14 +88,92 @@ void Path::arc(const Point& center, float radius, float startAngle, float endAng
     invalidateBounds();
 }
 
-void Path::rect(const Rect& rect, const CornerRadius& cornerRadius) {
-    Command cmd(CommandType::Rect);
-    cmd.data = {
-        rect.x, rect.y, rect.width, rect.height,
-        cornerRadius.topLeft, cornerRadius.topRight,
-        cornerRadius.bottomRight, cornerRadius.bottomLeft
+namespace {
+
+constexpr float kPi = 3.14159265358979323846f;
+
+static void clampCornerRadii(float w, float h, CornerRadius& r) {
+    if (w <= 0.0f || h <= 0.0f)
+        return;
+    const float maxR = std::min(w, h) * 0.5f;
+    r.topLeft = std::min(r.topLeft, maxR);
+    r.topRight = std::min(r.topRight, maxR);
+    r.bottomRight = std::min(r.bottomRight, maxR);
+    r.bottomLeft = std::min(r.bottomLeft, maxR);
+    auto fixEdge = [](float& a, float& b, float len) {
+        if (a + b > len && len > 0.0f) {
+            const float s = len / (a + b);
+            a *= s;
+            b *= s;
+        }
     };
-    commands_.push_back(std::move(cmd));
+    fixEdge(r.topLeft, r.topRight, w);
+    fixEdge(r.bottomLeft, r.bottomRight, w);
+    fixEdge(r.topLeft, r.bottomLeft, h);
+    fixEdge(r.topRight, r.bottomRight, h);
+}
+
+/** Quarter-circle arc as line segments; angles in radians (0 = +X, +pi/2 = +Y). */
+static void appendArc(Path& path, float cx, float cy, float r, float a0, float a1, int segments) {
+    if (r <= 0.0f)
+        return;
+    segments = std::max(2, segments);
+    for (int i = 1; i <= segments; ++i) {
+        const float t = static_cast<float>(i) / static_cast<float>(segments);
+        const float a = a0 + (a1 - a0) * t;
+        path.lineTo({cx + std::cos(a) * r, cy + std::sin(a) * r});
+    }
+}
+
+static int arcSegments(float radius) {
+    if (radius <= 0.0f)
+        return 0;
+    return std::clamp(static_cast<int>(std::ceil(radius * 0.45f)), 4, 48);
+}
+
+} // namespace
+
+void Path::rect(const Rect& rect, const CornerRadius& cornerRadius) {
+    const float x = rect.x;
+    const float y = rect.y;
+    const float w = rect.width;
+    const float h = rect.height;
+    if (w <= 0.0f || h <= 0.0f)
+        return;
+
+    CornerRadius cr = cornerRadius;
+    clampCornerRadii(w, h, cr);
+
+    // Explicit closed outline: move → edges → close (flatten + stroke see a closed ring).
+    if (cr.isZero()) {
+        moveTo({x, y});
+        lineTo({x + w, y});
+        lineTo({x + w, y + h});
+        lineTo({x, y + h});
+        close();
+        invalidateBounds();
+        return;
+    }
+
+    const float tl = cr.topLeft;
+    const float tr = cr.topRight;
+    const float br = cr.bottomRight;
+    const float bl = cr.bottomLeft;
+
+    moveTo({x + tl, y});
+    lineTo({x + w - tr, y});
+    appendArc(*this, x + w - tr, y + tr, tr, -kPi * 0.5f, 0.0f, arcSegments(tr));
+
+    lineTo({x + w, y + h - br});
+    appendArc(*this, x + w - br, y + h - br, br, 0.0f, kPi * 0.5f, arcSegments(br));
+
+    lineTo({x + bl, y + h});
+    appendArc(*this, x + bl, y + h - bl, bl, kPi * 0.5f, kPi, arcSegments(bl));
+
+    lineTo({x, y + tl});
+    appendArc(*this, x + tl, y + tl, tl, kPi, kPi * 1.5f, arcSegments(tl));
+
+    close();
     invalidateBounds();
 }
 

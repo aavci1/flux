@@ -38,6 +38,7 @@ CompiledBatches CommandCompiler::compile(const RenderCommandBuffer& buffer,
     current_.scaleY = dpiScaleY;
     current_.fill = FillStyle::none();
     current_.stroke = StrokeStyle::none();
+    current_.textStyle = TextStyle{};  // default font/size until CmdSetTextStyle
     stateStack_.clear();
 
     startNewGroup(out);
@@ -88,7 +89,7 @@ CompiledBatches CommandCompiler::compile(const RenderCommandBuffer& buffer,
                 pushLine(out, c);
             }
             else if constexpr (std::is_same_v<T, CmdSetTextStyle>) {
-                currentText_ = c.style;
+                current_.textStyle = c.style;
             }
             else if constexpr (std::is_same_v<T, CmdDrawText>) {
                 pushText(out, c);
@@ -178,7 +179,9 @@ void CommandCompiler::pushRect(CompiledBatches& out, const CmdDrawRect& cmd) {
     inst.viewport[1] = out.viewportHeight;
     fillInstanceColors(inst);
     out.rects.push_back(inst);
-    out.groups.back().rectCount++;
+    auto& g = out.groups.back();
+    g.drawOps.push_back({DrawOpType::Rect, g.rectCount, 1});
+    g.rectCount++;
 }
 
 void CommandCompiler::pushCircle(CompiledBatches& out, const CmdDrawCircle& cmd) {
@@ -197,7 +200,9 @@ void CommandCompiler::pushCircle(CompiledBatches& out, const CmdDrawCircle& cmd)
     inst.viewport[1] = out.viewportHeight;
     fillInstanceColors(inst);
     out.circles.push_back(inst);
-    out.groups.back().circleCount++;
+    auto& g = out.groups.back();
+    g.drawOps.push_back({DrawOpType::Circle, g.circleCount, 1});
+    g.circleCount++;
 }
 
 void CommandCompiler::pushLine(CompiledBatches& out, const CmdDrawLine& cmd) {
@@ -219,6 +224,13 @@ void CommandCompiler::pushLine(CompiledBatches& out, const CmdDrawLine& cmd) {
     inst.rect[2] = len + halfW * 2.0f;
     inst.rect[3] = halfW * 2.0f;
 
+    // Line angle for GPU rotation: corners.xy = (cos(angle), sin(angle))
+    float angle = (len > 1e-6f) ? std::atan2(dy, dx) : 0.0f;
+    inst.corners[0] = std::cos(angle);
+    inst.corners[1] = std::sin(angle);
+    inst.corners[2] = 0.0f;
+    inst.corners[3] = 0.0f;
+
     inst.strokeWidth = strokeW;
     inst.strokeColor[0] = current_.stroke.color.r;
     inst.strokeColor[1] = current_.stroke.color.g;
@@ -229,7 +241,9 @@ void CommandCompiler::pushLine(CompiledBatches& out, const CmdDrawLine& cmd) {
     inst.viewport[1] = out.viewportHeight;
 
     out.lines.push_back(inst);
-    out.groups.back().lineCount++;
+    auto& g = out.groups.back();
+    g.drawOps.push_back({DrawOpType::Line, g.lineCount, 1});
+    g.lineCount++;
 }
 
 void CommandCompiler::pushText(CompiledBatches& out, const CmdDrawText& cmd) {
@@ -238,7 +252,7 @@ void CommandCompiler::pushText(CompiledBatches& out, const CmdDrawText& cmd) {
     float x = cmd.position.x, y = cmd.position.y;
     applyTransform(x, y);
 
-    float fontSize = currentText_.size * current_.scaleX;
+    float fontSize = current_.textStyle.size * current_.scaleX;
     Color textColor = current_.fill.color;
     textColor.a *= current_.opacity;
 
@@ -254,35 +268,51 @@ void CommandCompiler::pushText(CompiledBatches& out, const CmdDrawText& cmd) {
 
     auto glyphs = atlas_->layoutText(cmd.text, drawX, drawY, fontSize, textColor,
                                       out.viewportWidth, out.viewportHeight);
+    auto& g = out.groups.back();
+    g.drawOps.push_back({DrawOpType::Glyph, g.glyphCount, static_cast<uint32_t>(glyphs.size())});
     out.glyphs.insert(out.glyphs.end(), glyphs.begin(), glyphs.end());
-    out.groups.back().glyphCount += static_cast<uint32_t>(glyphs.size());
+    g.glyphCount += static_cast<uint32_t>(glyphs.size());
 }
 
 void CommandCompiler::pushPath(CompiledBatches& out, const CmdDrawPath& cmd) {
-    auto polyline = PathFlattener::flatten(cmd.path);
-    if (polyline.size() < 2) return;
+    auto subpaths = PathFlattener::flattenSubpaths(cmd.path);
 
-    // Apply transform to polyline
-    for (auto& p : polyline) applyTransform(p.x, p.y);
+    // Apply transform to each subpath
+    for (auto& sub : subpaths) {
+        for (auto& p : sub) applyTransform(p.x, p.y);
+    }
 
-    // Fill
+    size_t pathStart = out.pathVertices.size();
+    auto& g = out.groups.back();
+
+    // Fill: tessellate each subpath separately (each with >= 3 points)
     if (current_.fill.type != FillStyle::Type::None) {
         Color fc = current_.fill.color;
         fc.a *= current_.opacity;
-        auto filled = PathFlattener::tessellateFill(polyline, fc, out.viewportWidth, out.viewportHeight);
-        out.pathVertices.insert(out.pathVertices.end(), filled.vertices.begin(), filled.vertices.end());
-        out.groups.back().pathCount += static_cast<uint32_t>(filled.vertices.size());
+        for (const auto& sub : subpaths) {
+            if (sub.size() < 3) continue;
+            auto filled = PathFlattener::tessellateFill(sub, fc, out.viewportWidth, out.viewportHeight);
+            out.pathVertices.insert(out.pathVertices.end(), filled.vertices.begin(), filled.vertices.end());
+            g.pathCount += static_cast<uint32_t>(filled.vertices.size());
+        }
     }
 
-    // Stroke
+    // Stroke: stroke each subpath separately so moveTo does not connect segments
     if (current_.stroke.type != StrokeStyle::Type::None && current_.stroke.width > 0) {
         Color sc = current_.stroke.color;
         sc.a *= current_.opacity;
         float sw = current_.stroke.width * current_.scaleX;
-        auto stroked = PathFlattener::tessellateStroke(polyline, sw, sc, out.viewportWidth, out.viewportHeight);
-        out.pathVertices.insert(out.pathVertices.end(), stroked.vertices.begin(), stroked.vertices.end());
-        out.groups.back().pathCount += static_cast<uint32_t>(stroked.vertices.size());
+        for (const auto& sub : subpaths) {
+            if (sub.size() < 2) continue;
+            auto stroked = PathFlattener::tessellateStroke(sub, sw, sc, out.viewportWidth, out.viewportHeight);
+            out.pathVertices.insert(out.pathVertices.end(), stroked.vertices.begin(), stroked.vertices.end());
+            g.pathCount += static_cast<uint32_t>(stroked.vertices.size());
+        }
     }
+
+    size_t pathEnd = out.pathVertices.size();
+    if (pathEnd > pathStart)
+        g.drawOps.push_back({DrawOpType::Path, static_cast<uint32_t>(pathStart - g.pathOffset), static_cast<uint32_t>(pathEnd - pathStart)});
 }
 
 void CommandCompiler::pushTextBox(CompiledBatches& out, const CmdDrawTextBox& cmd) {
@@ -291,7 +321,7 @@ void CommandCompiler::pushTextBox(CompiledBatches& out, const CmdDrawTextBox& cm
     float x = cmd.position.x, y = cmd.position.y;
     applyTransform(x, y);
 
-    float fontSize = currentText_.size * current_.scaleX;
+    float fontSize = current_.textStyle.size * current_.scaleX;
     float maxWidth = cmd.maxWidth * current_.scaleX;
     Color textColor = current_.fill.color;
     textColor.a *= current_.opacity;
@@ -299,8 +329,10 @@ void CommandCompiler::pushTextBox(CompiledBatches& out, const CmdDrawTextBox& cm
     auto glyphs = atlas_->layoutTextBox(cmd.text, x, y + fontSize, fontSize, maxWidth,
                                          textColor, out.viewportWidth, out.viewportHeight,
                                          cmd.hAlign);
+    auto& g = out.groups.back();
+    g.drawOps.push_back({DrawOpType::Glyph, g.glyphCount, static_cast<uint32_t>(glyphs.size())});
     out.glyphs.insert(out.glyphs.end(), glyphs.begin(), glyphs.end());
-    out.groups.back().glyphCount += static_cast<uint32_t>(glyphs.size());
+    g.glyphCount += static_cast<uint32_t>(glyphs.size());
 }
 
 ImageInstance CommandCompiler::makeImageInstance(const Rect& rect, float alpha) const {
@@ -332,7 +364,9 @@ void CommandCompiler::pushImage(CompiledBatches& out, const CmdDrawImage& cmd) {
     draw.instance = makeImageInstance(transformed, cmd.alpha);
     draw.instance.viewport[0] = out.viewportWidth;
     draw.instance.viewport[1] = out.viewportHeight;
-    out.groups.back().imageDraws.push_back(std::move(draw));
+    auto& g = out.groups.back();
+    g.drawOps.push_back({DrawOpType::Image, static_cast<uint32_t>(g.imageDraws.size()), 1});
+    g.imageDraws.push_back(std::move(draw));
 }
 
 void CommandCompiler::pushImagePath(CompiledBatches& out, const CmdDrawImagePath& cmd) {
@@ -345,7 +379,9 @@ void CommandCompiler::pushImagePath(CompiledBatches& out, const CmdDrawImagePath
     draw.instance = makeImageInstance(transformed, cmd.alpha);
     draw.instance.viewport[0] = out.viewportWidth;
     draw.instance.viewport[1] = out.viewportHeight;
-    out.groups.back().imageDraws.push_back(std::move(draw));
+    auto& g = out.groups.back();
+    g.drawOps.push_back({DrawOpType::Image, static_cast<uint32_t>(g.imageDraws.size()), 1});
+    g.imageDraws.push_back(std::move(draw));
 }
 
 } // namespace flux

@@ -279,6 +279,7 @@ if(COMMAND compile_flux_shaders)
             shaders/test_triangle.vert.glsl
             shaders/test_triangle.frag.glsl
             shaders/sdf_quad.vert.glsl
+            shaders/sdf_line.vert.glsl
             shaders/rect.frag.glsl
             shaders/circle.frag.glsl
             shaders/line.frag.glsl
@@ -311,6 +312,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(BUILD_EXAMPLES "Build example applications" ON)
 
 if(BUILD_EXAMPLES)
+    add_executable(shapes examples/shapes/main.cpp)
+    target_link_libraries(shapes PRIVATE flux)
+
     add_executable(clock examples/19-clock/main.cpp)
     target_link_libraries(clock PRIVATE flux)
 

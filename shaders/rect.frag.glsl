@@ -31,14 +31,14 @@ void main() {
         strokeCoverage = 1.0 - smoothstep(-0.75, 0.75, sd);
     }
 
-    // Output straight-alpha color to match pipeline blend state.
-    float fillAlpha = fragFillColor.a * fillCoverage;
-    float strokeAlpha = fragStrokeColor.a * strokeCoverage * (1.0 - fillCoverage);
-    float outAlpha = (fillAlpha + strokeAlpha) * fragOpacity;
-
-    if (outAlpha < 0.001) discard;
-
-    vec3 premul = fragFillColor.rgb * fillAlpha + fragStrokeColor.rgb * strokeAlpha;
-    vec3 outRgb = (outAlpha > 0.0) ? (premul / max(fillAlpha + strokeAlpha, 1e-6)) : vec3(0.0);
-    outColor = vec4(outRgb, outAlpha);
+    // Premultiplied fill and stroke; composite stroke over fill (full stroke ring, not half).
+    float fillA = fragFillColor.a * fillCoverage;
+    float strokeA = fragStrokeColor.a * strokeCoverage;
+    vec4 fillP = vec4(fragFillColor.rgb * fillA, fillA);
+    vec4 strokeP = vec4(fragStrokeColor.rgb * strokeA, strokeA);
+    vec4 blended = strokeP + fillP * (1.0 - strokeP.a);
+    float outA = blended.a * fragOpacity;
+    if (outA < 0.001) discard;
+    vec3 outRgb = blended.rgb / max(blended.a, 1e-6);
+    outColor = vec4(outRgb, outA);
 }

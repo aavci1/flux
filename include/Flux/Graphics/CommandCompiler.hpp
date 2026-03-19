@@ -49,6 +49,14 @@ struct ScissorState {
     bool operator!=(const ScissorState& o) const { return !(*this == o); }
 };
 
+enum class DrawOpType { Rect, Circle, Line, Glyph, Path, Image };
+
+struct DrawOp {
+    DrawOpType type = DrawOpType::Rect;
+    uint32_t offset = 0;  // index into the type's buffer (for Image: index into imageDraws)
+    uint32_t count = 0;
+};
+
 struct DrawGroup {
     ScissorState scissor;
     uint32_t rectOffset = 0, rectCount = 0;
@@ -57,6 +65,7 @@ struct DrawGroup {
     uint32_t glyphOffset = 0, glyphCount = 0;
     uint32_t pathOffset = 0, pathCount = 0;
     std::vector<ImageDrawCmd> imageDraws;
+    std::vector<DrawOp> drawOps;  // order of draws within this group (command order)
 };
 
 struct CompiledBatches {
@@ -84,13 +93,13 @@ private:
         float opacity = 1;
         FillStyle fill;
         StrokeStyle stroke;
+        TextStyle textStyle;  // must save/restore with save/restore like NanoVG
         ScissorState scissor;
     };
 
     GlyphAtlas* atlas_ = nullptr;
     std::vector<State> stateStack_;
     State current_;
-    TextStyle currentText_;
 
     void applyTransform(float& x, float& y) const;
     void startNewGroup(CompiledBatches& out);

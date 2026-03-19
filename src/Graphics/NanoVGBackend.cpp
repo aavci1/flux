@@ -303,7 +303,8 @@ int NanoVGBackend::resolveFont(const std::string& name, FontWeight weight) {
     auto it = fontCache_.find(key);
     if (it != fontCache_.end()) return it->second;
 
-    std::string family = (name == "default") ? "Helvetica" : name;
+    std::string family = name;
+    if (name == "default" || name == "sans") family = "Helvetica";
     auto discovered = FontDiscovery::findFontPath(family, weight);
     int font = -1;
     if (discovered) {

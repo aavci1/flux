@@ -101,11 +101,13 @@ void GPURendererBackend::ensurePipelines() {
     ensureQuadVertexBuffer();
 
     static std::string vertMSLStr = readFileStr("sdf_quad.vert.glsl.metal");
+    static std::string lineVertMSLStr = readFileStr("sdf_line.vert.glsl.metal");
     static std::string rectMSLStr = readFileStr("rect.frag.glsl.metal");
     static std::string circleMSLStr = readFileStr("circle.frag.glsl.metal");
     static std::string lineMSLStr = readFileStr("line.frag.glsl.metal");
 
     static auto vertSPV = readFileBin("sdf_quad.vert.glsl.spv");
+    static auto lineVertSPV = readFileBin("sdf_line.vert.glsl.spv");
     static auto rectSPV = readFileBin("rect.frag.glsl.spv");
     static auto circleSPV = readFileBin("circle.frag.glsl.spv");
     static auto lineSPV = readFileBin("line.frag.glsl.spv");
@@ -150,7 +152,17 @@ void GPURendererBackend::ensurePipelines() {
 
     rectPipeline_ = makePipeline(rectMSLStr, rectSPV);
     circlePipeline_ = makePipeline(circleMSLStr, circleSPV);
-    linePipeline_ = makePipeline(lineMSLStr, lineSPV);
+    {
+        gpu::RenderPipelineDesc lineDesc;
+        lineDesc.vertexShader = makeShaderSrc(lineVertMSLStr, lineVertSPV);
+        lineDesc.fragmentShader = makeShaderSrc(lineMSLStr, lineSPV);
+        lineDesc.vertexFunction = "main0";
+        lineDesc.fragmentFunction = "main0";
+        lineDesc.vertexBuffers = {vertLayout, instLayout};
+        lineDesc.colorFormat = device_->swapchainFormat();
+        lineDesc.blendEnabled = true;
+        linePipeline_ = device_->createRenderPipeline(lineDesc);
+    }
 
     // Glyph pipeline
     static std::string glyphVertMSL = readFileStr("glyph.vert.glsl.metal");
@@ -320,69 +332,69 @@ void GPURendererBackend::uploadAndDraw(const CompiledBatches& batches) {
             enc->setScissorRect(0, 0, vpW, vpH);
         }
 
-        // Rects
-        if (group.rectCount > 0) {
-            enc->setPipeline(rectPipeline_.get());
-            enc->setVertexBuffer(0, quadVB_.get());
-            enc->setVertexBuffer(1, rectInstanceBuffer_.get());
-            enc->draw(6, group.rectCount, 0, group.rectOffset);
-        }
-
-        // Circles
-        if (group.circleCount > 0) {
-            enc->setPipeline(circlePipeline_.get());
-            enc->setVertexBuffer(0, quadVB_.get());
-            enc->setVertexBuffer(1, circleInstanceBuffer_.get());
-            enc->draw(6, group.circleCount, 0, group.circleOffset);
-        }
-
-        // Lines
-        if (group.lineCount > 0) {
-            enc->setPipeline(linePipeline_.get());
-            enc->setVertexBuffer(0, quadVB_.get());
-            enc->setVertexBuffer(1, lineInstanceBuffer_.get());
-            enc->draw(6, group.lineCount, 0, group.lineOffset);
-        }
-
-        // Glyphs
-        if (group.glyphCount > 0 && glyphAtlas_ && glyphAtlas_->texture()) {
-            enc->setPipeline(glyphPipeline_.get());
-            enc->setVertexBuffer(0, quadVB_.get());
-            enc->setVertexBuffer(1, glyphInstanceBuffer_.get());
-            enc->setFragmentTexture(0, glyphAtlas_->texture());
-            enc->draw(6, group.glyphCount, 0, group.glyphOffset);
-        }
-
-        // Images — one draw per unique texture
-        for (const auto& draw : group.imageDraws) {
-            gpu::Texture* tex = nullptr;
-            if (!draw.path.empty())
-                tex = imageCache_->getOrLoad(draw.path);
-            else if (draw.imageId > 0)
-                tex = imageCache_->getById(draw.imageId);
-            if (!tex) continue;
-
-            if (!imageInstanceBuffer_ || imageBufferCapacity_ < 1) {
-                imageBufferCapacity_ = 16;
-                gpu::BufferDesc desc;
-                desc.size = imageBufferCapacity_ * sizeof(ImageInstance);
-                desc.usage = gpu::BufferUsage::Vertex;
-                imageInstanceBuffer_ = device_->createBuffer(desc);
+        // Draw in command order (each op = one or more instances of the same type)
+        for (const auto& op : group.drawOps) {
+            switch (op.type) {
+                case DrawOpType::Rect:
+                    enc->setPipeline(rectPipeline_.get());
+                    enc->setVertexBuffer(0, quadVB_.get());
+                    enc->setVertexBuffer(1, rectInstanceBuffer_.get());
+                    enc->draw(6, op.count, 0, group.rectOffset + op.offset);
+                    break;
+                case DrawOpType::Circle:
+                    enc->setPipeline(circlePipeline_.get());
+                    enc->setVertexBuffer(0, quadVB_.get());
+                    enc->setVertexBuffer(1, circleInstanceBuffer_.get());
+                    enc->draw(6, op.count, 0, group.circleOffset + op.offset);
+                    break;
+                case DrawOpType::Line:
+                    enc->setPipeline(linePipeline_.get());
+                    enc->setVertexBuffer(0, quadVB_.get());
+                    enc->setVertexBuffer(1, lineInstanceBuffer_.get());
+                    enc->draw(6, op.count, 0, group.lineOffset + op.offset);
+                    break;
+                case DrawOpType::Glyph:
+                    if (glyphAtlas_ && glyphAtlas_->texture() && op.count > 0) {
+                        enc->setPipeline(glyphPipeline_.get());
+                        enc->setVertexBuffer(0, quadVB_.get());
+                        enc->setVertexBuffer(1, glyphInstanceBuffer_.get());
+                        enc->setFragmentTexture(0, glyphAtlas_->texture());
+                        enc->draw(6, op.count, 0, group.glyphOffset + op.offset);
+                    }
+                    break;
+                case DrawOpType::Path:
+                    if (op.count > 0) {
+                        enc->setPipeline(pathPipeline_.get());
+                        enc->setVertexBuffer(0, pathVertexBuffer_.get());
+                        enc->draw(op.count, 1, group.pathOffset + op.offset, 0);
+                    }
+                    break;
+                case DrawOpType::Image:
+                    if (op.offset < group.imageDraws.size()) {
+                        const auto& draw = group.imageDraws[op.offset];
+                        gpu::Texture* tex = nullptr;
+                        if (!draw.path.empty())
+                            tex = imageCache_->getOrLoad(draw.path);
+                        else if (draw.imageId > 0)
+                            tex = imageCache_->getById(draw.imageId);
+                        if (tex) {
+                            if (!imageInstanceBuffer_ || imageBufferCapacity_ < 1) {
+                                imageBufferCapacity_ = 16;
+                                gpu::BufferDesc desc;
+                                desc.size = imageBufferCapacity_ * sizeof(ImageInstance);
+                                desc.usage = gpu::BufferUsage::Vertex;
+                                imageInstanceBuffer_ = device_->createBuffer(desc);
+                            }
+                            imageInstanceBuffer_->write(&draw.instance, sizeof(ImageInstance));
+                            enc->setPipeline(imagePipeline_.get());
+                            enc->setVertexBuffer(0, quadVB_.get());
+                            enc->setVertexBuffer(1, imageInstanceBuffer_.get());
+                            enc->setFragmentTexture(0, tex);
+                            enc->draw(6, 1);
+                        }
+                    }
+                    break;
             }
-            imageInstanceBuffer_->write(&draw.instance, sizeof(ImageInstance));
-
-            enc->setPipeline(imagePipeline_.get());
-            enc->setVertexBuffer(0, quadVB_.get());
-            enc->setVertexBuffer(1, imageInstanceBuffer_.get());
-            enc->setFragmentTexture(0, tex);
-            enc->draw(6, 1);
-        }
-
-        // Paths (non-instanced triangles)
-        if (group.pathCount > 0) {
-            enc->setPipeline(pathPipeline_.get());
-            enc->setVertexBuffer(0, pathVertexBuffer_.get());
-            enc->draw(group.pathCount, 1, group.pathOffset, 0);
         }
     }
 

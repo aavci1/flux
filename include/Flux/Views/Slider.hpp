@@ -109,7 +109,7 @@ struct Slider {
         ctx.setFillStyle(FillStyle::solid(thumbColor));
         ctx.drawCircle({thumbX, sliderY}, thumbR);
 
-        if (hasFocus && !isPressed) {
+        if (hasFocus) {
             ctx.setFillStyle(FillStyle::none());
             ctx.setStrokeStyle(StrokeStyle{
                 .color = static_cast<Color>(activeColor).darken(0.2f),
