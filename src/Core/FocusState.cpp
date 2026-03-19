@@ -3,8 +3,10 @@
 #include <Flux/Core/LayoutTree.hpp>
 #include <Flux/Core/Property.hpp>
 #include <Flux/Core/Log.hpp>
+#include <Flux/Core/View.hpp>
 #include <sstream>
 #include <algorithm>
+#include <vector>
 
 namespace flux {
 
@@ -151,55 +153,112 @@ View* FocusState::findViewByKey(LayoutNode& root, const std::string& key) {
     return nullptr;
 }
 
+static std::vector<Element*> buildAncestorPath(Element* target) {
+    std::vector<Element*> path;
+    for (Element* e = target; e != nullptr; e = e->parent) {
+        path.push_back(e);
+    }
+    std::reverse(path.begin(), path.end());
+    return path;
+}
+
 bool FocusState::dispatchKeyDownToFocused(LayoutNode& root, const KeyEvent& event) {
     (void)root;
-    
+
     if (focusedKey_.empty()) return false;
-    
-    View* focusedView = getFocusedView();
-    if (!focusedView) {
-        FLUX_LOG_WARN("[FOCUS] Focused view '%s' not found in current frame", focusedKey_.c_str());
+
+    Element* focusedElem = getFocusedElement();
+    if (!focusedElem || !focusedElem->description) {
+        FLUX_LOG_WARN("[FOCUS] Focused element '%s' not found in current frame", focusedKey_.c_str());
         return false;
     }
-    
-    bool handled = focusedView->handleKeyDown(event);
+
+    auto path = buildAncestorPath(focusedElem);
+
+    // Capture: root → target (exclusive)
+    for (size_t i = 0; i + 1 < path.size(); ++i) {
+        if (path[i]->description && path[i]->description->handleKeyDown(event)) {
+            FLUX_LOG_DEBUG("[FOCUS] Key down captured by ancestor '%s'", path[i]->typeName.c_str());
+            return true;
+        }
+    }
+
+    // Target
+    bool handled = focusedElem->description->handleKeyDown(event);
     if (handled) {
         FLUX_LOG_DEBUG("[FOCUS] Key down handled by focused view '%s'", focusedKey_.c_str());
-    } else {
-        FLUX_LOG_DEBUG("[FOCUS] Key down not handled by focused view '%s'", focusedKey_.c_str());
+        return true;
     }
-    return handled;
+
+    // Bubble: target → root (skip target)
+    for (int i = static_cast<int>(path.size()) - 2; i >= 0; --i) {
+        if (path[i]->description && path[i]->description->handleKeyDown(event)) {
+            FLUX_LOG_DEBUG("[FOCUS] Key down bubbled to '%s'", path[i]->typeName.c_str());
+            return true;
+        }
+    }
+
+    FLUX_LOG_DEBUG("[FOCUS] Key down not handled by focused view '%s'", focusedKey_.c_str());
+    return false;
 }
 
 bool FocusState::dispatchKeyUpToFocused(LayoutNode& root, const KeyEvent& event) {
     (void)root;
-    
+
     if (focusedKey_.empty()) return false;
-    
-    View* focusedView = getFocusedView();
-    if (!focusedView) return false;
-    
-    bool handled = focusedView->handleKeyUp(event);
-    if (handled) {
-        FLUX_LOG_DEBUG("[FOCUS] Key up handled by focused view '%s'", focusedKey_.c_str());
+
+    Element* focusedElem = getFocusedElement();
+    if (!focusedElem || !focusedElem->description) return false;
+
+    auto path = buildAncestorPath(focusedElem);
+
+    for (size_t i = 0; i + 1 < path.size(); ++i) {
+        if (path[i]->description && path[i]->description->handleKeyUp(event)) {
+            return true;
+        }
     }
-    return handled;
+
+    if (focusedElem->description->handleKeyUp(event)) {
+        FLUX_LOG_DEBUG("[FOCUS] Key up handled by focused view '%s'", focusedKey_.c_str());
+        return true;
+    }
+
+    for (int i = static_cast<int>(path.size()) - 2; i >= 0; --i) {
+        if (path[i]->description && path[i]->description->handleKeyUp(event)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 bool FocusState::dispatchTextInputToFocused(LayoutNode& root, const TextInputEvent& event) {
     (void)root;
-    
+
     if (focusedKey_.empty()) return false;
-    
-    View* focusedView = getFocusedView();
-    if (!focusedView) return false;
-    
-    bool handled = focusedView->handleTextInput(event);
-    if (handled) {
+
+    Element* focusedElem = getFocusedElement();
+    if (!focusedElem || !focusedElem->description) return false;
+
+    auto path = buildAncestorPath(focusedElem);
+
+    for (size_t i = 0; i + 1 < path.size(); ++i) {
+        if (path[i]->description && path[i]->description->handleTextInput(event)) {
+            return true;
+        }
+    }
+
+    if (focusedElem->description->handleTextInput(event)) {
         FLUX_LOG_DEBUG("[FOCUS] Text input '%s' handled by focused view '%s'",
                        event.text.c_str(), focusedKey_.c_str());
+        return true;
     }
-    return handled;
+
+    for (int i = static_cast<int>(path.size()) - 2; i >= 0; --i) {
+        if (path[i]->description && path[i]->description->handleTextInput(event)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 int FocusState::findViewIndexByKey(const std::string& key) const {

@@ -6,7 +6,9 @@
 #include <Flux/Core/LayoutTree.hpp>
 #include <Flux/Core/Runtime.hpp>
 #include <Flux/Core/Property.hpp>
+#include <Flux/Core/EventTypes.hpp>
 #include <optional>
+#include <vector>
 
 namespace flux {
 
@@ -142,6 +144,98 @@ LayoutNode* Renderer::findNodeByPath(LayoutNode& root, const std::vector<size_t>
     return current;
 }
 
+void Renderer::hitTest(const LayoutNode& node, const Point& point, std::vector<LayoutNode*>& path) {
+    if (!node.bounds.contains(point)) return;
+    path.push_back(const_cast<LayoutNode*>(&node));
+    for (auto it = node.children.rbegin(); it != node.children.rend(); ++it) {
+        if (it->bounds.contains(point)) {
+            hitTest(*it, point, path);
+            return;
+        }
+    }
+}
+
+bool Renderer::dispatchPointerToView(View& view, PointerEvent& event, const Rect& bounds) {
+    Point local = {event.windowPosition.x - bounds.x, event.windowPosition.y - bounds.y};
+    event.localPosition = local;
+    switch (event.kind) {
+        case PointerEvent::Kind::Down:
+            return view.handleMouseDown(local.x, local.y, event.button);
+        case PointerEvent::Kind::Up:
+            return view.handleMouseUp(local.x, local.y, event.button);
+        case PointerEvent::Kind::Move:
+            return view.handleMouseMove(local.x, local.y);
+        case PointerEvent::Kind::Scroll:
+            return view.handleMouseScroll(local.x, local.y, event.scrollDeltaX, event.scrollDeltaY);
+        default:
+            return false;
+    }
+}
+
+bool Renderer::dispatchPointerEvent(LayoutNode& root, PointerEvent& event) {
+    std::vector<LayoutNode*> path;
+    hitTest(root, event.windowPosition, path);
+    if (path.empty()) return false;
+
+    // 1. CAPTURE — root → target (exclusive of target)
+    event.phase = EventBase::Phase::Capture;
+    for (size_t i = 0; i + 1 < path.size(); ++i) {
+        if (path[i]->view.capturePointerEvent(event)) {
+            event.handled = true;
+            return true;
+        }
+    }
+
+    // 2. TARGET — deepest node in path
+    event.phase = EventBase::Phase::Target;
+    LayoutNode* target = path.back();
+
+    // Record tree path for mouse capture (for drag continuation)
+    mouseCapture_.treePath.clear();
+    for (size_t i = 1; i < path.size(); ++i) {
+        LayoutNode* parent = path[i - 1];
+        for (size_t c = 0; c < parent->children.size(); ++c) {
+            if (&parent->children[c] == path[i]) {
+                mouseCapture_.treePath.push_back(c);
+                break;
+            }
+        }
+    }
+
+    if (target->view.isInteractive()) {
+        bool handled = dispatchPointerToView(target->view, event, target->bounds);
+        if (handled) {
+            if (event.kind == PointerEvent::Kind::Down) {
+                mouseCapture_.active = true;
+                pressedBounds_ = target->bounds;
+                hasPressedView_ = true;
+            }
+            event.handled = true;
+            return true;
+        }
+    }
+
+    // 3. BUBBLE — target → root (skip target, walk back toward root)
+    event.phase = EventBase::Phase::Bubble;
+    for (int i = static_cast<int>(path.size()) - 2; i >= 0; --i) {
+        if (path[i]->view.isInteractive()) {
+            bool handled = dispatchPointerToView(path[i]->view, event, path[i]->bounds);
+            if (handled) {
+                if (event.kind == PointerEvent::Kind::Down) {
+                    mouseCapture_.active = true;
+                    pressedBounds_ = path[i]->bounds;
+                    hasPressedView_ = true;
+                    mouseCapture_.treePath.resize(i);
+                }
+                event.handled = true;
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 void Renderer::renderTree(LayoutNode& node, Element* element, Point parentOrigin) {
     // Register focusable elements and capture the assigned key
     std::string assignedFocusKey;
@@ -238,6 +332,31 @@ void Renderer::handleEvent(const struct Event& event, const Rect& windowBounds) 
         needsRedraw = true;
     }
 
+    // Build a PointerEvent for the unified pipeline
+    PointerEvent ptrEvent;
+    ptrEvent.windowPosition = eventPoint;
+    ptrEvent.localPosition = eventPoint;
+    switch (event.type) {
+        case Event::MouseDown:
+            ptrEvent.kind = PointerEvent::Kind::Down;
+            ptrEvent.button = event.mouseButton.button;
+            break;
+        case Event::MouseUp:
+            ptrEvent.kind = PointerEvent::Kind::Up;
+            ptrEvent.button = event.mouseButton.button;
+            break;
+        case Event::MouseMove:
+            ptrEvent.kind = PointerEvent::Kind::Move;
+            break;
+        case Event::MouseScroll:
+            ptrEvent.kind = PointerEvent::Kind::Scroll;
+            ptrEvent.scrollDeltaX = event.mouseScroll.deltaX;
+            ptrEvent.scrollDeltaY = event.mouseScroll.deltaY;
+            break;
+        default:
+            break;
+    }
+
     if (mouseCapture_.active && (event.type == Event::MouseMove || event.type == Event::MouseUp)) {
         LayoutNode* captured = findNodeByPath(cachedLayoutTree_, mouseCapture_.treePath);
         if (captured && captured->view.isInteractive()) {
@@ -245,8 +364,7 @@ void Renderer::handleEvent(const struct Event& event, const Rect& windowBounds) 
                 pressedBounds_ = captured->bounds;
                 hasPressedView_ = true;
             }
-            Point localPoint = {eventPoint.x - captured->bounds.x, eventPoint.y - captured->bounds.y};
-            dispatchEventToView(captured->view, event, localPoint);
+            dispatchPointerToView(captured->view, ptrEvent, captured->bounds);
             needsRedraw = true;
         }
         if (event.type == Event::MouseUp) {
@@ -254,7 +372,7 @@ void Renderer::handleEvent(const struct Event& event, const Rect& windowBounds) 
         }
     } else if (event.type != Event::MouseMove) {
         mouseCapture_.treePath.clear();
-        if (findAndDispatchEvent(cachedLayoutTree_, event, eventPoint)) {
+        if (dispatchPointerEvent(cachedLayoutTree_, ptrEvent)) {
             needsRedraw = true;
         }
     }

@@ -30,7 +30,9 @@ std::unique_ptr<Element> Element::buildTree(const LayoutNode& node, size_t index
     element->lastConstraints = node.bounds;
 
     for (size_t i = 0; i < node.children.size(); ++i) {
-        element->children.push_back(buildTree(node.children[i], i));
+        auto child = buildTree(node.children[i], i);
+        child->parent = element.get();
+        element->children.push_back(std::move(child));
     }
 
     element->mountSubtree();
@@ -105,6 +107,9 @@ void Element::reconcileChildren(const std::vector<LayoutNode>& newChildren) {
     }
 
     children = std::move(result);
+    for (auto& child : children) {
+        child->parent = this;
+    }
 }
 
 Element* Element::findByFocusKey(const std::string& key) {

@@ -18,6 +18,7 @@ public:
 
     std::unique_ptr<View> description;
     std::vector<std::unique_ptr<Element>> children;
+    Element* parent = nullptr;
 
     bool isMounted = false;
     bool bodyDirty = true;

@@ -4,6 +4,7 @@
 #include <Flux/Core/Property.hpp>
 #include <Flux/Core/ViewHelpers.hpp>
 #include <Flux/Core/KeyEvent.hpp>
+#include <Flux/Core/EventTypes.hpp>
 #include <Flux/Graphics/RenderContext.hpp>
 #include <memory>
 #include <vector>
@@ -115,7 +116,7 @@ public:
     virtual bool hasChildrenProperty() const = 0;
     virtual std::vector<View> getChildren() const = 0;
 
-    // Event handling methods
+    // Event handling methods (target + bubble phase)
     virtual bool handleMouseDown(float x, float y, int button) { (void)x; (void)y; (void)button; return false; }
     virtual bool handleMouseUp(float x, float y, int button) { (void)x; (void)y; (void)button; return false; }
     virtual bool handleMouseMove(float x, float y) { (void)x; (void)y; return false; }
@@ -123,6 +124,10 @@ public:
     virtual void handleMouseLeave() {}
     virtual bool handleMouseScroll(float x, float y, float deltaX, float deltaY) { (void)x; (void)y; (void)deltaX; (void)deltaY; return false; }
     virtual bool isInteractive() const { return false; }
+
+    // Capture phase — called root→target before the target handler.
+    // Return true to stop propagation before it reaches the target.
+    virtual bool capturePointerEvent(PointerEvent&) { return false; }
     
     // Keyboard event handling methods
     virtual bool handleKeyDown(const KeyEvent& event) { (void)event; return false; }
@@ -251,6 +256,14 @@ template<typename T>
 struct has_handleTextInput {
     template<typename U>
     static auto test(U& u) -> decltype(u.handleTextInput(std::declval<const TextInputEvent&>()), std::true_type{});
+    static std::false_type test(...);
+    static constexpr bool value = decltype(test(std::declval<T&>()))::value;
+};
+
+template<typename T>
+struct has_capturePointerEvent {
+    template<typename U>
+    static auto test(U& u) -> decltype(u.capturePointerEvent(std::declval<PointerEvent&>()), std::true_type{});
     static std::false_type test(...);
     static constexpr bool value = decltype(test(std::declval<T&>()))::value;
 };
@@ -409,7 +422,8 @@ public:
     void handleMouseLeave() override;
     bool handleMouseScroll(float x, float y, float deltaX, float deltaY) override;
     bool isInteractive() const override;
-    
+    bool capturePointerEvent(PointerEvent& event) override;
+
     // Keyboard event handling methods
     bool handleKeyDown(const KeyEvent& event) override;
     bool handleKeyUp(const KeyEvent& event) override;
@@ -546,6 +560,10 @@ public:
 
     bool handleMouseScroll(float x, float y, float deltaX, float deltaY) {
         return component_ ? component_->handleMouseScroll(x, y, deltaX, deltaY) : false;
+    }
+
+    bool capturePointerEvent(PointerEvent& event) {
+        return component_ ? component_->capturePointerEvent(event) : false;
     }
 
     bool isInteractive() const {
@@ -1030,6 +1048,14 @@ inline bool ViewAdapter<T>::isInteractive() const {
     if constexpr (has_onDoubleClick<T>::value) result = result || component.onDoubleClick != nullptr;
     if constexpr (has_onScroll<T>::value) result = result || component.onScroll != nullptr;
     return result;
+}
+
+template<ViewComponent T>
+inline bool ViewAdapter<T>::capturePointerEvent(PointerEvent& event) {
+    if constexpr (has_capturePointerEvent<T>::value) {
+        return component.capturePointerEvent(event);
+    }
+    return false;
 }
 
 template<ViewComponent T>

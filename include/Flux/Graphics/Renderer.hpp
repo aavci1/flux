@@ -6,6 +6,7 @@
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/Log.hpp>
 #include <Flux/Core/FocusState.hpp>
+#include <Flux/Core/EventTypes.hpp>
 #include <Flux/Graphics/RenderContext.hpp>
 
 namespace flux {
@@ -116,6 +117,11 @@ private:
     void renderTree(LayoutNode& node, Element* element, Point parentOrigin = {0, 0});
 
     bool findAndDispatchEvent(LayoutNode& node, const Event& event, const Point& point);
+
+    // Unified event pipeline: hit test → capture → target → bubble
+    bool dispatchPointerEvent(LayoutNode& root, PointerEvent& event);
+    void hitTest(const LayoutNode& node, const Point& point, std::vector<LayoutNode*>& path);
+    bool dispatchPointerToView(View& view, PointerEvent& event, const Rect& bounds);
     
     // Collect cursor by traversing view hierarchy
     std::optional<CursorType> collectCursor(const LayoutNode& node, const Point& point, std::optional<CursorType> inheritedCursor);

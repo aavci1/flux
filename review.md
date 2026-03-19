@@ -18,54 +18,28 @@ Implemented: `key` property added to `FLUX_VIEW_PROPERTIES`, propagated through 
 
 ---
 
-## 3. Event System: Unified Pipeline
+## ~~3. Event System: Unified Pipeline~~ **Done**
 
-### 3.1 Current Problems
+Implemented unified capture → target → bubble event pipeline for both pointer and keyboard events.
 
-1. **Split dispatch:** Mouse events go through `Renderer::findAndDispatchEvent()`. Keyboard events go through `KeyboardInputHandler` → `FocusState`. These two paths don't compose.
-2. **No bubbling:** A parent can't intercept a child's click.
-3. ~~**Raw View* in FocusState:** Can dangle between frames.~~ **Fixed** — FocusState now stores Element*.
-4. **Drag events not implemented.**
+### 3.1 What was done
 
-### 3.2 Unified Event Pipeline
+1. **New event types** (`EventTypes.hpp`): `EventBase` with `Phase` (Capture/Target/Bubble) and `stopPropagation()`. `PointerEvent` extends it with Kind, positions, button, scroll deltas, and modifiers. Replaces the old C-union `Event` struct for dispatch.
+2. **Unified pointer dispatch** (`Renderer::dispatchPointerEvent`): Hit-tests the LayoutNode tree to build root→target path, then runs capture → target → bubble phases. Capture calls `capturePointerEvent()` on ancestors (root→target). Target and bubble call existing `handleMouse*()` methods. Mouse capture (drag continuation) preserved.
+3. **Keyboard bubbling** (`FocusState`): `dispatchKeyDownToFocused`, `dispatchKeyUpToFocused`, `dispatchTextInputToFocused` now walk the ancestor chain (via `Element::parent` pointer) through capture → target → bubble. Parents can now intercept keyboard events from focused children.
+4. **Element parent pointer**: `Element::parent` set during `buildTree` and `reconcileChildren` for efficient ancestor traversal.
+5. **Capture-phase API**: `ViewInterface::capturePointerEvent(PointerEvent&)` with SFINAE-based `ViewAdapter` delegation. Components can implement `capturePointerEvent` to intercept events before they reach the target.
 
-```
-1. HIT TEST     → Walk the element tree, find deepest element under the pointer.
-2. CAPTURE      → Root → target, calling capture handlers. Any can stop propagation.
-3. TARGET       → Call the target element's handler.
-4. BUBBLE       → Target → root, calling bubble handlers. Any can stop propagation.
-```
+### 3.2 Previous fixes
 
-For keyboard events, the target is the focused element. Same pipeline.
+- ~~**Raw View* in FocusState**~~ **Fixed** — FocusState stores Element*.
+- ~~**Split dispatch**~~ **Fixed** — both mouse and keyboard now use capture/target/bubble.
+- ~~**No bubbling**~~ **Fixed** — parents can intercept child events.
 
-### 3.3 Event Types
+### 3.3 Remaining
 
-Replace the current C-union `Event` struct in `Renderer.hpp` with proper types:
-
-```cpp
-struct Event {
-    enum class Phase { Capture, Target, Bubble };
-    Phase phase;
-    bool handled = false;
-    void stopPropagation() { handled = true; }
-};
-
-struct PointerEvent : Event {
-    enum class Kind { Move, Down, Up, Scroll, Enter, Leave };
-    Kind kind;
-    Point windowPosition;
-    Point localPosition;
-    int button = 0;
-    float scrollDeltaX = 0, scrollDeltaY = 0;
-    KeyModifier modifiers;
-};
-```
-
-### 3.4 State Machines
-
-**Drag detection:** `mouseDown` + movement beyond threshold → `onDragStart` → `onDrag` → `onDragEnd`/`onDrop`.
-
-**Focus:** ~~Migrate `FocusState` from `View*` to `Element*`~~ **Done** — FocusState now stores Element* (stable across frames since elements persist). View* accessed through `element->description` for dispatch.
+- **Drag detection state machine**: `mouseDown` + movement threshold → `onDragStart` → `onDrag` → `onDragEnd`/`onDrop`.
+- **Legacy `Event` struct**: Still defined in `Renderer.hpp` for `MouseInputHandler` bridge; can be removed once `MouseInputHandler` creates `PointerEvent` directly.
 
 ---
 
@@ -194,7 +168,7 @@ Added `ci.yml` for macOS/Linux/Windows, `.clang-format` and `.clang-tidy` added 
 5. ~~Fix examples README.~~ **Done**
 
 ### Medium-term
-6. Unified event pipeline with capture/bubble.
+6. ~~Unified event pipeline with capture/bubble.~~ **Done**
 7. ~~Migrate `FocusState` from `View*` to `Element*`.~~ **Done**
 8. ~~Key-based identity in reconciler.~~ **Done**
 9. ~~Font discovery per platform.~~ **Done**
