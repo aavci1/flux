@@ -157,10 +157,6 @@ public:
     std::string getFocusedKey() const override;
     bool isCurrentViewFocused() const override;
     
-    // Focus state members (public for renderer access)
-    std::string globalFocusedKey_;
-    std::string currentViewFocusKey_;
-
     // ============================================================================
     // HOVER / PRESS STATE
     // ============================================================================
@@ -170,12 +166,6 @@ public:
     void setPressedBounds(const Rect& bounds) override;
     void clearPressedBounds() override;
     bool isCurrentViewPressed() const override;
-
-    Rect hoveredBounds_{};
-    bool hasHovered_ = false;
-    Rect currentViewBounds_{};
-    Rect pressedBounds_{};
-    bool hasPressed_ = false;
 
 private:
     // Helper functions

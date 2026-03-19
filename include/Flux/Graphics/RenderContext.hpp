@@ -478,6 +478,32 @@ public:
     virtual void setPressedBounds(const Rect& bounds) = 0;
     virtual void clearPressedBounds() = 0;
     virtual bool isCurrentViewPressed() const = 0;
+
+    // ============================================================================
+    // FOCUS KEY (non-virtual, stored in base for backend-independent access)
+    // ============================================================================
+
+    void setGlobalFocusedKey(const std::string& key) { globalFocusedKey_ = key; }
+
+    // ============================================================================
+    // COMMAND BUFFER RECORDING
+    // ============================================================================
+
+    void setRecordingBuffer(class RenderCommandBuffer* buffer) { recordingBuffer_ = buffer; }
+    class RenderCommandBuffer* recordingBuffer() const { return recordingBuffer_; }
+
+protected:
+    // Focus / hover / pressed state (shared across all backends)
+    std::string globalFocusedKey_;
+    std::string currentViewFocusKey_;
+
+    Rect hoveredBounds_{};
+    bool hasHovered_ = false;
+    Rect currentViewBounds_{};
+    Rect pressedBounds_{};
+    bool hasPressed_ = false;
+
+    class RenderCommandBuffer* recordingBuffer_ = nullptr;
 };
 
 } // namespace flux

@@ -143,6 +143,7 @@ private:
     void updateBounds() const;
     
     friend class NanoVGRenderContext;
+    friend class NanoVGBackend;
 };
 
 } // namespace flux

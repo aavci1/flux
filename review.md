@@ -43,15 +43,11 @@ Implemented unified capture → target → bubble event pipeline for both pointe
 
 ---
 
-## 4. Rendering: Wire Command Buffer Into Main Pipeline
+## ~~4. Rendering: Wire Command Buffer Into Main Pipeline~~ **Done**
 
-`RenderCommandBuffer` and `NanoVGBackend` exist but are not used in the main render path. The renderer still makes immediate NanoVG calls via `RenderContext`.
+Implemented: `RenderCommandBuffer` redesigned with 18 stateful command types covering all operations views use during render (Save/Restore, transforms, styles, shapes, text, images, clipping). `NanoVGRenderContext` now dual-writes: each draw call both executes on NanoVG immediately AND records into an attached `RenderCommandBuffer`. `NanoVGBackend::execute()` can replay the full buffer. `Renderer::renderFrame()` attaches the buffer before tree traversal and detaches after. `static_cast<NanoVGRenderContext*>` removed — focus/hover/pressed state moved to base `RenderContext`. Buffer accessible via `Renderer::lastCommandBuffer()` for testing/inspection.
 
-**Fix:** Replace the immediate-mode `RenderContext` path with the command buffer:
-
-1. Tree traversal produces `RenderCommandBuffer` commands.
-2. `NanoVGBackend::execute()` consumes them.
-3. Remove the `RenderContext` downcast to `NanoVGRenderContext*` in `Renderer::renderFrame()`.
+**Remaining:** Switch from dual-write to record-only mode (currently both executes and records for safety). When record-only is enabled, `NanoVGBackend::execute()` replays the buffer as the sole draw path, completing full backend independence.
 
 ---
 
@@ -162,7 +158,7 @@ Added `ci.yml` for macOS/Linux/Windows, `.clang-format` and `.clang-tidy` added 
 
 ### Short-term
 1. ~~Wire `Property<T>` dirty notification to `Element*` back-pointer.~~ **Done**
-2. Wire render command buffer into main pipeline.
+2. ~~Wire render command buffer into main pipeline.~~ **Done**
 3. ~~Implement clipboard copy/cut.~~ **Done**
 4. ~~Fix `const_cast` usage in Views.~~ **Done**
 5. ~~Fix examples README.~~ **Done**

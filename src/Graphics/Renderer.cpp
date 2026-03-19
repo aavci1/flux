@@ -1,5 +1,5 @@
 #include <Flux/Graphics/Renderer.hpp>
-#include <Flux/Graphics/NanoVGRenderContext.hpp>
+#include <Flux/Graphics/RenderCommandBuffer.hpp>
 #include <Flux/Core/Window.hpp>
 #include <Flux/Core/FocusState.hpp>
 #include <Flux/Core/Element.hpp>
@@ -38,8 +38,7 @@ void Renderer::renderFrame(const Rect& bounds) {
 
         // Set the global focused/hovered/pressed keys in the render context
         if (window_) {
-            auto* nvgContext = static_cast<NanoVGRenderContext*>(renderContext_);
-            nvgContext->globalFocusedKey_ = window_->focus().getFocusedKey();
+            renderContext_->setGlobalFocusedKey(window_->focus().getFocusedKey());
         }
         if (hasHoveredView_) {
             renderContext_->setHoveredBounds(hoveredBounds_);
@@ -52,8 +51,12 @@ void Renderer::renderFrame(const Rect& bounds) {
             renderContext_->clearPressedBounds();
         }
 
-        // Render the tree (this also registers focusable elements)
+        // Attach command buffer for recording, then render the tree
+        commandBuffer_.clear();
+        commandBuffer_.reserve(512);
+        renderContext_->setRecordingBuffer(&commandBuffer_);
         renderTree(cachedLayoutTree_, rootElement_.get());
+        renderContext_->setRecordingBuffer(nullptr);
 
         // Dispatch deferred focus/blur notifications now that views are valid
         if (window_) {

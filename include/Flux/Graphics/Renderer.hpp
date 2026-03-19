@@ -8,6 +8,7 @@
 #include <Flux/Core/FocusState.hpp>
 #include <Flux/Core/EventTypes.hpp>
 #include <Flux/Graphics/RenderContext.hpp>
+#include <Flux/Graphics/RenderCommandBuffer.hpp>
 
 namespace flux {
 
@@ -63,6 +64,9 @@ private:
     // Persistent element tree for identity and lifecycle
     std::unique_ptr<Element> rootElement_;
 
+    // Render command buffer (populated each frame alongside immediate draws)
+    RenderCommandBuffer commandBuffer_;
+
     // Hover tracking: list of views currently under the pointer (root to deepest)
     std::vector<View> hoveredViews_;
 
@@ -112,6 +116,7 @@ public:
     const LayoutNode& getCachedLayoutTree() const { return cachedLayoutTree_; }
     bool hasValidLayout() const { return layoutCacheValid_; }
     bool isCursorBlinkActive() const { return cursorBlinkActive_; }
+    const RenderCommandBuffer& lastCommandBuffer() const { return commandBuffer_; }
 
 private:
     void renderTree(LayoutNode& node, Element* element, Point parentOrigin = {0, 0});

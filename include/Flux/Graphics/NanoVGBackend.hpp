@@ -1,6 +1,8 @@
 #pragma once
 
 #include <Flux/Graphics/RenderCommandBuffer.hpp>
+#include <unordered_map>
+#include <string>
 
 struct NVGcontext;
 
@@ -12,19 +14,41 @@ public:
 
     void execute(const RenderCommandBuffer& buffer) override;
 
+    std::unordered_map<std::string, int>& fontCache() { return fontCache_; }
+    std::unordered_map<std::string, int>& imageCache() { return imageCache_; }
+
 private:
     NVGcontext* nvg_;
+    std::unordered_map<std::string, int> fontCache_;
+    std::unordered_map<std::string, int> imageCache_;
 
-    void dispatch(const CmdDrawRect& cmd);
-    void dispatch(const CmdDrawCircle& cmd);
-    void dispatch(const CmdDrawLine& cmd);
-    void dispatch(const CmdDrawText& cmd);
-    void dispatch(const CmdDrawImage& cmd);
-    void dispatch(const CmdPushClip& cmd);
-    void dispatch(const CmdPopClip& cmd);
-    void dispatch(const CmdPushTransform& cmd);
-    void dispatch(const CmdPopTransform& cmd);
-    void dispatch(const CmdSetOpacity& cmd);
+    FillStyle currentFill_;
+    StrokeStyle currentStroke_;
+    TextStyle currentText_;
+
+    void dispatch(const CmdSave&);
+    void dispatch(const CmdRestore&);
+    void dispatch(const CmdTranslate&);
+    void dispatch(const CmdRotate&);
+    void dispatch(const CmdScale&);
+    void dispatch(const CmdSetOpacity&);
+    void dispatch(const CmdSetFillStyle&);
+    void dispatch(const CmdSetStrokeStyle&);
+    void dispatch(const CmdSetTextStyle&);
+    void dispatch(const CmdDrawRect&);
+    void dispatch(const CmdDrawCircle&);
+    void dispatch(const CmdDrawLine&);
+    void dispatch(const CmdDrawPath&);
+    void dispatch(const CmdDrawText&);
+    void dispatch(const CmdDrawTextBox&);
+    void dispatch(const CmdDrawImage&);
+    void dispatch(const CmdDrawImagePath&);
+    void dispatch(const CmdClipPath&);
+    void dispatch(const CmdClear&);
+
+    void applyFill();
+    void applyStroke();
+    int resolveFont(const std::string& name, FontWeight weight);
 };
 
 } // namespace flux
