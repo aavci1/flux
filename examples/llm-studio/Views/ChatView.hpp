@@ -11,6 +11,7 @@
 #include <Flux/Views/Spacer.hpp>
 #include <Flux/Views/ScrollArea.hpp>
 #include <Flux/Views/Divider.hpp>
+#include <Flux/Views/DropdownMenu.hpp>
 #include "../AppState.hpp"
 #include <Flux/Views/TextArea.hpp>
 #include "../Components/ChatBubble.hpp"
@@ -145,8 +146,24 @@ struct ChatView {
             });
         }
 
-        std::string sendLabel = generating ? "Stop" : "Send";
-        Color sendColor = generating ? Colors::red : d.accent;
+        Color composerBg = d.codeBackground;
+        Color composerBorder = d.borderStrong;
+        Color sendCircleBg = Color::hex(0x4A4A4A);
+        std::string sendGlyph = generating ? std::string("\xE2\x96\xA0") : std::string("\xE2\x86\x91");
+        Color sendGlyphColor = generating ? Colors::white : Color::hex(0x1A1A1A);
+
+        std::vector<DropdownMenuItem> agentItems = {
+            {.label = "Agent", .subtitle = "Full workspace context", .onClick = []() {}},
+            {.label = "Ask", .subtitle = "Quick answers", .onClick = []() {}},
+        };
+
+        std::vector<DropdownMenuItem> modelItems = {
+            {.label = "Auto", .subtitle = "Pick best for the prompt", .onClick = []() {}},
+        };
+        if (hasModel && session->model.has_value()) {
+            std::string mn = session->model->name;
+            modelItems.push_back({.label = mn, .subtitle = "Active session model", .onClick = []() {}});
+        }
 
         return VStack{
             .spacing = 0.0f,
@@ -166,36 +183,98 @@ struct ChatView {
                 Divider{.borderColor = d.border},
 
                 VStack{
-                    .spacing = 8.0f,
+                    .spacing = 0.0f,
                     .backgroundColor = d.surface,
-                    .padding = EdgeInsets(12.0f, 16.0f, 12.0f, 16.0f),
+                    .padding = EdgeInsets(12.0f, 16.0f, 16.0f, 16.0f),
                     .children = {
-                        HStack{
-                            .spacing = 8.0f,
-                            .alignItems = AlignItems::end,
+                        VStack{
+                            .spacing = 0.0f,
+                            .backgroundColor = composerBg,
+                            .borderColor = composerBorder,
+                            .borderWidth = 1.0f,
+                            .cornerRadius = 12.0f,
+                            .padding = EdgeInsets(14.0f, 14.0f, 10.0f, 14.0f),
                             .children = {
                                 TextArea{
                                     .value = state->chatInput,
-                                    .placeholder = std::string("Type a message..."),
-                                    .areaMinHeight = 40.0f,
-                                    .areaMaxHeight = 150.0f,
+                                    .placeholder = std::string("Ask anything..."),
+                                    .fontSize = Typography::callout,
+                                    .areaMinHeight = 44.0f,
+                                    .areaMaxHeight = 160.0f,
                                     .expansionBias = 1.0f,
+                                    .bgColor = composerBg,
+                                    .borderCol = composerBg,
+                                    .focusBorderColor = composerBorder,
+                                    .placeholderColor = d.placeholder,
+                                    .textColor = d.foreground,
+                                    .areaCornerRadius = 0.0f,
+                                    .areaPadding = 0.0f,
                                     .onValueChange = [this](const std::string& val) {
                                         state->chatInput = val;
                                     },
                                     .onSubmit = [this]() { sendMessage(); }
                                 },
-                                Button{
-                                    .text = sendLabel,
-                                    .backgroundColor = sendColor,
-                                    .textColor = generating ? Colors::white : d.onAccent,
-                                    .padding = EdgeInsets(10, 20, 10, 20),
-                                    .cornerRadius = 8.0f,
-                                    .onClick = [this, generating]() {
-                                        if (generating) {
-                                            state->isGenerating = false;
-                                        } else {
-                                            sendMessage();
+                                HStack{
+                                    .spacing = 0.0f,
+                                    .justifyContent = JustifyContent::spaceBetween,
+                                    .alignItems = AlignItems::center,
+                                    .padding = EdgeInsets(10.0f, 0.0f, 0.0f, 0.0f),
+                                    .children = {
+                                        HStack{
+                                            .spacing = 10.0f,
+                                            .alignItems = AlignItems::center,
+                                            .children = {
+                                                DropdownMenu{
+                                                    .label = std::string("\xE2\x88\x9E  Agent"),
+                                                    .menuWidth = 200.0f,
+                                                    .bgColor = d.inputBackground,
+                                                    .dropdownBgColor = d.surfaceElevated,
+                                                    .borderColor_ = d.borderStrong,
+                                                    .textColor_ = d.foreground,
+                                                    .mutedColor = d.secondaryForeground,
+                                                    .items = std::move(agentItems)
+                                                },
+                                                DropdownMenu{
+                                                    .label = std::string("Auto"),
+                                                    .menuWidth = 220.0f,
+                                                    .bgColor = composerBg,
+                                                    .dropdownBgColor = d.surfaceElevated,
+                                                    .borderColor_ = composerBg,
+                                                    .textColor_ = d.secondaryForeground,
+                                                    .mutedColor = d.tertiaryForeground,
+                                                    .items = std::move(modelItems)
+                                                }
+                                            }
+                                        },
+                                        HStack{
+                                            .spacing = 10.0f,
+                                            .alignItems = AlignItems::center,
+                                            .children = {
+                                                Button{
+                                                    .text = std::string("\xF0\x9F\x96\xBC"),
+                                                    .backgroundColor = Colors::transparent,
+                                                    .textColor = d.secondaryForeground,
+                                                    .padding = EdgeInsets(8.0f, 10.0f, 8.0f, 10.0f),
+                                                    .cornerRadius = 8.0f,
+                                                    .onClick = []() {}
+                                                },
+                                                Button{
+                                                    .text = sendGlyph,
+                                                    .backgroundColor = generating ? d.error : sendCircleBg,
+                                                    .textColor = sendGlyphColor,
+                                                    .padding = EdgeInsets(0.0f, 0.0f, 0.0f, 0.0f),
+                                                    .minWidth = 36.0f,
+                                                    .minHeight = 36.0f,
+                                                    .cornerRadius = CornerRadius(18.0f),
+                                                    .onClick = [this, generating]() {
+                                                        if (generating) {
+                                                            state->isGenerating = false;
+                                                        } else {
+                                                            sendMessage();
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                 }
