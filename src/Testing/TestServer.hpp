@@ -14,35 +14,63 @@
 #include <condition_variable>
 #include <vector>
 #include <functional>
+#include <chrono>
 
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <sys/un.h>
 #include <unistd.h>
 
 namespace flux {
 
 class TestServer {
 public:
-    TestServer(Window& window, int port = 8435)
-        : window_(window), port_(port) {}
+    /// Binary request: magic(4) + version(2) + opcode(2) + bodyLen(4) + body
+    static constexpr uint32_t kFluxTestMagic = 0x58554C46; // 'FLUX' little-endian bytes
+
+    enum class Op : uint16_t {
+        GetUi = 1,
+        GetScreenshot = 2,
+        Click = 3,
+        Type = 4,
+        Key = 5,
+        Scroll = 6,
+        Hover = 7,
+        Drag = 8,
+    };
+
+    TestServer(Window& window, int tcpPort = 8435, std::string unixSocketPath = {})
+        : window_(window), tcpPort_(tcpPort), unixSocketPath_(std::move(unixSocketPath)) {}
 
     ~TestServer() { stop(); }
 
     void start() {
         if (running_.exchange(true)) return;
         thread_ = std::thread([this]() { run(); });
-        std::cout << "\n  FLUX TEST SERVER: http://localhost:" << port_ << "\n"
-                  << "  Endpoints: GET /ui  GET /screenshot  POST /click  POST /type  POST /key  POST /scroll  POST /hover  POST /drag\n" << std::endl;
+        if (!unixSocketPath_.empty()) {
+            std::cout << "\n  FLUX TEST IPC (unix): " << unixSocketPath_ << "\n"
+                      << "  Binary ops: GetUi GetScreenshot Click Type Key Scroll Hover Drag\n" << std::endl;
+        } else {
+            std::cout << "\n  FLUX TEST IPC (tcp): localhost:" << tcpPort_ << "\n"
+                      << "  Binary ops: GetUi GetScreenshot Click Type Key Scroll Hover Drag\n" << std::endl;
+        }
     }
 
     void stop() {
         running_ = false;
+        {
+            std::lock_guard<std::mutex> lock(screenshotWaitMutex_);
+            screenshotCV_.notify_all();
+        }
         if (serverFd_ >= 0) {
             shutdown(serverFd_, SHUT_RDWR);
             ::close(serverFd_);
             serverFd_ = -1;
         }
         if (thread_.joinable()) thread_.join();
+        if (!unixSocketPath_.empty()) {
+            ::unlink(unixSocketPath_.c_str());
+        }
     }
 
     // --- Snapshot management (called from main thread post-render) ---
@@ -55,6 +83,17 @@ public:
     void updateScreenshot(std::vector<uint8_t> png) {
         std::lock_guard<std::mutex> lock(snapshotMutex_);
         screenshot_ = std::move(png);
+    }
+
+    bool needsScreenshotCapture() const {
+        return screenshotReqSeq_.load(std::memory_order_acquire) >
+               screenshotDoneSeq_.load(std::memory_order_acquire);
+    }
+
+    void notifyScreenshotCaptured() {
+        screenshotDoneSeq_.store(screenshotReqSeq_.load(std::memory_order_acquire), std::memory_order_release);
+        std::lock_guard<std::mutex> lock(screenshotWaitMutex_);
+        screenshotCV_.notify_all();
     }
 
     void signalFrameComplete() {
@@ -93,155 +132,188 @@ public:
     }
 
 private:
+    static bool readFull(int fd, void* dest, size_t n) {
+        auto* p = static_cast<uint8_t*>(dest);
+        size_t got = 0;
+        while (got < n) {
+            ssize_t r = recv(fd, p + got, n - got, 0);
+            if (r <= 0) return false;
+            got += static_cast<size_t>(r);
+        }
+        return true;
+    }
+
+    static bool sendAll(int fd, const void* data, size_t n) {
+        const auto* p = static_cast<const uint8_t*>(data);
+        size_t sent = 0;
+        while (sent < n) {
+            ssize_t w = send(fd, p + sent, n - sent, 0);
+            if (w <= 0) return false;
+            sent += static_cast<size_t>(w);
+        }
+        return true;
+    }
+
+    void sendBinaryResponse(int fd, uint8_t status, uint8_t payloadType, const void* body, size_t bodyLen) {
+        uint8_t hdr[8];
+        hdr[0] = status;
+        hdr[1] = payloadType;
+        hdr[2] = 0;
+        hdr[3] = 0;
+        uint32_t len32 = static_cast<uint32_t>(bodyLen);
+        std::memcpy(hdr + 4, &len32, sizeof(len32));
+        if (!sendAll(fd, hdr, sizeof(hdr))) return;
+        if (bodyLen > 0) sendAll(fd, body, bodyLen);
+    }
+
     void run() {
-        serverFd_ = socket(AF_INET, SOCK_STREAM, 0);
-        if (serverFd_ < 0) { std::cerr << "TestServer: socket failed\n"; return; }
+        if (!unixSocketPath_.empty()) {
+            serverFd_ = socket(AF_UNIX, SOCK_STREAM, 0);
+            if (serverFd_ < 0) { std::cerr << "TestServer: unix socket failed\n"; return; }
+            ::unlink(unixSocketPath_.c_str());
+            sockaddr_un addr{};
+            addr.sun_family = AF_UNIX;
+            if (unixSocketPath_.size() >= sizeof(addr.sun_path)) {
+                std::cerr << "TestServer: unix socket path too long\n";
+                ::close(serverFd_);
+                serverFd_ = -1;
+                return;
+            }
+            std::strncpy(addr.sun_path, unixSocketPath_.c_str(), sizeof(addr.sun_path) - 1);
+            if (bind(serverFd_, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) < 0) {
+                std::cerr << "TestServer: unix bind failed\n";
+                ::close(serverFd_);
+                serverFd_ = -1;
+                return;
+            }
+        } else {
+            serverFd_ = socket(AF_INET, SOCK_STREAM, 0);
+            if (serverFd_ < 0) { std::cerr << "TestServer: socket failed\n"; return; }
 
-        int opt = 1;
-        setsockopt(serverFd_, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+            int opt = 1;
+            setsockopt(serverFd_, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
-        struct sockaddr_in addr{};
-        addr.sin_family = AF_INET;
-        addr.sin_addr.s_addr = INADDR_ANY;
-        addr.sin_port = htons(port_);
+            sockaddr_in addr{};
+            addr.sin_family = AF_INET;
+            addr.sin_addr.s_addr = INADDR_ANY;
+            addr.sin_port = htons(static_cast<uint16_t>(tcpPort_));
 
-        if (bind(serverFd_, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-            std::cerr << "TestServer: bind failed on port " << port_ << "\n";
-            ::close(serverFd_);
-            serverFd_ = -1;
-            return;
+            if (bind(serverFd_, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) < 0) {
+                std::cerr << "TestServer: bind failed on port " << tcpPort_ << "\n";
+                ::close(serverFd_);
+                serverFd_ = -1;
+                return;
+            }
         }
 
         listen(serverFd_, 8);
 
         while (running_) {
-            struct sockaddr_in clientAddr{};
-            socklen_t clientLen = sizeof(clientAddr);
-            int clientFd = accept(serverFd_, (struct sockaddr*)&clientAddr, &clientLen);
+            int clientFd = accept(serverFd_, nullptr, nullptr);
             if (clientFd < 0) continue;
-            handleClient(clientFd);
+            handleBinaryClient(clientFd);
             shutdown(clientFd, SHUT_RDWR);
             ::close(clientFd);
         }
     }
 
-    void handleClient(int fd) {
-        std::string request;
-        request.reserve(4096);
-        char buf[4096];
-
-        // Read until we have the full headers and body
-        size_t contentLength = 0;
-        size_t headerEnd = std::string::npos;
-
-        while (true) {
-            ssize_t n = recv(fd, buf, sizeof(buf), 0);
-            if (n <= 0) return;
-            request.append(buf, n);
-
-            if (headerEnd == std::string::npos) {
-                headerEnd = request.find("\r\n\r\n");
-                if (headerEnd != std::string::npos) {
-                    auto clPos = request.find("Content-Length:");
-                    if (clPos == std::string::npos) clPos = request.find("content-length:");
-                    if (clPos != std::string::npos) {
-                        clPos += 15;
-                        while (clPos < request.size() && request[clPos] == ' ') clPos++;
-                        contentLength = std::strtoul(request.c_str() + clPos, nullptr, 10);
-                    }
-                }
-            }
-
-            if (headerEnd != std::string::npos) {
-                size_t bodyStart = headerEnd + 4;
-                if (request.size() - bodyStart >= contentLength) break;
-            }
+    void handleBinaryClient(int fd) {
+        uint32_t magic = 0;
+        uint16_t version = 0;
+        uint16_t opcode = 0;
+        uint32_t bodyLen = 0;
+        if (!readFull(fd, &magic, sizeof(magic))) return;
+        if (!readFull(fd, &version, sizeof(version))) return;
+        if (!readFull(fd, &opcode, sizeof(opcode))) return;
+        if (!readFull(fd, &bodyLen, sizeof(bodyLen))) return;
+        if (magic != kFluxTestMagic || version != 1) {
+            std::string err = R"({"error":"bad request"})";
+            sendBinaryResponse(fd, 1, 0, err.data(), err.size());
+            return;
         }
-
-        std::string method, path;
-        std::istringstream reqStream(request);
-        reqStream >> method >> path;
-
+        constexpr uint32_t kMaxBody = 4 * 1024 * 1024;
+        if (bodyLen > kMaxBody) {
+            std::string err = R"({"error":"body too large"})";
+            sendBinaryResponse(fd, 1, 0, err.data(), err.size());
+            return;
+        }
         std::string body;
-        if (headerEnd != std::string::npos) {
-            body = request.substr(headerEnd + 4);
-        }
-
-        if (method == "OPTIONS") {
-            sendCorsOk(fd);
-        } else if (method == "GET" && path == "/ui") {
-            sendUITree(fd);
-        } else if (method == "GET" && path.starts_with("/screenshot")) {
-            sendScreenshot(fd);
-        } else if (method == "POST" && path == "/click") {
-            handleClick(fd, body);
-        } else if (method == "POST" && path == "/type") {
-            handleType(fd, body);
-        } else if (method == "POST" && path == "/key") {
-            handleKey(fd, body);
-        } else if (method == "POST" && path == "/scroll") {
-            handleScroll(fd, body);
-        } else if (method == "POST" && path == "/hover") {
-            handleHover(fd, body);
-        } else if (method == "POST" && path == "/drag") {
-            handleDrag(fd, body);
-        } else {
-            std::string msg = R"({"error":"not found"})";
-            sendResponse(fd, "404 Not Found", "application/json", msg.data(), msg.size());
-        }
-    }
-
-    // --- Response helpers ---
-
-    void sendResponse(int fd, const std::string& status, const std::string& contentType,
-                      const void* body, size_t bodyLen) {
-        std::string header = "HTTP/1.1 " + status + "\r\n"
-            "Content-Type: " + contentType + "\r\n"
-            "Content-Length: " + std::to_string(bodyLen) + "\r\n"
-            "Access-Control-Allow-Origin: *\r\n"
-            "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n"
-            "Access-Control-Allow-Headers: Content-Type\r\n"
-            "Connection: close\r\n"
-            "\r\n";
-        send(fd, header.data(), header.size(), 0);
         if (bodyLen > 0) {
-            send(fd, body, bodyLen, 0);
+            body.resize(bodyLen);
+            if (!readFull(fd, body.data(), bodyLen)) return;
+        }
+
+        switch (opcode) {
+            case static_cast<uint16_t>(Op::GetUi):
+                sendGetUi(fd);
+                break;
+            case static_cast<uint16_t>(Op::GetScreenshot):
+                sendScreenshotBinary(fd);
+                break;
+            case static_cast<uint16_t>(Op::Click):
+                handleClickBinary(fd, body);
+                break;
+            case static_cast<uint16_t>(Op::Type):
+                handleTypeBinary(fd, body);
+                break;
+            case static_cast<uint16_t>(Op::Key):
+                handleKeyBinary(fd, body);
+                break;
+            case static_cast<uint16_t>(Op::Scroll):
+                handleScrollBinary(fd, body);
+                break;
+            case static_cast<uint16_t>(Op::Hover):
+                handleHoverBinary(fd, body);
+                break;
+            case static_cast<uint16_t>(Op::Drag):
+                handleDragBinary(fd, body);
+                break;
+            default: {
+                std::string msg = R"({"error":"unknown opcode"})";
+                sendBinaryResponse(fd, 1, 0, msg.data(), msg.size());
+                break;
+            }
         }
     }
 
-    void sendCorsOk(int fd) {
-        sendResponse(fd, "204 No Content", "text/plain", nullptr, 0);
-    }
-
-    // --- GET handlers ---
-
-    void sendUITree(int fd) {
+    void sendGetUi(int fd) {
         std::string json;
         {
             std::lock_guard<std::mutex> lock(snapshotMutex_);
             json = uiTreeJSON_;
         }
         if (json.empty()) json = "{}";
-        sendResponse(fd, "200 OK", "application/json", json.data(), json.size());
+        sendBinaryResponse(fd, 0, 0, json.data(), json.size());
     }
 
-    void sendScreenshot(int fd) {
+    void sendScreenshotBinary(int fd) {
+        uint64_t myReq = screenshotReqSeq_.fetch_add(1, std::memory_order_acq_rel) + 1;
+        window_.requestRedraw();
+        wakePlatformEventLoop();
+
+        std::unique_lock<std::mutex> lock(screenshotWaitMutex_);
+        bool ok = screenshotCV_.wait_for(lock, std::chrono::seconds(5), [&]() {
+            return screenshotDoneSeq_.load(std::memory_order_acquire) >= myReq;
+        });
+        if (!ok) {
+            std::string msg = R"({"error":"screenshot timeout"})";
+            sendBinaryResponse(fd, 1, 0, msg.data(), msg.size());
+            return;
+        }
         std::vector<uint8_t> png;
         {
-            std::lock_guard<std::mutex> lock(snapshotMutex_);
+            std::lock_guard<std::mutex> snapLock(snapshotMutex_);
             png = screenshot_;
         }
         if (png.empty()) {
-            std::string msg = "No screenshot available";
-            sendResponse(fd, "503 Service Unavailable", "text/plain", msg.data(), msg.size());
+            std::string msg = R"({"error":"no screenshot"})";
+            sendBinaryResponse(fd, 1, 0, msg.data(), msg.size());
             return;
         }
-        sendResponse(fd, "200 OK", "image/png", png.data(), png.size());
+        sendBinaryResponse(fd, 0, 1, png.data(), png.size());
     }
 
-    // --- POST handlers ---
-
-    void handleClick(int fd, const std::string& body) {
+    void handleClickBinary(int fd, const std::string& body) {
         float x = 0, y = 0;
         parseFloat(body, "x", x);
         parseFloat(body, "y", y);
@@ -249,29 +321,29 @@ private:
         enqueueAndWait({SyntheticEvent::Click, x, y, 0, 0, "", 0});
 
         std::string resp = R"({"ok":true,"action":"click","x":)" + std::to_string(x) + R"(,"y":)" + std::to_string(y) + "}";
-        sendResponse(fd, "200 OK", "application/json", resp.data(), resp.size());
+        sendBinaryResponse(fd, 0, 0, resp.data(), resp.size());
     }
 
-    void handleType(int fd, const std::string& body) {
+    void handleTypeBinary(int fd, const std::string& body) {
         std::string text = parseString(body, "text");
 
         enqueueAndWait({SyntheticEvent::TextInput, 0, 0, 0, 0, text, 0});
 
         std::string resp = R"({"ok":true,"action":"type"})";
-        sendResponse(fd, "200 OK", "application/json", resp.data(), resp.size());
+        sendBinaryResponse(fd, 0, 0, resp.data(), resp.size());
     }
 
-    void handleKey(int fd, const std::string& body) {
+    void handleKeyBinary(int fd, const std::string& body) {
         std::string keyStr = parseString(body, "key");
         int keyCode = keyNameToCode(keyStr);
 
         enqueueAndWait({SyntheticEvent::KeyPress, 0, 0, 0, 0, "", keyCode});
 
         std::string resp = R"({"ok":true,"action":"key","key":")" + escapeJson(keyStr) + "\"}";
-        sendResponse(fd, "200 OK", "application/json", resp.data(), resp.size());
+        sendBinaryResponse(fd, 0, 0, resp.data(), resp.size());
     }
 
-    void handleScroll(int fd, const std::string& body) {
+    void handleScrollBinary(int fd, const std::string& body) {
         float x = 0, y = 0, dx = 0, dy = 0;
         parseFloat(body, "x", x);
         parseFloat(body, "y", y);
@@ -281,10 +353,10 @@ private:
         enqueueAndWait({SyntheticEvent::Scroll, x, y, dx, dy, "", 0});
 
         std::string resp = R"({"ok":true,"action":"scroll"})";
-        sendResponse(fd, "200 OK", "application/json", resp.data(), resp.size());
+        sendBinaryResponse(fd, 0, 0, resp.data(), resp.size());
     }
 
-    void handleHover(int fd, const std::string& body) {
+    void handleHoverBinary(int fd, const std::string& body) {
         float x = 0, y = 0;
         parseFloat(body, "x", x);
         parseFloat(body, "y", y);
@@ -292,10 +364,10 @@ private:
         enqueueAndWait({SyntheticEvent::Hover, x, y, 0, 0, "", 0});
 
         std::string resp = R"({"ok":true,"action":"hover"})";
-        sendResponse(fd, "200 OK", "application/json", resp.data(), resp.size());
+        sendBinaryResponse(fd, 0, 0, resp.data(), resp.size());
     }
 
-    void handleDrag(int fd, const std::string& body) {
+    void handleDragBinary(int fd, const std::string& body) {
         float startX = 0, startY = 0, endX = 0, endY = 0;
         float steps = 10;
         parseFloat(body, "startX", startX);
@@ -320,10 +392,8 @@ private:
             + R"(,"startY":)" + std::to_string(startY)
             + R"(,"endX":)" + std::to_string(endX)
             + R"(,"endY":)" + std::to_string(endY) + "}";
-        sendResponse(fd, "200 OK", "application/json", resp.data(), resp.size());
+        sendBinaryResponse(fd, 0, 0, resp.data(), resp.size());
     }
-
-    // --- Frame synchronization ---
 
     void enqueueAndWait(SyntheticEvent event) {
         uint64_t seq;
@@ -343,8 +413,6 @@ private:
                 [&]() { return renderedSeq_ >= seq; });
         }
     }
-
-    // --- Minimal JSON parsing helpers ---
 
     static void parseFloat(const std::string& json, const std::string& key, float& out) {
         std::string needle = "\"" + key + "\"";
@@ -416,10 +484,10 @@ private:
         return 0;
     }
 
-    // --- Data ---
-
     Window& window_;
-    int port_;
+    int tcpPort_;
+    std::string unixSocketPath_;
+
     std::atomic<bool> running_{false};
     std::thread thread_;
     int serverFd_ = -1;
@@ -427,6 +495,11 @@ private:
     std::mutex snapshotMutex_;
     std::string uiTreeJSON_;
     std::vector<uint8_t> screenshot_;
+
+    std::atomic<uint64_t> screenshotReqSeq_{0};
+    std::atomic<uint64_t> screenshotDoneSeq_{0};
+    std::mutex screenshotWaitMutex_;
+    std::condition_variable screenshotCV_;
 
     std::mutex eventMutex_;
     std::vector<SyntheticEvent> pendingEvents_;
@@ -439,8 +512,6 @@ private:
     uint64_t renderedSeq_ = 0;
 
 public:
-    // --- UI tree serialization (static utility) ---
-
     static std::string serializeUITree(const LayoutNode& root) {
         std::string out;
         out.reserve(4096);

@@ -41,6 +41,8 @@ Runtime::Runtime(int argc, char** argv) {
             testMode_ = true;
         } else if (std::strcmp(argv[i], "--test-port") == 0 && i + 1 < argc) {
             testPort_ = std::atoi(argv[++i]);
+        } else if (std::strcmp(argv[i], "--test-socket") == 0 && i + 1 < argc) {
+            testSocketPath_ = argv[++i];
         } else if (std::strcmp(argv[i], "--backend") == 0) {
             if (i + 1 >= argc) {
                 backendArgInvalid_ = true;
@@ -108,7 +110,7 @@ Window& Runtime::createWindow(const WindowConfig& config) {
     needsRedraw_.store(true, std::memory_order_relaxed);
 
     if (testMode_) {
-        ref.enableTestMode(testPort_);
+        ref.enableTestMode(testPort_, testSocketPath_);
     }
 
     return ref;

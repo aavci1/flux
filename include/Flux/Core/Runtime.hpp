@@ -2,6 +2,7 @@
 
 #include <Flux/Core/WindowEventObserver.hpp>
 #include <atomic>
+#include <string>
 #include <vector>
 #include <memory>
 
@@ -37,6 +38,7 @@ public:
 
     bool isTestMode() const { return testMode_; }
     int testPort() const { return testPort_; }
+    const std::string& testSocketPath() const { return testSocketPath_; }
 
     // WindowEventObserver
     void onRedrawRequested(Window* window) override;
@@ -54,6 +56,7 @@ private:
 
     bool testMode_ = false;
     int testPort_ = 8435;
+    std::string testSocketPath_;
     bool backendArgInvalid_ = false;
 
     static Runtime* current_;

@@ -6,7 +6,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
 from flux_test_client import (
-    FluxTestClient, FluxAppProcess, find_free_port,
+    FluxTestClient, FluxAppProcess,
     find_by_focus_key, center_of, get_text_value,
 )
 
@@ -19,10 +19,9 @@ FOCUS_KEYS = ["focus-alpha", "focus-beta", "focus-gamma", "focus-delta", "focus-
 class TestFocusNavigation(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.port = find_free_port()
-        cls.app = FluxAppProcess(EXECUTABLE, port=cls.port)
+        cls.app = FluxAppProcess(EXECUTABLE)
         cls.app.start()
-        cls.client = FluxTestClient(port=cls.port)
+        cls.client = FluxTestClient(unix_socket=cls.app.unix_socket)
         cls.client.wait_ready()
         tree = cls.client.get_ui()
         cls.initial_focus = get_text_value(tree, "focus-current:")

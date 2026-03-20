@@ -6,7 +6,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
 from flux_test_client import (
-    FluxTestClient, FluxAppProcess, find_free_port,
+    FluxTestClient, FluxAppProcess,
     find_by_focus_key, center_of, get_text_value,
 )
 
@@ -21,13 +21,14 @@ def _reset_all(client, tree):
         client.click(*center_of(reset_btn))
 
 
-class TestBasicTextInput(unittest.TestCase):
+class TestTextInputApp(unittest.TestCase):
+    """Single app; `setUp` resets all inputs before each test."""
+
     @classmethod
     def setUpClass(cls):
-        cls.port = find_free_port()
-        cls.app = FluxAppProcess(EXECUTABLE, port=cls.port)
+        cls.app = FluxAppProcess(EXECUTABLE)
         cls.app.start()
-        cls.client = FluxTestClient(port=cls.port)
+        cls.client = FluxTestClient(unix_socket=cls.app.unix_socket)
         cls.client.wait_ready()
 
     @classmethod
@@ -40,6 +41,7 @@ class TestBasicTextInput(unittest.TestCase):
     def setUp(self):
         _reset_all(self.client, self.get_tree())
 
+    # --- basic ---
     def test_initial_empty(self):
         tree = self.get_tree()
         self.assertEqual(get_text_value(tree, "input-value:"), "")
@@ -82,26 +84,7 @@ class TestBasicTextInput(unittest.TestCase):
         tree = self.get_tree()
         self.assertEqual(get_text_value(tree, "return-status:"), "return-pressed")
 
-
-class TestPasswordInput(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.port = find_free_port()
-        cls.app = FluxAppProcess(EXECUTABLE, port=cls.port)
-        cls.app.start()
-        cls.client = FluxTestClient(port=cls.port)
-        cls.client.wait_ready()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.app.stop()
-
-    def get_tree(self):
-        return self.client.get_ui()
-
-    def setUp(self):
-        _reset_all(self.client, self.get_tree())
-
+    # --- password ---
     def test_password_typing(self):
         tree = self.get_tree()
         inp = find_by_focus_key(tree, "input-password")
@@ -111,26 +94,7 @@ class TestPasswordInput(unittest.TestCase):
         tree = self.get_tree()
         self.assertEqual(get_text_value(tree, "password-length:"), "6")
 
-
-class TestMaxLengthInput(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.port = find_free_port()
-        cls.app = FluxAppProcess(EXECUTABLE, port=cls.port)
-        cls.app.start()
-        cls.client = FluxTestClient(port=cls.port)
-        cls.client.wait_ready()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.app.stop()
-
-    def get_tree(self):
-        return self.client.get_ui()
-
-    def setUp(self):
-        _reset_all(self.client, self.get_tree())
-
+    # --- max length ---
     def test_max_length_enforcement(self):
         tree = self.get_tree()
         inp = find_by_focus_key(tree, "input-limited")
@@ -142,26 +106,7 @@ class TestMaxLengthInput(unittest.TestCase):
         self.assertIsNotNone(val)
         self.assertLessEqual(len(val), 5, "Max length 5 should be enforced")
 
-
-class TestTextArea(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.port = find_free_port()
-        cls.app = FluxAppProcess(EXECUTABLE, port=cls.port)
-        cls.app.start()
-        cls.client = FluxTestClient(port=cls.port)
-        cls.client.wait_ready()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.app.stop()
-
-    def get_tree(self):
-        return self.client.get_ui()
-
-    def setUp(self):
-        _reset_all(self.client, self.get_tree())
-
+    # --- textarea ---
     def test_textarea_typing(self):
         tree = self.get_tree()
         area = find_by_focus_key(tree, "input-area")

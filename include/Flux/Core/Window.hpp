@@ -198,11 +198,10 @@ public:
     // Testing support
 
     /**
-     * @brief Enable test mode with an HTTP test server on the given port.
-     * Provides endpoints for UI tree introspection, screenshot capture,
-     * and synthetic event injection. Works with any Flux application.
+     * @brief Enable test mode with a binary test IPC server (TCP or Unix socket).
+     * If unixSocketPath is non-empty, listens on that path; otherwise on tcpPort.
      */
-    void enableTestMode(int port = 8435);
+    void enableTestMode(int tcpPort = 8435, const std::string& unixSocketPath = {});
 
     /**
      * @brief Process queued synthetic events from the test server.

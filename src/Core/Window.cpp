@@ -14,6 +14,9 @@
 
 #include <Flux/Core/Log.hpp>
 #include <algorithm>
+#include <chrono>
+#include <cstdlib>
+#include <iostream>
 
 namespace flux {
 
@@ -165,13 +168,23 @@ void Window::render() {
     }
 
     if (impl_->testServer) {
-        if (impl_->testCapture) {
+        if (impl_->testCapture && impl_->testServer->needsScreenshotCapture()) {
             impl_->testCapture->capture(*this);
             impl_->testServer->updateScreenshot(impl_->testCapture->getPng());
+            impl_->testServer->notifyScreenshotCaptured();
         }
         if (impl_->renderer->hasValidLayout()) {
-            std::string json = TestServer::serializeUITree(impl_->renderer->getCachedLayoutTree());
-            impl_->testServer->updateUITreeJSON(json);
+            if (std::getenv("FLUX_TEST_PROFILE")) {
+                auto t0 = std::chrono::steady_clock::now();
+                std::string json = TestServer::serializeUITree(impl_->renderer->getCachedLayoutTree());
+                auto ms = std::chrono::duration<double, std::milli>(
+                    std::chrono::steady_clock::now() - t0).count();
+                std::cerr << "[FLUX_TEST_PROFILE] serializeUITree " << ms << " ms\n";
+                impl_->testServer->updateUITreeJSON(std::move(json));
+            } else {
+                std::string json = TestServer::serializeUITree(impl_->renderer->getCachedLayoutTree());
+                impl_->testServer->updateUITreeJSON(std::move(json));
+            }
         }
         impl_->testServer->signalFrameComplete();
     }
@@ -388,9 +401,9 @@ void Window::processPendingEvents(LayoutNode& layoutTree) {
 
 // Testing support
 
-void Window::enableTestMode(int port) {
+void Window::enableTestMode(int tcpPort, const std::string& unixSocketPath) {
     impl_->testCapture = std::make_unique<ScreenCapture>();
-    impl_->testServer = std::make_unique<TestServer>(*this, port);
+    impl_->testServer = std::make_unique<TestServer>(*this, tcpPort, unixSocketPath);
     impl_->testServer->start();
 }
 

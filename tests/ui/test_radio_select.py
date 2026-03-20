@@ -6,7 +6,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
 from flux_test_client import (
-    FluxTestClient, FluxAppProcess, find_free_port,
+    FluxTestClient, FluxAppProcess,
     find_by_focus_key, center_of, get_text_value,
 )
 
@@ -14,13 +14,27 @@ BUILD_DIR = os.environ.get("FLUX_BUILD_DIR", os.path.join(os.path.dirname(__file
 EXECUTABLE = os.path.join(BUILD_DIR, "ui_test_radio_select")
 
 
-class TestRadioButton(unittest.TestCase):
+def _reset_radio_and_select(client):
+    tree = client.get_ui()
+    radio1 = find_by_focus_key(tree, "radio-1")
+    if radio1:
+        client.click(*center_of(radio1))
+    tree = client.get_ui()
+    select = find_by_focus_key(tree, "select-1")
+    client.click(*center_of(select))
+    client.press_key("Escape")
+    for _ in range(10):
+        client.press_key("Up")
+
+
+class TestRadioSelectApp(unittest.TestCase):
+    """Single app; `setUp` selects first radio and resets select to index 0."""
+
     @classmethod
     def setUpClass(cls):
-        cls.port = find_free_port()
-        cls.app = FluxAppProcess(EXECUTABLE, port=cls.port)
+        cls.app = FluxAppProcess(EXECUTABLE)
         cls.app.start()
-        cls.client = FluxTestClient(port=cls.port)
+        cls.client = FluxTestClient(unix_socket=cls.app.unix_socket)
         cls.client.wait_ready()
 
     @classmethod
@@ -31,11 +45,9 @@ class TestRadioButton(unittest.TestCase):
         return self.client.get_ui()
 
     def setUp(self):
-        tree = self.get_tree()
-        radio1 = find_by_focus_key(tree, "radio-1")
-        if radio1:
-            self.client.click(*center_of(radio1))
+        _reset_radio_and_select(self.client)
 
+    # --- radio ---
     def test_initial_selection(self):
         tree = self.get_tree()
         self.assertEqual(get_text_value(tree, "radio-selected:"), "opt1")
@@ -62,31 +74,7 @@ class TestRadioButton(unittest.TestCase):
         tree = self.get_tree()
         self.assertEqual(get_text_value(tree, "radio-selected:"), "opt1")
 
-
-class TestSelectInput(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.port = find_free_port()
-        cls.app = FluxAppProcess(EXECUTABLE, port=cls.port)
-        cls.app.start()
-        cls.client = FluxTestClient(port=cls.port)
-        cls.client.wait_ready()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.app.stop()
-
-    def get_tree(self):
-        return self.client.get_ui()
-
-    def setUp(self):
-        tree = self.get_tree()
-        select = find_by_focus_key(tree, "select-1")
-        self.client.click(*center_of(select))
-        self.client.press_key("Escape")
-        for _ in range(10):
-            self.client.press_key("Up")
-
+    # --- select ---
     def test_initial_select_state(self):
         tree = self.get_tree()
         self.assertEqual(get_text_value(tree, "select-index:"), "0")

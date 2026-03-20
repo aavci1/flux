@@ -6,7 +6,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
 from flux_test_client import (
-    FluxTestClient, FluxAppProcess, find_free_port,
+    FluxTestClient, FluxAppProcess,
     find_by_text, find_by_text_containing, get_bounds, center_of,
 )
 
@@ -17,10 +17,9 @@ EXECUTABLE = os.path.join(BUILD_DIR, "ui_test_layout")
 class TestLayout(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.port = find_free_port()
-        cls.app = FluxAppProcess(EXECUTABLE, port=cls.port)
+        cls.app = FluxAppProcess(EXECUTABLE)
         cls.app.start()
-        cls.client = FluxTestClient(port=cls.port)
+        cls.client = FluxTestClient(unix_socket=cls.app.unix_socket)
         cls.client.wait_ready()
 
     @classmethod

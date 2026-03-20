@@ -3,7 +3,8 @@
 Flux UI Test Runner
 
 Builds the UI test apps (if needed) and runs all Python test suites against them.
-Each test suite launches its own Flux app subprocess in --test-mode.
+Each test suite launches its own Flux app subprocess in --test-mode with a Unix
+domain socket for binary test IPC (see flux_test_client.py).
 
 Usage:
     python3 tests/ui/run_tests.py                  # run all UI tests

@@ -1,76 +1,137 @@
 """
 Flux UI Test Client
 
-HTTP client wrapper for the Flux test server. Provides methods to interact
-with a running Flux app via the test server API, and helpers for inspecting
-the serialized UI tree.
+Binary IPC client for the Flux test server (TCP or Unix domain socket).
 """
 
 import json
-import time
+import os
+import struct
+import socket
 import subprocess
 import signal
-import os
-import socket
-from urllib.request import urlopen, Request
-from urllib.error import URLError
+import tempfile
+import time
+import uuid
 from typing import Optional
 
 
+FLUX_TEST_MAGIC = 0x58554C46  # 'FLUX' on wire (little-endian)
+
+
+class Op:
+    GetUi = 1
+    GetScreenshot = 2
+    Click = 3
+    Type = 4
+    Key = 5
+    Scroll = 6
+    Hover = 7
+    Drag = 8
+
+
+def _recv_exact(sock: socket.socket, n: int) -> bytes:
+    buf = b""
+    while len(buf) < n:
+        chunk = sock.recv(n - len(buf))
+        if not chunk:
+            raise ConnectionError("connection closed")
+        buf += chunk
+    return buf
+
+
 class FluxTestClient:
-    """HTTP client for a single Flux test server instance."""
+    """Client for a single Flux test server (TCP or Unix socket)."""
 
-    def __init__(self, port: int = 8435, base_url: str | None = None):
+    def __init__(self, port: int = 8435, unix_socket: str | None = None):
         self.port = port
-        self.base_url = base_url or f"http://localhost:{port}"
+        self.unix_socket = unix_socket
 
-    def _get(self, path: str) -> dict | list | str:
-        url = f"{self.base_url}{path}"
-        for attempt in range(3):
+    def _connect(self) -> socket.socket:
+        if self.unix_socket:
+            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            s.connect(self.unix_socket)
+            return s
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect(("127.0.0.1", self.port))
+        return s
+
+    def _rpc(self, opcode: int, body: bytes = b"") -> tuple[int, int, bytes]:
+        """Returns (status, payload_type, body). status 0 = ok."""
+        sock = self._connect()
+        try:
+            req = struct.pack("<IHHI", FLUX_TEST_MAGIC, 1, opcode, len(body)) + body
+            sock.sendall(req)
+            hdr = _recv_exact(sock, 8)
+            status = hdr[0]
+            payload_type = hdr[1]
+            (body_len,) = struct.unpack("<I", hdr[4:8])
+            payload = _recv_exact(sock, body_len) if body_len else b""
+            return status, payload_type, payload
+        finally:
+            sock.close()
+
+    def _rpc_json_post(self, opcode: int, body: dict) -> dict:
+        status, ptype, payload = self._rpc(opcode, json.dumps(body).encode("utf-8"))
+        if status != 0:
             try:
-                with urlopen(url, timeout=10) as resp:
-                    data = resp.read().decode("utf-8")
-                return json.loads(data)
-            except (ConnectionResetError, ConnectionRefusedError, URLError, OSError):
-                if attempt == 2:
-                    raise
-                time.sleep(0.5)
-
-    def _post(self, path: str, body: dict) -> dict:
-        url = f"{self.base_url}{path}"
-        payload = json.dumps(body).encode("utf-8")
-        req = Request(url, data=payload, headers={"Content-Type": "application/json"})
-        with urlopen(req, timeout=10) as resp:
-            data = resp.read().decode("utf-8")
-        return json.loads(data)
+                err = json.loads(payload.decode("utf-8"))
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                err = {"error": payload.decode("utf-8", errors="replace")}
+            raise RuntimeError(f"RPC error: {err}")
+        if ptype != 0:
+            raise RuntimeError("unexpected non-JSON payload")
+        return json.loads(payload.decode("utf-8"))
 
     # --- Core API ---
 
     def get_ui(self) -> dict:
-        return self._get("/ui")
+        for attempt in range(3):
+            try:
+                status, ptype, payload = self._rpc(Op.GetUi, b"")
+                if status != 0:
+                    try:
+                        err = json.loads(payload.decode("utf-8"))
+                    except (json.JSONDecodeError, UnicodeDecodeError):
+                        err = {"error": payload.decode("utf-8", errors="replace")}
+                    raise RuntimeError(f"RPC error: {err}")
+                if ptype != 0:
+                    raise RuntimeError("unexpected non-JSON payload")
+                return json.loads(payload.decode("utf-8"))
+            except (ConnectionError, OSError):
+                if attempt == 2:
+                    raise
+                time.sleep(0.5)
 
     def get_screenshot(self) -> bytes:
-        url = f"{self.base_url}/screenshot"
-        with urlopen(url, timeout=5) as resp:
-            return resp.read()
+        status, ptype, payload = self._rpc(Op.GetScreenshot, b"")
+        if status != 0:
+            try:
+                err = json.loads(payload.decode("utf-8"))
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                err = {"error": payload.decode("utf-8", errors="replace")}
+            raise RuntimeError(f"RPC error: {err}")
+        if ptype != 1:
+            raise RuntimeError("expected PNG payload")
+        return payload
 
     def click(self, x: float, y: float) -> dict:
-        return self._post("/click", {"x": x, "y": y})
+        return self._rpc_json_post(Op.Click, {"x": x, "y": y})
 
     def type_text(self, text: str) -> dict:
-        return self._post("/type", {"text": text})
+        return self._rpc_json_post(Op.Type, {"text": text})
 
     def press_key(self, key: str) -> dict:
-        return self._post("/key", {"key": key})
+        return self._rpc_json_post(Op.Key, {"key": key})
 
     def scroll(self, x: float, y: float, delta_x: float = 0, delta_y: float = 0) -> dict:
-        return self._post("/scroll", {"x": x, "y": y, "deltaX": delta_x, "deltaY": delta_y})
+        return self._rpc_json_post(Op.Scroll, {"x": x, "y": y, "deltaX": delta_x, "deltaY": delta_y})
 
     def hover(self, x: float, y: float) -> dict:
-        return self._post("/hover", {"x": x, "y": y})
+        return self._rpc_json_post(Op.Hover, {"x": x, "y": y})
 
     def drag(self, start_x: float, start_y: float, end_x: float, end_y: float, steps: int = 10) -> dict:
-        return self._post("/drag", {
+        return self._rpc_json_post(Op.Drag, {
             "startX": start_x, "startY": start_y,
             "endX": end_x, "endY": end_y,
             "steps": steps
@@ -84,10 +145,11 @@ class FluxTestClient:
                 tree = self.get_ui()
                 if isinstance(tree, dict) and tree.get("children"):
                     return
-            except (URLError, ConnectionError, OSError, ValueError):
+            except (OSError, ConnectionError, RuntimeError, ValueError):
                 pass
             time.sleep(interval)
-        raise TimeoutError(f"Test server on port {self.port} did not become ready within {timeout}s")
+        loc = self.unix_socket or f"port {self.port}"
+        raise TimeoutError(f"Test server ({loc}) did not become ready within {timeout}s")
 
 
 # --- UI tree helpers ---
@@ -151,19 +213,36 @@ def get_text_value(tree: dict, prefix: str) -> Optional[str]:
 # --- Process management ---
 
 class FluxAppProcess:
-    """Launches a Flux test app as a subprocess and manages its lifecycle."""
+    """Launches a Flux test app in --test-mode with a Unix domain socket (default) or TCP port."""
 
-    def __init__(self, executable: str, port: int = 8435, extra_args: list[str] | None = None):
+    def __init__(self, executable: str, port: int = 8435, extra_args: list[str] | None = None,
+                 unix_socket: str | None = None):
         self.executable = executable
         self.port = port
         self.extra_args = extra_args or []
+        self.unix_socket = unix_socket
         self.process: Optional[subprocess.Popen] = None
 
     def start(self):
-        cmd = [self.executable, "--test-mode", "--test-port", str(self.port)] + self.extra_args
+        if self.unix_socket is None:
+            self.unix_socket = os.path.join(
+                tempfile.gettempdir(),
+                f"flux-test-{os.getpid()}-{uuid.uuid4().hex}.sock",
+            )
+        if os.path.exists(self.unix_socket):
+            try:
+                os.unlink(self.unix_socket)
+            except OSError:
+                pass
+
+        cmd = [
+            self.executable, "--test-mode", "--test-socket", self.unix_socket,
+        ] + self.extra_args
+
         backend = os.environ.get("FLUX_TEST_BACKEND")
         if backend:
             cmd.extend(["--backend", backend])
+
         self.process = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
@@ -178,6 +257,11 @@ class FluxAppProcess:
             except subprocess.TimeoutExpired:
                 self.process.kill()
                 self.process.wait(timeout=2)
+        if self.unix_socket and os.path.exists(self.unix_socket):
+            try:
+                os.unlink(self.unix_socket)
+            except OSError:
+                pass
 
     def is_alive(self) -> bool:
         return self.process is not None and self.process.poll() is None
@@ -191,7 +275,7 @@ class FluxAppProcess:
 
 
 def find_free_port() -> int:
-    """Find and return a free TCP port."""
+    """Find and return a free TCP port (for TCP-based tests)."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(("", 0))
         return s.getsockname()[1]

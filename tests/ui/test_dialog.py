@@ -6,7 +6,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
 from flux_test_client import (
-    FluxTestClient, FluxAppProcess, find_free_port,
+    FluxTestClient, FluxAppProcess,
     find_by_text, find_by_focus_key, center_of, get_text_value,
 )
 
@@ -14,13 +14,14 @@ BUILD_DIR = os.environ.get("FLUX_BUILD_DIR", os.path.join(os.path.dirname(__file
 EXECUTABLE = os.path.join(BUILD_DIR, "ui_test_dialog")
 
 
-class TestDialog(unittest.TestCase):
+class TestDialogApp(unittest.TestCase):
+    """Single app; `setUp` closes dialog, hits reset, and Escape (dropdown)."""
+
     @classmethod
     def setUpClass(cls):
-        cls.port = find_free_port()
-        cls.app = FluxAppProcess(EXECUTABLE, port=cls.port)
+        cls.app = FluxAppProcess(EXECUTABLE)
         cls.app.start()
-        cls.client = FluxTestClient(port=cls.port)
+        cls.client = FluxTestClient(unix_socket=cls.app.unix_socket)
         cls.client.wait_ready()
 
     @classmethod
@@ -40,7 +41,9 @@ class TestDialog(unittest.TestCase):
         reset = find_by_focus_key(tree, "btn-reset")
         if reset:
             self.client.click(*center_of(reset))
+        self.client.press_key("Escape")
 
+    # --- dialog ---
     def test_initial_dialog_hidden(self):
         tree = self.get_tree()
         self.assertEqual(get_text_value(tree, "dialog-visible:"), "false")
@@ -96,23 +99,7 @@ class TestDialog(unittest.TestCase):
         tree = self.get_tree()
         self.assertEqual(get_text_value(tree, "dialog-visible:"), "false")
 
-
-class TestDropdownMenu(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.port = find_free_port()
-        cls.app = FluxAppProcess(EXECUTABLE, port=cls.port)
-        cls.app.start()
-        cls.client = FluxTestClient(port=cls.port)
-        cls.client.wait_ready()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.app.stop()
-
-    def get_tree(self):
-        return self.client.get_ui()
-
+    # --- dropdown ---
     def test_initial_dropdown_result(self):
         tree = self.get_tree()
         self.assertEqual(get_text_value(tree, "dropdown-result:"), "none")
