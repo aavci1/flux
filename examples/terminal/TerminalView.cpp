@@ -79,7 +79,8 @@ void TerminalView::render(RenderContext& ctx, const Rect& bounds) const {
         lineH = fs * 1.2f;
     }
 
-    const std::size_t totalLines = snap.scrollback.size() + static_cast<std::size_t>(snap.rows);
+    const int cursorRow = std::clamp(snap.cursorRow, 0, std::max(0, snap.rows - 1));
+    const std::size_t totalLines = snap.screenStart + static_cast<std::size_t>(cursorRow) + 1;
     float contentH = static_cast<float>(totalLines) * lineH;
     float maxScroll = std::max(0.0f, contentH - content.height);
     if (stickToBottom) {
@@ -107,13 +108,8 @@ void TerminalView::render(RenderContext& ctx, const Rect& bounds) const {
         }
 
         const std::vector<Cell>* linePtr = nullptr;
-        if (li < snap.scrollback.size()) {
-            linePtr = &snap.scrollback[li];
-        } else {
-            std::size_t si = li - snap.scrollback.size();
-            if (si < snap.screen.size()) {
-                linePtr = &snap.screen[si];
-            }
+        if (li < snap.lines.size()) {
+            linePtr = &snap.lines[li];
         }
         if (!linePtr) {
             continue;
@@ -145,7 +141,7 @@ void TerminalView::render(RenderContext& ctx, const Rect& bounds) const {
 
     // Caret
     if (ctx.isCurrentViewFocused()) {
-        std::size_t absLine = snap.scrollback.size() + static_cast<std::size_t>(snap.cursorRow);
+        std::size_t absLine = snap.screenStart + static_cast<std::size_t>(snap.cursorRow);
         float caretTop = content.y - scrollY + static_cast<float>(absLine) * lineH;
         float caretX = content.x + static_cast<float>(snap.cursorCol) * cellW;
         if (caretTop + lineH >= content.y && caretTop <= content.y + content.height) {

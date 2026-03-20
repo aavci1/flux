@@ -17,8 +17,8 @@ struct Cell {
 };
 
 struct TermSnapshot {
-    std::vector<std::vector<Cell>> scrollback;
-    std::vector<std::vector<Cell>> screen;
+    std::vector<std::vector<Cell>> lines;
+    std::size_t screenStart{0};
     int cursorRow{0};
     int cursorCol{0};
     int cols{80};
@@ -54,8 +54,10 @@ private:
     int cols_{80};
     int rows_{24};
 
-    std::vector<std::vector<Cell>> scrollback_;
-    std::vector<std::vector<Cell>> screen_;
+    std::vector<Cell>& screenRow(int r) { return lines_[screenStart_ + static_cast<std::size_t>(r)]; }
+
+    std::vector<std::vector<Cell>> lines_;
+    std::size_t screenStart_{0};
 
     int cursorRow_{0};
     int cursorCol_{0};
