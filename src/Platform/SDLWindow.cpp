@@ -291,13 +291,15 @@ void SDLWindow::handleSDLEvent(const SDL_Event& event) {
 
         case SDL_EVENT_KEY_DOWN: {
             Key k = sdlScancodeToFluxKey(event.key.scancode);
-            fluxWindow_->handleKeyDown(static_cast<int>(k));
+            KeyModifier mods = sdlModToFluxMod(SDL_GetModState());
+            fluxWindow_->handleKeyDown(static_cast<int>(k), mods);
             break;
         }
 
         case SDL_EVENT_KEY_UP: {
             Key k = sdlScancodeToFluxKey(event.key.scancode);
-            fluxWindow_->handleKeyUp(static_cast<int>(k));
+            KeyModifier mods = sdlModToFluxMod(SDL_GetModState());
+            fluxWindow_->handleKeyUp(static_cast<int>(k), mods);
             break;
         }
 

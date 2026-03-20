@@ -5,6 +5,7 @@
 #include <Flux/Platform/MacWindow.hpp>
 #include <Flux/Platform/GPUPlatformRenderer.hpp>
 #include <Flux/Platform/NativeGraphicsSurface.hpp>
+#include <Flux/Core/KeyEvent.hpp>
 #include <Flux/Core/Window.hpp>
 #include <Flux/Core/Log.hpp>
 
@@ -119,6 +120,23 @@ static Key keyCodeToFluxKey(unsigned short keyCode) {
         case kVK_JIS_Kana: return Key::Unknown;
         default: return Key::Unknown;
     }
+}
+
+static KeyModifier nsModifierFlagsToFlux(NSEventModifierFlags f) {
+    uint32_t bits = 0;
+    if (f & NSEventModifierFlagShift) {
+        bits |= static_cast<uint32_t>(KeyModifier::Shift);
+    }
+    if (f & NSEventModifierFlagControl) {
+        bits |= static_cast<uint32_t>(KeyModifier::Ctrl);
+    }
+    if (f & NSEventModifierFlagOption) {
+        bits |= static_cast<uint32_t>(KeyModifier::Alt);
+    }
+    if (f & NSEventModifierFlagCommand) {
+        bits |= static_cast<uint32_t>(KeyModifier::Super);
+    }
+    return static_cast<KeyModifier>(bits);
 }
 
 static int mouseButtonNumber(NSEventType t, NSInteger buttonNumber) {
@@ -296,7 +314,9 @@ struct MacWindowImpl {
     flux::Window* w = host->eventTarget();
     if (!w) return;
 
-    w->handleKeyDown(static_cast<int>(k));
+    NSEventModifierFlags mf = [event modifierFlags];
+    flux::KeyModifier mods = flux::detail::nsModifierFlagsToFlux(mf);
+    w->handleKeyDown(static_cast<int>(k), mods);
 
     // Cocoa often never calls insertText: on a plain NSView even with NSTextInputClient;
     // interpretKeyEvents does not deliver text reliably here. Pipe the same UTF-8 the field
@@ -305,7 +325,11 @@ struct MacWindowImpl {
     bool skipChars =
         (code == kVK_Return || code == kVK_ANSI_KeypadEnter || code == kVK_Tab || code == kVK_Delete ||
          code == kVK_ForwardDelete);
-    if (!skipChars) {
+    // Do not send character text when Command or Control is held — those are shortcuts
+    // (font zoom, quit, etc.); otherwise '=' still arrives as text for Cmd+=.
+    bool skipTextForShortcuts =
+        (mf & NSEventModifierFlagCommand) != 0 || (mf & NSEventModifierFlagControl) != 0;
+    if (!skipTextForShortcuts && !skipChars) {
         NSString* chars = [event characters];
         if (chars.length > 0) {
             std::string utf8([chars UTF8String] ?: "");
@@ -323,7 +347,9 @@ struct MacWindowImpl {
     auto* host = static_cast<flux::MacWindow*>(self.hostPtr);
     if (!host) return;
     flux::Key k = flux::detail::keyCodeToFluxKey([event keyCode]);
-    if (flux::Window* w = host->eventTarget()) w->handleKeyUp(static_cast<int>(k));
+    NSEventModifierFlags mf = [event modifierFlags];
+    flux::KeyModifier mods = flux::detail::nsModifierFlagsToFlux(mf);
+    if (flux::Window* w = host->eventTarget()) w->handleKeyUp(static_cast<int>(k), mods);
 }
 
 - (void)flagsChanged:(NSEvent*)event {

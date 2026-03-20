@@ -12,38 +12,70 @@ KeyboardInputHandler::KeyboardInputHandler()
 void KeyboardInputHandler::handleKeyDown(int key) {
     // Update modifier state
     updateModifiers(key, true);
-    
+
     // Create KeyEvent
     KeyEvent event;
     event.key = keyFromRawCode(key);
     event.modifiers = currentModifiers_;
-    event.rawKeyCode = key;
+    event.rawKeyCode = static_cast<uint32_t>(key);
     event.isRepeat = false;
-    
-    FLUX_LOG_DEBUG("[INPUT] Key down: %s (raw: %d, mods: %s%s%s)",
+
+    FLUX_LOG_DEBUG("[INPUT] Key down: %s (raw: %d, mods: %s%s%s%s)",
                    keyName(event.key).c_str(), key,
                    event.hasCtrl() ? "Ctrl " : "",
                    event.hasShift() ? "Shift " : "",
-                   event.hasAlt() ? "Alt " : "");
+                   event.hasAlt() ? "Alt " : "",
+                   event.hasSuper() ? "Super " : "");
 
     // Queue the event to be processed during the next render frame
+    pendingKeyDownEvents_.push_back(event);
+}
+
+void KeyboardInputHandler::handleKeyDown(int key, KeyModifier platformModifiers) {
+    KeyEvent event;
+    event.key = keyFromRawCode(key);
+    event.modifiers = platformModifiers;
+    event.rawKeyCode = static_cast<uint32_t>(key);
+    event.isRepeat = false;
+    currentModifiers_ = platformModifiers;
+
+    FLUX_LOG_DEBUG("[INPUT] Key down (platform mods): %s (raw: %d, mods: %s%s%s%s)",
+                   keyName(event.key).c_str(), key,
+                   event.hasCtrl() ? "Ctrl " : "",
+                   event.hasShift() ? "Shift " : "",
+                   event.hasAlt() ? "Alt " : "",
+                   event.hasSuper() ? "Super " : "");
+
     pendingKeyDownEvents_.push_back(event);
 }
 
 void KeyboardInputHandler::handleKeyUp(int key) {
     // Update modifier state
     updateModifiers(key, false);
-    
+
     // Create KeyEvent
     KeyEvent event;
     event.key = keyFromRawCode(key);
     event.modifiers = currentModifiers_;
-    event.rawKeyCode = key;
+    event.rawKeyCode = static_cast<uint32_t>(key);
     event.isRepeat = false;
-    
+
     FLUX_LOG_DEBUG("[INPUT] Key up: %s (raw: %d)", keyName(event.key).c_str(), key);
 
     // Queue the event
+    pendingKeyUpEvents_.push_back(event);
+}
+
+void KeyboardInputHandler::handleKeyUp(int key, KeyModifier platformModifiers) {
+    KeyEvent event;
+    event.key = keyFromRawCode(key);
+    event.modifiers = platformModifiers;
+    event.rawKeyCode = static_cast<uint32_t>(key);
+    event.isRepeat = false;
+    currentModifiers_ = platformModifiers;
+
+    FLUX_LOG_DEBUG("[INPUT] Key up (platform mods): %s (raw: %d)", keyName(event.key).c_str(), key);
+
     pendingKeyUpEvents_.push_back(event);
 }
 

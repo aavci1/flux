@@ -259,18 +259,29 @@ void Window::handleMouseScroll(float x, float y, float deltaX, float deltaY) {
 
 void Window::handleKeyDown(int key) {
     impl_->keyboardHandler.handleKeyDown(key);
-    
+    processKeyDownPipeline();
+}
+
+void Window::handleKeyDown(int key, KeyModifier platformModifiers) {
+    impl_->keyboardHandler.handleKeyDown(key, platformModifiers);
+    processKeyDownPipeline();
+}
+
+void Window::processKeyDownPipeline() {
     const auto& pendingEvents = impl_->keyboardHandler.getPendingKeyDown();
     if (!pendingEvents.empty()) {
         const KeyEvent& event = pendingEvents.back();
-        
+
         if (impl_->shortcutManager->handleShortcut(event, *this)) {
+            KeyEvent saved = event;
             impl_->keyboardHandler.clearPendingEvents();
-            impl_->keyboardHandler.handleKeyDown(key);
+            // Re-queue the same event so the next frame dispatches to focused views without
+            // running shortcut matching again (legacy behavior for copy/cut/paste, etc.).
+            impl_->keyboardHandler.enqueueSyntheticKeyDown(std::move(saved));
             requestRedraw();
             return;
         }
-        
+
         if (event.key == Key::Tab && !event.hasCtrl() && !event.hasAlt()
             && impl_->focusState.getFocusableViewCount() > 1) {
             if (event.hasShift()) {
@@ -283,12 +294,17 @@ void Window::handleKeyDown(int key) {
             return;
         }
     }
-    
+
     requestRedraw();
 }
 
 void Window::handleKeyUp(int key) {
     impl_->keyboardHandler.handleKeyUp(key);
+    requestRedraw();
+}
+
+void Window::handleKeyUp(int key, KeyModifier platformModifiers) {
+    impl_->keyboardHandler.handleKeyUp(key, platformModifiers);
     requestRedraw();
 }
 

@@ -115,11 +115,18 @@ public:
      * @brief Handle key down
      */
     void handleKeyDown(int key);
-    
+
+    /**
+     * @brief Handle key down with OS-reported modifier keys (macOS/SDL).
+     */
+    void handleKeyDown(int key, KeyModifier platformModifiers);
+
     /**
      * @brief Handle key up
      */
     void handleKeyUp(int key);
+
+    void handleKeyUp(int key, KeyModifier platformModifiers);
     
     /**
      * @brief Handle text input
@@ -224,6 +231,8 @@ public:
     void processPendingEvents(LayoutNode& layoutTree);
 
 private:
+    void processKeyDownPipeline();
+
     // pImpl idiom - hide all implementation details
     struct WindowImpl;
     std::unique_ptr<WindowImpl> impl_;

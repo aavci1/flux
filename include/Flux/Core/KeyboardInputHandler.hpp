@@ -23,14 +23,21 @@ public:
     ~KeyboardInputHandler() = default;
 
     /**
-     * @brief Handle a raw key down event
+     * @brief Handle a raw key down event (modifier state inferred from key presses; see overload).
      */
     void handleKeyDown(int key);
-    
+
     /**
-     * @brief Handle a raw key up event
+     * @brief Key down with OS-reported modifiers (required on macOS: Cmd/Opt use flagsChanged, not keyDown).
+     */
+    void handleKeyDown(int key, KeyModifier platformModifiers);
+
+    /**
+     * @brief Handle a raw key up event (modifier state inferred from key presses; see overload).
      */
     void handleKeyUp(int key);
+
+    void handleKeyUp(int key, KeyModifier platformModifiers);
     
     /**
      * @brief Handle text input
