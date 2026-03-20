@@ -43,6 +43,8 @@ private:
     void clearScreen();
     void fillLine(std::vector<Cell>& line) const;
     void ensureScreen();
+    /// Grow buffer only through the current cursor row (no full-screen empty padding).
+    void ensureForCursor();
     void scrollUp();
     void putUtf8(std::string utf8);
     void handleCsi(const std::vector<int>& params, char finalCh);

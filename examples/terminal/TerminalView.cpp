@@ -62,6 +62,8 @@ void TerminalView::render(RenderContext& ctx, const Rect& bounds) const {
         return;
     }
 
+    auto snap = session->snapshot();
+
     const EdgeInsets pad = padding;
     const Rect content = {
         bounds.x + pad.left,
@@ -71,7 +73,6 @@ void TerminalView::render(RenderContext& ctx, const Rect& bounds) const {
     };
     lastViewport = content;
 
-    const TermSnapshot snap = session->snapshot();
     const float fs = fontSize;
     std::string face = fontFamily;
     if (face.empty()) {
@@ -84,9 +85,7 @@ void TerminalView::render(RenderContext& ctx, const Rect& bounds) const {
         ? cachedLineHeight
         : (fs * Typography::lineHeightTight < fs * 1.1f ? fs * 1.2f : fs * Typography::lineHeightTight);
 
-    // Full buffer height for layout/scroll: scrollback + screen (invariant: lines.size() == screenStart + rows).
-    // Using screenStart + cursorRow + 1 was wrong when the cursor was not on the last row and jumped
-    // whenever rows changed (font zoom), which looked like random lines added/removed.
+    // Full buffer height: scrollback lines + screen rows (snapshot pads virtual empty screen rows).
     const std::size_t totalLines = snap.lines.size();
     const float contentH = static_cast<float>(totalLines) * lineH;
     const float maxScroll = std::max(0.0f, contentH - content.height);

@@ -30,6 +30,15 @@ std::vector<int> parseSemicolonParams(std::string_view s) {
     return out;
 }
 
+bool lineIsEmpty(const std::vector<Cell>& line) {
+    for (const Cell& c : line) {
+        if (!c.g.empty()) {
+            return false;
+        }
+    }
+    return true;
+}
+
 } // namespace
 
 TerminalEmulator::TerminalEmulator(int cols, int rows) {
@@ -48,7 +57,7 @@ void TerminalEmulator::resize(int cols, int rows) {
         return;
     }
 
-    const int oldCols = cols_;
+    const std::size_t absLine = screenStart_ + static_cast<std::size_t>(cursorRow_);
 
     auto padCell = [this]() {
         Cell c{};
@@ -60,21 +69,30 @@ void TerminalEmulator::resize(int cols, int rows) {
     cols_ = cols;
     rows_ = rows;
 
+    // Grow rows when the window widens; do not shrink stored rows when narrowing — the shell
+    // still sees cols_ via the PTY, but we keep off-screen cells so widening restores the line.
     for (auto& row : lines_) {
-        if (static_cast<int>(row.size()) < oldCols) {
-            row.resize(static_cast<std::size_t>(oldCols), padCell());
-        }
-        if (cols_ > static_cast<int>(row.size())) {
+        if (static_cast<int>(row.size()) < cols_) {
             row.resize(static_cast<std::size_t>(cols_), padCell());
         }
     }
 
-    while (lines_.size() < static_cast<std::size_t>(rows_)) {
+    if (lines_.empty()) {
         lines_.emplace_back(static_cast<std::size_t>(cols_), Cell{});
         fillLine(lines_.back());
     }
 
-    screenStart_ = lines_.size() - static_cast<std::size_t>(rows_);
+    // Do not pad lines_.size() to rows_: that creates trailing empty rows that become "the screen"
+    // when we shrink (screenStart = size - rows), hiding the prompt and confusing the shell into
+    // redrawing prompts. Anchor the viewport to the cursor line instead of the buffer tail.
+    std::size_t maxStart = 0;
+    if (lines_.size() >= static_cast<std::size_t>(rows_)) {
+        maxStart = lines_.size() - static_cast<std::size_t>(rows_);
+    }
+    const std::size_t lo = (absLine + 1 > static_cast<std::size_t>(rows_))
+        ? absLine - static_cast<std::size_t>(rows_) + 1
+        : 0;
+    screenStart_ = std::min(maxStart, lo);
 
     if (screenStart_ > kMaxScrollback) {
         std::size_t excess = screenStart_ - kMaxScrollback;
@@ -82,7 +100,12 @@ void TerminalEmulator::resize(int cols, int rows) {
         screenStart_ -= excess;
     }
 
-    cursorRow_ = std::clamp(cursorRow_, 0, rows_ - 1);
+    while (lines_.size() > screenStart_ + static_cast<std::size_t>(rows_) && lineIsEmpty(lines_.back())) {
+        lines_.pop_back();
+    }
+
+    const std::ptrdiff_t dr = static_cast<std::ptrdiff_t>(absLine) - static_cast<std::ptrdiff_t>(screenStart_);
+    cursorRow_ = std::clamp(static_cast<int>(dr), 0, rows_ - 1);
     cursorCol_ = std::clamp(cursorCol_, 0, cols_ - 1);
 }
 
@@ -98,6 +121,26 @@ void TerminalEmulator::ensureScreen() {
         fillLine(lines_.back());
     }
     for (int r = 0; r < rows_; ++r) {
+        auto& line = screenRow(r);
+        if (static_cast<int>(line.size()) < cols_) {
+            const std::size_t oldLen = line.size();
+            line.resize(static_cast<std::size_t>(cols_), Cell{});
+            for (std::size_t i = oldLen; i < line.size(); ++i) {
+                line[i].fg = defaultFg_;
+                line[i].bg = defaultBg_;
+                line[i].bold = false;
+            }
+        }
+    }
+}
+
+void TerminalEmulator::ensureForCursor() {
+    std::size_t needed = screenStart_ + static_cast<std::size_t>(cursorRow_) + 1;
+    while (lines_.size() < needed) {
+        lines_.emplace_back(static_cast<std::size_t>(cols_), Cell{});
+        fillLine(lines_.back());
+    }
+    for (int r = 0; r <= cursorRow_; ++r) {
         auto& line = screenRow(r);
         if (static_cast<int>(line.size()) < cols_) {
             const std::size_t oldLen = line.size();
@@ -147,7 +190,7 @@ void TerminalEmulator::putUtf8(std::string utf8) {
     if (utf8.empty()) {
         return;
     }
-    ensureScreen();
+    ensureForCursor();
     if (cursorCol_ >= cols_) {
         cursorCol_ = 0;
         ++cursorRow_;
@@ -476,7 +519,6 @@ void TerminalEmulator::handleCsi(const std::vector<int>& params, char finalCh) {
 
 void TerminalEmulator::feed(const char* data, std::size_t len) {
     std::lock_guard lock(mutex_);
-    ensureScreen();
 
     for (std::size_t i = 0; i < len; ++i) {
         unsigned char b = static_cast<unsigned char>(data[i]);
@@ -601,6 +643,7 @@ void TerminalEmulator::feed(const char* data, std::size_t len) {
                 scrollUp();
             } else {
                 ++cursorRow_;
+                ensureForCursor();
             }
             cursorCol_ = 0;
             continue;
@@ -637,6 +680,17 @@ TermSnapshot TerminalEmulator::snapshot() const {
     s.cursorCol = cursorCol_;
     s.cols = cols_;
     s.rows = rows_;
+    // Virtual screen rows below stored lines (lazy buffer): render full terminal height without
+    // materializing empty rows in lines_.
+    const std::size_t logicalEnd = screenStart_ + static_cast<std::size_t>(rows_);
+    while (s.lines.size() < logicalEnd) {
+        s.lines.emplace_back(static_cast<std::size_t>(cols_), Cell{});
+        for (Cell& c : s.lines.back()) {
+            c.fg = defaultFg_;
+            c.bg = defaultBg_;
+            c.bold = false;
+        }
+    }
     return s;
 }
 
