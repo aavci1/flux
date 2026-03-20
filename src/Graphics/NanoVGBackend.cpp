@@ -1,5 +1,5 @@
 #include <Flux/Graphics/NanoVGBackend.hpp>
-#include <Flux/Core/FontDiscovery.hpp>
+#include <Flux/Graphics/FontProvider.hpp>
 #include <Flux/Core/Log.hpp>
 #include <nanovg.h>
 #include <cmath>
@@ -305,7 +305,7 @@ int NanoVGBackend::resolveFont(const std::string& name, FontWeight weight) {
 
     std::string family = name;
     if (name == "default" || name == "sans") family = "Helvetica";
-    auto discovered = FontDiscovery::findFontPath(family, weight);
+    auto discovered = FontProvider::findFontPath(family, weight);
     int font = -1;
     if (discovered) {
         font = nvgCreateFont(nvg_, key.c_str(), discovered->c_str());

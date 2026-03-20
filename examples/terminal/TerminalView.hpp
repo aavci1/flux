@@ -22,7 +22,7 @@ struct TerminalView {
     std::shared_ptr<TerminalKeyBindings> keyBindings;
 
     Property<float> fontSize = 14.0f;
-    /// Prefer "Monaco" on macOS (CoreText); Linux FontDiscovery still resolves a system sans path.
+    /// Prefer "Monaco" on macOS (CoreText); Linux FontProvider still resolves a system sans path.
     Property<std::string> fontFamily = std::string("Monaco");
 
     /// Vertical scroll offset in px (content moves up as this increases).

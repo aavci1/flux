@@ -160,7 +160,7 @@ list(APPEND FLUX_SOURCES
     src/Core/PlatformWindowFactory.cpp
     src/Core/Demangle.cpp
     src/Core/Element.cpp
-    src/Core/FontDiscovery.cpp
+    src/Graphics/FontProvider.cpp
     src/Core/ResourceManager.cpp
 
     # Graphics

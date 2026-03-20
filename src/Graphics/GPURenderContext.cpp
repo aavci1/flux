@@ -1,14 +1,15 @@
 #include <Flux/Graphics/GPURenderContext.hpp>
+#include <Flux/Graphics/FontProvider.hpp>
 #include <Flux/Graphics/GPURendererBackend.hpp>
 #include <cmath>
 #include <cstring>
 
 namespace flux {
 
-GPURenderContext::GPURenderContext(GlyphAtlas* atlas, ImageCache* imageCache,
+GPURenderContext::GPURenderContext(FontProvider* fontProvider, ImageCache* imageCache,
                                    GPURendererBackend* backend,
                                    int width, int height, float dpiScaleX, float dpiScaleY)
-    : atlas_(atlas), imageCache_(imageCache), gpuBackend_(backend),
+    : fontProvider_(fontProvider), imageCache_(imageCache), gpuBackend_(backend),
       width_(width), height_(height), dpiScaleX_(dpiScaleX), dpiScaleY_(dpiScaleY),
       currentFill_(FillStyle::none()), currentStroke_(StrokeStyle::none()) {}
 
@@ -222,24 +223,24 @@ Size GPURenderContext::measureText(const std::string& text, const TextStyle& sty
     auto it = measureCache_.find(key);
     if (it != measureCache_.end()) return it->second;
 
-    if (!atlas_) return {0, 0};
+    if (!fontProvider_) return {0, 0};
 
-    auto fontIndex = atlas_->ensureFontLoaded(style.fontName, style.weight);
+    auto fontIndex = fontProvider_->ensureFontLoaded(style.fontName, style.weight);
     if (!fontIndex) {
         return {0, 0};
     }
-    Size sz = atlas_->measureText(text, style.size, *fontIndex);
+    Size sz = fontProvider_->measureText(text, style.size, *fontIndex);
     measureCache_[key] = sz;
     return sz;
 }
 
 Size GPURenderContext::measureTextBox(const std::string& text, const TextStyle& style, float maxWidth) {
-    if (!atlas_) return {0, 0};
-    auto fontIndex = atlas_->ensureFontLoaded(style.fontName, style.weight);
+    if (!fontProvider_) return {0, 0};
+    auto fontIndex = fontProvider_->ensureFontLoaded(style.fontName, style.weight);
     if (!fontIndex) {
         return {0, 0};
     }
-    return atlas_->measureTextBox(text, style.size, maxWidth, *fontIndex);
+    return fontProvider_->measureTextBox(text, style.size, maxWidth, *fontIndex);
 }
 
 Rect GPURenderContext::getTextBounds(const std::string& text, const Point& position, const TextStyle& style) {

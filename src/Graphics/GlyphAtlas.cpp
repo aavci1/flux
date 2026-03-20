@@ -1,10 +1,37 @@
 #include <Flux/Graphics/GlyphAtlas.hpp>
-#include <Flux/Core/FontDiscovery.hpp>
 #include <cstring>
 #include <algorithm>
 #include <sstream>
+#include <vector>
 
 namespace flux {
+
+namespace {
+
+template<typename Fn>
+void utf8ForEach(const std::string& text, Fn&& fn) {
+    for (size_t i = 0; i < text.size();) {
+        uint32_t cp = static_cast<uint8_t>(text[i]);
+        size_t bytes = 1;
+        if (cp >= 0xC0 && cp < 0xE0 && i + 1 < text.size()) {
+            cp = ((cp & 0x1F) << 6) | (static_cast<uint8_t>(text[i + 1]) & 0x3F);
+            bytes = 2;
+        } else if (cp >= 0xE0 && cp < 0xF0 && i + 2 < text.size()) {
+            cp = ((cp & 0x0F) << 12) | ((static_cast<uint8_t>(text[i + 1]) & 0x3F) << 6)
+                | (static_cast<uint8_t>(text[i + 2]) & 0x3F);
+            bytes = 3;
+        } else if (cp >= 0xF0 && i + 3 < text.size()) {
+            cp = ((cp & 0x07) << 18) | ((static_cast<uint8_t>(text[i + 1]) & 0x3F) << 12)
+                | ((static_cast<uint8_t>(text[i + 2]) & 0x3F) << 6)
+                | (static_cast<uint8_t>(text[i + 3]) & 0x3F);
+            bytes = 4;
+        }
+        i += bytes;
+        fn(cp);
+    }
+}
+
+} // namespace
 
 GlyphAtlas::GlyphAtlas(gpu::Device* device, uint32_t atlasSize)
     : device_(device), atlasSize_(atlasSize)
@@ -47,7 +74,7 @@ bool GlyphAtlas::loadFont(const std::string& path, uint16_t fontIndex) {
 }
 
 bool GlyphAtlas::loadFontByName(const std::string& name, FontWeight weight, uint16_t fontIndex) {
-    auto path = FontDiscovery::findFontPath(name, weight);
+    auto path = FontProvider::findFontPath(name, weight);
     if (!path.has_value()) return false;
     return loadFont(path.value(), fontIndex);
 }
@@ -104,59 +131,134 @@ std::optional<uint16_t> GlyphAtlas::ensureFontLoaded(const std::string& name, Fo
     return std::nullopt;
 }
 
+std::string GlyphAtlas::faceFilePath(FT_Face face) const {
+    if (face && face->stream && face->stream->pathname.pointer) {
+        return std::string(static_cast<const char*>(face->stream->pathname.pointer));
+    }
+    return {};
+}
+
+std::optional<uint16_t> GlyphAtlas::loadFallbackForCodepoint(uint32_t codepoint,
+                                                              uint16_t baseFontIndex) {
+    if (codepointMisses_.count(codepoint)) {
+        return std::nullopt;
+    }
+
+    // Already-loaded fallbacks may cover this codepoint -- check them first.
+    for (auto& [path, idx] : fallbackPathToIndex_) {
+        auto fit = faces_.find(idx);
+        if (fit == faces_.end()) continue;
+        if (FT_Get_Char_Index(fit->second, codepoint) != 0) {
+            return idx;
+        }
+    }
+
+    // Ask the OS for the best font covering this codepoint.
+    std::string basePath;
+    if (auto it = faces_.find(baseFontIndex); it != faces_.end()) {
+        basePath = faceFilePath(it->second);
+    }
+    auto resolved = FontProvider::findFontPathForCodepoint(codepoint, basePath);
+    if (!resolved.has_value()) {
+        codepointMisses_.insert(codepoint);
+        return std::nullopt;
+    }
+
+    // Reuse if we already loaded this exact font file.
+    if (auto it = fallbackPathToIndex_.find(resolved.value()); it != fallbackPathToIndex_.end()) {
+        // Double-check the font actually has the glyph (the OS can return the base font itself
+        // when there is truly no coverage).
+        auto fit = faces_.find(it->second);
+        if (fit != faces_.end() && FT_Get_Char_Index(fit->second, codepoint) != 0) {
+            return it->second;
+        }
+        codepointMisses_.insert(codepoint);
+        return std::nullopt;
+    }
+
+    uint16_t idx = nextFontIndex_++;
+    if (!loadFont(resolved.value(), idx)) {
+        --nextFontIndex_;
+        codepointMisses_.insert(codepoint);
+        return std::nullopt;
+    }
+    fallbackPathToIndex_[resolved.value()] = idx;
+
+    if (FT_Get_Char_Index(faces_[idx], codepoint) == 0) {
+        codepointMisses_.insert(codepoint);
+        return std::nullopt;
+    }
+    return idx;
+}
+
 bool GlyphAtlas::rasterizeGlyph(const GlyphKey& key, GlyphInfo& out) {
-    auto it = faces_.find(key.fontIndex);
-    if (it == faces_.end()) return false;
+    auto tryRender = [&](uint16_t fi) -> bool {
+        auto it = faces_.find(fi);
+        if (it == faces_.end()) return false;
 
-    FT_Face face = it->second;
-    FT_Set_Pixel_Sizes(face, 0, key.fontSize);
+        FT_Face face = it->second;
+        FT_Set_Pixel_Sizes(face, 0, key.fontSize);
 
-    if (FT_Load_Char(face, key.codepoint, FT_LOAD_RENDER) != 0) return false;
+        FT_UInt glyphIndex = FT_Get_Char_Index(face, key.codepoint);
+        if (glyphIndex == 0) return false;
 
-    FT_GlyphSlot g = face->glyph;
-    uint32_t gw = g->bitmap.width;
-    uint32_t gh = g->bitmap.rows;
+        if (FT_Load_Glyph(face, glyphIndex, FT_LOAD_RENDER) != 0) return false;
 
-    if (gw == 0 || gh == 0) {
-        out.u0 = out.v0 = out.u1 = out.v1 = 0;
-        out.width = 0;
-        out.height = 0;
+        FT_GlyphSlot g = face->glyph;
+        uint32_t gw = g->bitmap.width;
+        uint32_t gh = g->bitmap.rows;
+
+        if (gw == 0 || gh == 0) {
+            out.u0 = out.v0 = out.u1 = out.v1 = 0;
+            out.width = 0;
+            out.height = 0;
+            out.bearingX = static_cast<float>(g->bitmap_left);
+            out.bearingY = static_cast<float>(g->bitmap_top);
+            out.advance = static_cast<float>(g->advance.x >> 6);
+            return true;
+        }
+
+        uint32_t pad = 1;
+        if (cursorX_ + gw + pad > atlasSize_) {
+            cursorX_ = 0;
+            cursorY_ += rowHeight_ + pad;
+            rowHeight_ = 0;
+        }
+        if (cursorY_ + gh + pad > atlasSize_) {
+            return false;
+        }
+
+        for (uint32_t row = 0; row < gh; row++) {
+            uint32_t dstY = cursorY_ + row;
+            std::memcpy(&atlasData_[dstY * atlasSize_ + cursorX_],
+                     &g->bitmap.buffer[row * g->bitmap.pitch], gw);
+        }
+
+        float inv = 1.0f / static_cast<float>(atlasSize_);
+        out.u0 = static_cast<float>(cursorX_) * inv;
+        out.v0 = static_cast<float>(cursorY_) * inv;
+        out.u1 = static_cast<float>(cursorX_ + gw) * inv;
+        out.v1 = static_cast<float>(cursorY_ + gh) * inv;
+        out.width = static_cast<float>(gw);
+        out.height = static_cast<float>(gh);
         out.bearingX = static_cast<float>(g->bitmap_left);
         out.bearingY = static_cast<float>(g->bitmap_top);
         out.advance = static_cast<float>(g->advance.x >> 6);
+
+        cursorX_ += gw + pad;
+        rowHeight_ = std::max(rowHeight_, gh);
+        dirty_ = true;
         return true;
-    }
+    };
 
-    uint32_t pad = 1;
-    if (cursorX_ + gw + pad > atlasSize_) {
-        cursorX_ = 0;
-        cursorY_ += rowHeight_ + pad;
-        rowHeight_ = 0;
-    }
-    if (cursorY_ + gh + pad > atlasSize_) return false;
+    // 1. Try the requested font.
+    if (tryRender(key.fontIndex)) return true;
 
-    for (uint32_t row = 0; row < gh; row++) {
-        uint32_t dstY = cursorY_ + row;
-        std::memcpy(&atlasData_[dstY * atlasSize_ + cursorX_],
-                     &g->bitmap.buffer[row * g->bitmap.pitch], gw);
-    }
+    // 2. Ask the OS for a fallback and try it.
+    auto fb = loadFallbackForCodepoint(key.codepoint, key.fontIndex);
+    if (fb.has_value() && tryRender(fb.value())) return true;
 
-    float inv = 1.0f / static_cast<float>(atlasSize_);
-    out.u0 = static_cast<float>(cursorX_) * inv;
-    out.v0 = static_cast<float>(cursorY_) * inv;
-    out.u1 = static_cast<float>(cursorX_ + gw) * inv;
-    out.v1 = static_cast<float>(cursorY_ + gh) * inv;
-    out.width = static_cast<float>(gw);
-    out.height = static_cast<float>(gh);
-    out.bearingX = static_cast<float>(g->bitmap_left);
-    out.bearingY = static_cast<float>(g->bitmap_top);
-    out.advance = static_cast<float>(g->advance.x >> 6);
-
-    cursorX_ += gw + pad;
-    rowHeight_ = std::max(rowHeight_, gh);
-    dirty_ = true;
-
-    return true;
+    return false;
 }
 
 const GlyphInfo* GlyphAtlas::getGlyph(uint32_t codepoint, uint16_t fontSize, uint16_t fontIndex) {
@@ -180,28 +282,17 @@ Size GlyphAtlas::measureText(const std::string& text, float fontSize, uint16_t f
     uint16_t fsz = static_cast<uint16_t>(fontSize);
     float width = 0, maxH = 0;
 
-    for (size_t i = 0; i < text.size(); ) {
-        uint32_t cp = static_cast<uint8_t>(text[i]);
-        size_t bytes = 1;
-        if (cp >= 0xC0 && cp < 0xE0 && i + 1 < text.size()) {
-            cp = ((cp & 0x1F) << 6) | (text[i+1] & 0x3F);
-            bytes = 2;
-        } else if (cp >= 0xE0 && cp < 0xF0 && i + 2 < text.size()) {
-            cp = ((cp & 0x0F) << 12) | ((text[i+1] & 0x3F) << 6) | (text[i+2] & 0x3F);
-            bytes = 3;
-        } else if (cp >= 0xF0 && i + 3 < text.size()) {
-            cp = ((cp & 0x07) << 18) | ((text[i+1] & 0x3F) << 12) |
-                 ((text[i+2] & 0x3F) << 6) | (text[i+3] & 0x3F);
-            bytes = 4;
-        }
-        i += bytes;
-
+    utf8ForEach(text, [&](uint32_t cp) {
         auto* g = getGlyph(cp, fsz, fontIndex);
         if (g) {
             width += g->advance;
             maxH = std::max(maxH, g->height);
+        } else if (const auto* sp = getGlyph(static_cast<uint32_t>(' '), fsz, fontIndex)) {
+            width += sp->advance;
+        } else {
+            width += fontSize * 0.5f;
         }
-    }
+    });
     return {width, std::max(maxH, fontSize)};
 }
 
@@ -228,10 +319,16 @@ std::vector<std::string> GlyphAtlas::wrapText(const std::string& text, float fon
 
     auto wordWidth = [&](const std::string& w) -> float {
         float ww = 0;
-        for (char c : w) {
-            auto* g = getGlyph(static_cast<uint8_t>(c), fsz, fontIndex);
-            if (g) ww += g->advance;
-        }
+        utf8ForEach(w, [&](uint32_t cp) {
+            auto* g = getGlyph(cp, fsz, fontIndex);
+            if (g) {
+                ww += g->advance;
+            } else if (const auto* sp = getGlyph(static_cast<uint32_t>(' '), fsz, fontIndex)) {
+                ww += sp->advance;
+            } else {
+                ww += fontSize * 0.5f;
+            }
+        });
         return ww;
     };
 
@@ -264,23 +361,19 @@ std::vector<GlyphInstance> GlyphAtlas::layoutText(const std::string& text, float
     uint16_t fsz = static_cast<uint16_t>(fontSize);
     float penX = x;
 
-    for (size_t i = 0; i < text.size(); ) {
-        uint32_t cp = static_cast<uint8_t>(text[i]);
-        size_t bytes = 1;
-        if (cp >= 0xC0 && cp < 0xE0 && i + 1 < text.size()) {
-            cp = ((cp & 0x1F) << 6) | (text[i+1] & 0x3F); bytes = 2;
-        } else if (cp >= 0xE0 && cp < 0xF0 && i + 2 < text.size()) {
-            cp = ((cp & 0x0F) << 12) | ((text[i+1] & 0x3F) << 6) | (text[i+2] & 0x3F); bytes = 3;
-        } else if (cp >= 0xF0 && i + 3 < text.size()) {
-            cp = ((cp & 0x07) << 18) | ((text[i+1] & 0x3F) << 12) |
-                 ((text[i+2] & 0x3F) << 6) | (text[i+3] & 0x3F); bytes = 4;
-        }
-        i += bytes;
-
+    utf8ForEach(text, [&](uint32_t cp) {
         auto* g = getGlyph(cp, fsz, fontIndex);
-        if (!g || (g->width == 0 && g->height == 0)) {
-            if (g) penX += g->advance;
-            continue;
+        if (!g) {
+            if (const auto* sp = getGlyph(static_cast<uint32_t>(' '), fsz, fontIndex)) {
+                penX += sp->advance;
+            } else {
+                penX += fontSize * 0.5f;
+            }
+            return;
+        }
+        if (g->width == 0 && g->height == 0) {
+            penX += g->advance;
+            return;
         }
 
         GlyphInstance inst{};
@@ -301,7 +394,7 @@ std::vector<GlyphInstance> GlyphAtlas::layoutText(const std::string& text, float
 
         out.push_back(inst);
         penX += g->advance;
-    }
+    });
 
     return out;
 }

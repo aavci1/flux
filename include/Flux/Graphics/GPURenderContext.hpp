@@ -2,7 +2,6 @@
 
 #include <Flux/Graphics/RenderContext.hpp>
 #include <Flux/Graphics/RenderCommandBuffer.hpp>
-#include <Flux/Graphics/GlyphAtlas.hpp>
 #include <Flux/Graphics/ImageCache.hpp>
 #include <string>
 #include <unordered_map>
@@ -10,11 +9,12 @@
 
 namespace flux {
 
+class FontProvider;
 class GPURendererBackend;
 
 class GPURenderContext : public RenderContext {
 public:
-    GPURenderContext(GlyphAtlas* atlas, ImageCache* imageCache,
+    GPURenderContext(FontProvider* fontProvider, ImageCache* imageCache,
                      GPURendererBackend* backend,
                      int width, int height,
                      float dpiScaleX = 1.0f, float dpiScaleY = 1.0f);
@@ -109,7 +109,7 @@ public:
     bool isCurrentViewPressed() const override;
 
 private:
-    GlyphAtlas* atlas_;
+    FontProvider* fontProvider_;
     ImageCache* imageCache_;
     GPURendererBackend* gpuBackend_;
     RenderCommandBuffer* cmdBuf_ = nullptr;

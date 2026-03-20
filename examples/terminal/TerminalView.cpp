@@ -62,8 +62,6 @@ void TerminalView::render(RenderContext& ctx, const Rect& bounds) const {
         return;
     }
 
-    auto snap = session->snapshot();
-
     const EdgeInsets pad = padding;
     const Rect content = {
         bounds.x + pad.left,
@@ -86,6 +84,7 @@ void TerminalView::render(RenderContext& ctx, const Rect& bounds) const {
         : (fs * Typography::lineHeightTight < fs * 1.1f ? fs * 1.2f : fs * Typography::lineHeightTight);
 
     // Full buffer height: scrollback lines + screen rows (snapshot pads virtual empty screen rows).
+    auto snap = session->snapshot();
     const std::size_t totalLines = snap.lines.size();
     const float contentH = static_cast<float>(totalLines) * lineH;
     const float maxScroll = std::max(0.0f, contentH - content.height);

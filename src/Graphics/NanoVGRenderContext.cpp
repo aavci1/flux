@@ -1,6 +1,6 @@
 #include <Flux/Graphics/NanoVGRenderContext.hpp>
 #include <Flux/Graphics/RenderCommandBuffer.hpp>
-#include <Flux/Core/FontDiscovery.hpp>
+#include <Flux/Graphics/FontProvider.hpp>
 #include <Flux/Core/ResourceManager.hpp>
 #include <Flux/Core/Log.hpp>
 #include <cmath>
@@ -747,7 +747,7 @@ int NanoVGRenderContext::getFont(const std::string& fontName, FontWeight weight)
     int font = -1;
 
     std::string family = (fontName == "default") ? "Helvetica" : fontName;
-    auto discovered = FontDiscovery::findFontPath(family, weight);
+    auto discovered = FontProvider::findFontPath(family, weight);
     if (discovered) {
         font = nvgCreateFont(nvgContext_, fontKey.c_str(), discovered->c_str());
         if (font != -1) {
