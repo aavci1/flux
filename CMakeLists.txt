@@ -382,8 +382,6 @@ if(BUILD_EXAMPLES)
         )
         target_include_directories(terminal PRIVATE ${CMAKE_SOURCE_DIR}/examples/terminal)
         target_link_libraries(terminal PRIVATE flux util)
-        target_compile_definitions(terminal PRIVATE
-            "FLUX_TERMINAL_ZDOTDIR=\"${CMAKE_SOURCE_DIR}/examples/terminal/zdotdir\"")
     endif()
 
 endif()

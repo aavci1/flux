@@ -6,9 +6,7 @@
 #include <cstring>
 #include <unistd.h>
 
-#if defined(FLUX_TERMINAL_ZDOTDIR)
-#include <stdlib.h>
-#endif
+#include <cstdlib>
 
 #include <sys/ioctl.h>
 #include <sys/types.h>
@@ -96,11 +94,6 @@ bool Pty::start(int rows, int cols, const std::string& shellPath) {
 
         setenv("TERM", "xterm-256color", 1);
         setenv("COLORTERM", "truecolor", 1);
-#if defined(FLUX_TERMINAL_ZDOTDIR)
-        // Lets us ship .zshenv that clears PROMPT_EOL_MARK (no "%" after output without \n) while still sourcing ~/.zshrc.
-        setenv("ZDOTDIR", FLUX_TERMINAL_ZDOTDIR, 1);
-#endif
-
         const char* sh = shellPath.empty() ? nullptr : shellPath.c_str();
         if (!sh) {
             sh = getenv("SHELL");
