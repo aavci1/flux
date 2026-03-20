@@ -20,6 +20,15 @@ void Renderer::renderFrame(const Rect& bounds) {
     renderContext_->clearEnvironmentStack();
 
     if (rootView_.operator->()) {
+        // Always drain keyboard/text BEFORE clearFocusableViews().
+        // 1) Auto-generated focus keys (TextInput_0, …) change when the tree is rebuilt;
+        //    getFocusedElement() only matches the list from the *previous* frame.
+        // 2) requestRedraw() sets layoutCacheValid_ = false, so never gate this on that flag —
+        //    otherwise every keystroke skips the early dispatch and input is dropped again.
+        if (window_) {
+            window_->processPendingEvents(cachedLayoutTree_);
+        }
+
         if (window_) {
             window_->focus().clearFocusableViews();
         }
@@ -65,11 +74,6 @@ void Renderer::renderFrame(const Rect& bounds) {
         // Dispatch deferred focus/blur notifications now that views are valid
         if (window_) {
             window_->focus().dispatchPendingFocusNotifications();
-        }
-
-        // Process pending keyboard/text events after focusable views are registered
-        if (window_) {
-            window_->processPendingEvents(cachedLayoutTree_);
         }
     } else {
         renderContext_->clear(Color(1, 1, 1, 1));

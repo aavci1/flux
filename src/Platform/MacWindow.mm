@@ -252,6 +252,11 @@ struct MacWindowImpl {
 }
 
 - (void)handleMouseButton:(NSEvent*)event down:(BOOL)down {
+    if (down && self.window) {
+        // NSTextInputClient only receives insertText: when this view is first responder.
+        // Clicks do not automatically restore first responder after other controls steal it.
+        [self.window makeFirstResponder:self];
+    }
     auto* host = static_cast<flux::MacWindow*>(self.hostPtr);
     if (!host) return;
     NSPoint p = [self convertPoint:[event locationInWindow] fromView:nil];
@@ -267,9 +272,20 @@ struct MacWindowImpl {
     if (!host) return;
     NSPoint p = [self convertPoint:[event locationInWindow] fromView:nil];
     if (flux::Window* w = host->eventTarget()) {
-        w->handleMouseScroll(static_cast<float>(p.x), static_cast<float>(p.y),
-                             static_cast<float>([event scrollingDeltaX]),
-                             static_cast<float>([event scrollingDeltaY]));
+        // Precise (trackpad): scrollingDelta* is in points. Non-precise (typical wheel mice): use
+        // delta* in line units — scrollingDelta* is often zero or unreliable; see NSEvent docs.
+        CGFloat sx;
+        CGFloat sy;
+        if ([event hasPreciseScrollingDeltas]) {
+            sx = [event scrollingDeltaX];
+            sy = [event scrollingDeltaY];
+        } else {
+            const CGFloat kLineScrollPx = 40.0;
+            sx = [event deltaX] * kLineScrollPx;
+            sy = [event deltaY] * kLineScrollPx;
+        }
+        w->handleMouseScroll(static_cast<float>(p.x), static_cast<float>(p.y), static_cast<float>(sx),
+                             static_cast<float>(sy));
     }
 }
 
@@ -277,8 +293,30 @@ struct MacWindowImpl {
     auto* host = static_cast<flux::MacWindow*>(self.hostPtr);
     if (!host) return;
     flux::Key k = flux::detail::keyCodeToFluxKey([event keyCode]);
-    if (flux::Window* w = host->eventTarget()) w->handleKeyDown(static_cast<int>(k));
-    [self interpretKeyEvents:@[event]];
+    flux::Window* w = host->eventTarget();
+    if (!w) return;
+
+    w->handleKeyDown(static_cast<int>(k));
+
+    // Cocoa often never calls insertText: on a plain NSView even with NSTextInputClient;
+    // interpretKeyEvents does not deliver text reliably here. Pipe the same UTF-8 the field
+    // editor would get from [NSEvent characters] (HIG / TextEdit-style hosting).
+    unsigned short code = [event keyCode];
+    bool skipChars =
+        (code == kVK_Return || code == kVK_ANSI_KeypadEnter || code == kVK_Tab || code == kVK_Delete ||
+         code == kVK_ForwardDelete);
+    if (!skipChars) {
+        NSString* chars = [event characters];
+        if (chars.length > 0) {
+            std::string utf8([chars UTF8String] ?: "");
+            if (!utf8.empty()) {
+                w->handleTextInput(utf8);
+            }
+        }
+    }
+    // Do not call interpretKeyEvents here: it would duplicate text if insertText: is also
+    // invoked. Latin input is delivered via [event characters] above; IME/marked text
+    // can be wired later via NSTextInputClient if needed.
 }
 
 - (void)keyUp:(NSEvent*)event {

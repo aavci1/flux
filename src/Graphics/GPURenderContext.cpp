@@ -224,20 +224,22 @@ Size GPURenderContext::measureText(const std::string& text, const TextStyle& sty
 
     if (!atlas_) return {0, 0};
 
-    if (!atlas_->hasFont()) {
-        atlas_->loadFontByName(style.fontName, style.weight, 0);
+    auto fontIndex = atlas_->ensureFontLoaded(style.fontName, style.weight);
+    if (!fontIndex) {
+        return {0, 0};
     }
-    Size sz = atlas_->measureText(text, style.size);
+    Size sz = atlas_->measureText(text, style.size, *fontIndex);
     measureCache_[key] = sz;
     return sz;
 }
 
 Size GPURenderContext::measureTextBox(const std::string& text, const TextStyle& style, float maxWidth) {
     if (!atlas_) return {0, 0};
-    if (!atlas_->hasFont()) {
-        atlas_->loadFontByName(style.fontName, style.weight, 0);
+    auto fontIndex = atlas_->ensureFontLoaded(style.fontName, style.weight);
+    if (!fontIndex) {
+        return {0, 0};
     }
-    return atlas_->measureTextBox(text, style.size, maxWidth);
+    return atlas_->measureTextBox(text, style.size, maxWidth, *fontIndex);
 }
 
 Rect GPURenderContext::getTextBounds(const std::string& text, const Point& position, const TextStyle& style) {

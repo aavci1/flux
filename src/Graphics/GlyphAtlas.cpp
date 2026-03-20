@@ -26,9 +26,23 @@ GlyphAtlas::~GlyphAtlas() {
 }
 
 bool GlyphAtlas::loadFont(const std::string& path, uint16_t fontIndex) {
-    FT_Face face;
-    if (FT_New_Face(ftLib_, path.c_str(), 0, &face) != 0) return false;
+    FT_Face face = nullptr;
+    if (FT_New_Face(ftLib_, path.c_str(), 0, &face) != 0) {
+        return false;
+    }
+    if (auto it = faces_.find(fontIndex); it != faces_.end()) {
+        FT_Done_Face(it->second);
+        // Only drop glyphs for this slot — other faces keep valid UVs in the shared atlas.
+        for (auto cit = cache_.begin(); cit != cache_.end();) {
+            if (cit->first.fontIndex == fontIndex) {
+                cit = cache_.erase(cit);
+            } else {
+                ++cit;
+            }
+        }
+    }
     faces_[fontIndex] = face;
+    dirty_ = true;
     return true;
 }
 
@@ -36,6 +50,58 @@ bool GlyphAtlas::loadFontByName(const std::string& name, FontWeight weight, uint
     auto path = FontDiscovery::findFontPath(name, weight);
     if (!path.has_value()) return false;
     return loadFont(path.value(), fontIndex);
+}
+
+std::optional<uint16_t> GlyphAtlas::ensureFontLoaded(const std::string& name, FontWeight weight) {
+    // Views use makeTextStyle("default", …); "default" is not a real family name on any OS.
+    const std::string cacheName = (name.empty() || name == "default") ? std::string("default") : name;
+    const std::string key = cacheName + "_" + std::to_string(static_cast<int>(weight));
+
+    if (auto it = fontKeyToIndex_.find(key); it != fontKeyToIndex_.end()) {
+        if (faces_.count(it->second) > 0) {
+            return it->second;
+        }
+        fontKeyToIndex_.erase(it);
+    }
+
+    // GPU bootstrap often loads Helvetica first; share that slot for the "default" UI font.
+    if (cacheName == "default") {
+        const std::string helvKey = std::string("Helvetica_") + std::to_string(static_cast<int>(weight));
+        if (auto it = fontKeyToIndex_.find(helvKey); it != fontKeyToIndex_.end() && faces_.count(it->second) > 0) {
+            fontKeyToIndex_[key] = it->second;
+            return it->second;
+        }
+    }
+
+    auto tryLoad = [&](const std::string& family) -> bool {
+        const uint16_t idx = nextFontIndex_++;
+        if (loadFontByName(family, weight, idx)) {
+            fontKeyToIndex_[key] = idx;
+            return true;
+        }
+        if (nextFontIndex_ > 0) {
+            --nextFontIndex_;
+        }
+        return false;
+    };
+
+    if (cacheName != "default") {
+        if (tryLoad(cacheName)) {
+            return fontKeyToIndex_[key];
+        }
+        return std::nullopt;
+    }
+
+    static const char* fallbacks[] = {
+        "Helvetica", "Arial", ".AppleSystemUIFont", "SF Pro Text",
+        "DejaVu Sans", "Segoe UI", "Liberation Sans",
+    };
+    for (const char* fb : fallbacks) {
+        if (tryLoad(std::string(fb))) {
+            return fontKeyToIndex_[key];
+        }
+    }
+    return std::nullopt;
 }
 
 bool GlyphAtlas::rasterizeGlyph(const GlyphKey& key, GlyphInfo& out) {

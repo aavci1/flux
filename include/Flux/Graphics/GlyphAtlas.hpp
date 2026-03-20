@@ -4,6 +4,7 @@
 #include <Flux/Core/Types.hpp>
 #include <ft2build.h>
 #include FT_FREETYPE_H
+#include <optional>
 #include <unordered_map>
 #include <string>
 #include <vector>
@@ -51,6 +52,9 @@ public:
 
     bool loadFont(const std::string& path, uint16_t fontIndex = 0);
     bool loadFontByName(const std::string& name, FontWeight weight, uint16_t fontIndex = 0);
+    /// Resolves a stable font slot per (family, weight). Never clears the whole atlas when switching.
+    [[nodiscard]] std::optional<uint16_t> ensureFontLoaded(const std::string& name, FontWeight weight);
+
     bool hasFont(uint16_t fontIndex = 0) const { return faces_.count(fontIndex) > 0; }
 
     const GlyphInfo* getGlyph(uint32_t codepoint, uint16_t fontSize, uint16_t fontIndex = 0);
@@ -79,6 +83,8 @@ private:
     FT_Library ftLib_ = nullptr;
     std::unordered_map<uint16_t, FT_Face> faces_;
     std::unordered_map<GlyphKey, GlyphInfo, GlyphKeyHash> cache_;
+    std::unordered_map<std::string, uint16_t> fontKeyToIndex_;
+    uint16_t nextFontIndex_{0};
 
     uint32_t atlasSize_;
     std::vector<uint8_t> atlasData_;

@@ -257,7 +257,8 @@ void Window::handleKeyDown(int key) {
             return;
         }
         
-        if (event.key == Key::Tab && !event.hasCtrl() && !event.hasAlt()) {
+        if (event.key == Key::Tab && !event.hasCtrl() && !event.hasAlt()
+            && impl_->focusState.getFocusableViewCount() > 1) {
             if (event.hasShift()) {
                 impl_->focusState.focusPrevious();
             } else {

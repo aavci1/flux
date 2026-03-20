@@ -249,6 +249,11 @@ void CommandCompiler::pushLine(CompiledBatches& out, const CmdDrawLine& cmd) {
 void CommandCompiler::pushText(CompiledBatches& out, const CmdDrawText& cmd) {
     if (!atlas_) return;
 
+    auto fontIndex = atlas_->ensureFontLoaded(current_.textStyle.fontName, current_.textStyle.weight);
+    if (!fontIndex) {
+        return;
+    }
+
     float x = cmd.position.x, y = cmd.position.y;
     applyTransform(x, y);
 
@@ -256,7 +261,7 @@ void CommandCompiler::pushText(CompiledBatches& out, const CmdDrawText& cmd) {
     Color textColor = current_.fill.color;
     textColor.a *= current_.opacity;
 
-    auto sz = atlas_->measureText(cmd.text, fontSize);
+    auto sz = atlas_->measureText(cmd.text, fontSize, *fontIndex);
 
     float drawX = x;
     if (cmd.hAlign == HorizontalAlignment::center) drawX -= sz.width * 0.5f;
@@ -267,7 +272,7 @@ void CommandCompiler::pushText(CompiledBatches& out, const CmdDrawText& cmd) {
     else if (cmd.vAlign == VerticalAlignment::top) drawY += fontSize;
 
     auto glyphs = atlas_->layoutText(cmd.text, drawX, drawY, fontSize, textColor,
-                                      out.viewportWidth, out.viewportHeight);
+                                      out.viewportWidth, out.viewportHeight, *fontIndex);
     auto& g = out.groups.back();
     g.drawOps.push_back({DrawOpType::Glyph, g.glyphCount, static_cast<uint32_t>(glyphs.size())});
     out.glyphs.insert(out.glyphs.end(), glyphs.begin(), glyphs.end());
@@ -319,6 +324,11 @@ void CommandCompiler::pushPath(CompiledBatches& out, const CmdDrawPath& cmd) {
 void CommandCompiler::pushTextBox(CompiledBatches& out, const CmdDrawTextBox& cmd) {
     if (!atlas_) return;
 
+    auto fontIndex = atlas_->ensureFontLoaded(current_.textStyle.fontName, current_.textStyle.weight);
+    if (!fontIndex) {
+        return;
+    }
+
     float x = cmd.position.x, y = cmd.position.y;
     applyTransform(x, y);
 
@@ -329,7 +339,7 @@ void CommandCompiler::pushTextBox(CompiledBatches& out, const CmdDrawTextBox& cm
 
     auto glyphs = atlas_->layoutTextBox(cmd.text, x, y + fontSize, fontSize, maxWidth,
                                          textColor, out.viewportWidth, out.viewportHeight,
-                                         cmd.hAlign);
+                                         cmd.hAlign, *fontIndex);
     auto& g = out.groups.back();
     g.drawOps.push_back({DrawOpType::Glyph, g.glyphCount, static_cast<uint32_t>(glyphs.size())});
     out.glyphs.insert(out.glyphs.end(), glyphs.begin(), glyphs.end());

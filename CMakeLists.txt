@@ -372,6 +372,20 @@ if(BUILD_EXAMPLES)
     target_include_directories(llm_studio PRIVATE ${CMAKE_SOURCE_DIR}/examples/llm-studio)
     target_link_libraries(llm_studio PRIVATE flux)
 
+    if(UNIX)
+        add_executable(terminal
+            examples/terminal/main.cpp
+            examples/terminal/Pty.cpp
+            examples/terminal/TerminalEmulator.cpp
+            examples/terminal/TerminalSession.cpp
+            examples/terminal/TerminalView.cpp
+        )
+        target_include_directories(terminal PRIVATE ${CMAKE_SOURCE_DIR}/examples/terminal)
+        target_link_libraries(terminal PRIVATE flux util)
+        target_compile_definitions(terminal PRIVATE
+            "FLUX_TERMINAL_ZDOTDIR=\"${CMAKE_SOURCE_DIR}/examples/terminal/zdotdir\"")
+    endif()
+
 endif()
 
 # --- Unit Tests (Catch2) ---
