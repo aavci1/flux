@@ -6,24 +6,12 @@
 #include <Flux/Platform/EventLoopWake.hpp>
 
 #include <algorithm>
+#include <optional>
 #include <poll.h>
 #include <unistd.h>
+#include <variant>
 
 namespace flux::term {
-
-namespace {
-
-std::string ctrlLetter(char c) {
-    if (c >= 'a' && c <= 'z') {
-        return std::string(1, static_cast<char>(c - 'a' + 1));
-    }
-    if (c >= 'A' && c <= 'Z') {
-        return std::string(1, static_cast<char>(c - 'A' + 1));
-    }
-    return "";
-}
-
-} // namespace
 
 TerminalSession::TerminalSession() = default;
 
@@ -145,105 +133,25 @@ bool TerminalSession::pasteText(const std::string& utf8) {
     return writeBytes(utf8.data(), utf8.size());
 }
 
-bool TerminalSession::handleKey(const KeyEvent& e) {
-    using enum Key;
-
-    if (e.hasSuper()) {
+bool TerminalSession::handleKey(const KeyEvent& e, const TerminalKeyBindings* bindings,
+                                std::optional<TerminalViewAction>* outViewAction) {
+    const TerminalKeyBindings* table = bindings;
+    if (!table) {
+        static const TerminalKeyBindings defaultTable = TerminalKeyBindings::defaultBindings();
+        table = &defaultTable;
+    }
+    std::optional<TerminalBindingValue> value = table->lookup(e);
+    if (!value) {
         return false;
     }
-
-    auto send = [this](const std::string& s) -> bool {
-        return writeBytes(s.data(), s.size());
-    };
-
-    // Modifier + arrows (xterm-style): word / line navigation in readline, shells, editors.
-    if (e.hasAlt() && !e.hasCtrl()) {
-        switch (e.key) {
-        case Up:
-            return send("\x1b[1;3A");
-        case Down:
-            return send("\x1b[1;3B");
-        case Right:
-            return send("\x1b[1;3C");
-        case Left:
-            return send("\x1b[1;3D");
-        default:
-            break;
+    if (std::holds_alternative<TerminalViewAction>(*value)) {
+        if (outViewAction) {
+            *outViewAction = std::get<TerminalViewAction>(*value);
         }
+        return true;
     }
-    if (e.hasCtrl() && !e.hasAlt()) {
-        switch (e.key) {
-        case Up:
-            return send("\x1b[1;5A");
-        case Down:
-            return send("\x1b[1;5B");
-        case Right:
-            return send("\x1b[1;5C");
-        case Left:
-            return send("\x1b[1;5D");
-        default:
-            break;
-        }
-    }
-
-    switch (e.key) {
-    case Enter:
-        return send("\r");
-    case Tab:
-        return send("\t");
-    case Backspace:
-        return send("\x7f");
-    case Escape:
-        return send("\x1b");
-    case Up:
-        return send("\x1b[A");
-    case Down:
-        return send("\x1b[B");
-    case Right:
-        return send("\x1b[C");
-    case Left:
-        return send("\x1b[D");
-    case Home:
-        return send("\x1b[H");
-    case End:
-        return send("\x1b[F");
-    case PageUp:
-        return send("\x1b[5~");
-    case PageDown:
-        return send("\x1b[6~");
-    case Delete:
-        return send("\x1b[3~");
-    case Insert:
-        return send("\x1b[2~");
-    default:
-        break;
-    }
-
-    if (e.hasCtrl()) {
-        if (e.key >= A && e.key <= Z) {
-            int idx = static_cast<int>(e.key) - static_cast<int>(A);
-            char c = static_cast<char>('a' + idx);
-            return send(ctrlLetter(c));
-        }
-        switch (e.key) {
-        case Space:
-            return send("\x00");
-        case LeftBracket:
-            return send("\x1b");
-        case Backslash:
-            return send("\x1c");
-        case RightBracket:
-            return send("\x1d");
-        case Minus:
-            return send("\x1f");
-        case Equal:
-            return send("\x1e");
-        default:
-            break;
-        }
-    }
-
-    return false;
+    const std::string& bytes = std::get<std::string>(*value);
+    return writeBytes(bytes.data(), bytes.size());
 }
 
 } // namespace flux::term

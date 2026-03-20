@@ -1,5 +1,6 @@
 #pragma once
 
+#include "TerminalKeyBindings.hpp"
 #include "TerminalSession.hpp"
 
 #include <Flux/Core/KeyEvent.hpp>
@@ -17,6 +18,8 @@ struct TerminalView {
     FLUX_INTERACTIVE_PROPERTIES;
 
     std::shared_ptr<TerminalSession> session;
+    /// Key bindings (zoom, scroll, PTY bytes). If null, session uses built-in defaults.
+    std::shared_ptr<TerminalKeyBindings> keyBindings;
 
     Property<float> fontSize = 14.0f;
     /// Prefer "Monaco" on macOS (CoreText); Linux FontDiscovery still resolves a system sans path.

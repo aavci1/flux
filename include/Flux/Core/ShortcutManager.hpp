@@ -48,12 +48,12 @@ public:
 };
 
 /**
- * @brief Manages keyboard shortcuts using Command pattern
- * 
- * Responsible for:
- * - Registering/unregistering keyboard shortcuts
- * - Dispatching shortcut commands when triggered
- * - Providing configurable, extensible shortcut system
+ * @brief Application-level keyboard shortcut manager
+ *
+ * All apps get global shortcuts (Copy, Paste, Quit, etc.) through this manager on the window.
+ * Key events with modifiers (Ctrl/Cmd) are delivered to the app first; handleShortcut runs
+ * before the focused view, so apps can register or unregister bindings to control whether
+ * a shortcut is handled here or passed to the focused view (e.g. terminal receiving Ctrl+C).
  */
 class ShortcutManager {
 public:

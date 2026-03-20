@@ -310,25 +310,19 @@ struct MacWindowImpl {
     }
 }
 
-/// Cmd/Ctrl + =/-/0 are used for terminal font zoom. Handle them here and return YES so AppKit does
-/// not also send keyDown + insertText (duplicate PTY input) or trigger default menu items (e.g. Zoom).
+/// Deliver all Cmd/Ctrl key equivalents to the application so ShortcutManager and focused views
+/// handle them in one place. Return YES so the menu bar does not steal the event.
 - (BOOL)performKeyEquivalent:(NSEvent*)event {
     NSEventModifierFlags mf = [event modifierFlags];
     bool cmdOrCtrl = (mf & NSEventModifierFlagCommand) || (mf & NSEventModifierFlagControl);
     if (!cmdOrCtrl) {
         return [super performKeyEquivalent:event];
     }
-    unsigned short code = [event keyCode];
-    bool isZoomKey = (code == kVK_ANSI_Equal || code == kVK_ANSI_Minus || code == kVK_ANSI_0
-        || code == kVK_ANSI_KeypadPlus || code == kVK_ANSI_KeypadMinus || code == kVK_ANSI_Keypad0);
-    if (!isZoomKey) {
-        return [super performKeyEquivalent:event];
-    }
     auto* host = static_cast<flux::MacWindow*>(self.hostPtr);
     if (!host) {
         return NO;
     }
-    flux::Key k = flux::detail::keyCodeToFluxKey(code);
+    flux::Key k = flux::detail::keyCodeToFluxKey([event keyCode]);
     if (k == flux::Key::Unknown) {
         return [super performKeyEquivalent:event];
     }
@@ -348,6 +342,16 @@ struct MacWindowImpl {
 
     NSEventModifierFlags mf = [event modifierFlags];
     flux::KeyModifier mods = flux::detail::nsModifierFlagsToFlux(mf);
+    // On macOS, Control+C sometimes arrives with characters "\x03" but modifierFlags may not
+    // include NSEventModifierFlagControl in all input contexts. Ensure Ctrl is set so the
+    // terminal receives SIGINT (ASCII ETX) instead of literal 'c'.
+    NSString* chars = [event characters];
+    if (chars.length == 1 && [event keyCode] == kVK_ANSI_C) {
+        unsigned int c = [chars characterAtIndex:0];
+        if (c == 0x03) {
+            mods = static_cast<flux::KeyModifier>(static_cast<uint32_t>(mods) | static_cast<uint32_t>(flux::KeyModifier::Ctrl));
+        }
+    }
     w->handleKeyDown(static_cast<int>(k), mods);
 
     // Cocoa often never calls insertText: on a plain NSView even with NSTextInputClient;
@@ -356,7 +360,9 @@ struct MacWindowImpl {
     unsigned short code = [event keyCode];
     bool skipChars =
         (code == kVK_Return || code == kVK_ANSI_KeypadEnter || code == kVK_Tab || code == kVK_Delete ||
-         code == kVK_ForwardDelete);
+         code == kVK_ForwardDelete ||
+         code == kVK_LeftArrow || code == kVK_RightArrow || code == kVK_UpArrow || code == kVK_DownArrow ||
+         code == kVK_Home || code == kVK_End || code == kVK_PageUp || code == kVK_PageDown);
     // Do not send character text when Command or Control is held — those are shortcuts
     // (font zoom, quit, etc.); otherwise '=' still arrives as text for Cmd+=.
     bool skipTextForShortcuts =

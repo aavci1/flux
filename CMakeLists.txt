@@ -377,6 +377,7 @@ if(BUILD_EXAMPLES)
             examples/terminal/main.cpp
             examples/terminal/Pty.cpp
             examples/terminal/TerminalEmulator.cpp
+            examples/terminal/TerminalKeyBindings.cpp
             examples/terminal/TerminalSession.cpp
             examples/terminal/TerminalView.cpp
         )
@@ -456,6 +457,7 @@ if(BUILD_UI_TESTS)
             examples/terminal/main.cpp
             examples/terminal/Pty.cpp
             examples/terminal/TerminalEmulator.cpp
+            examples/terminal/TerminalKeyBindings.cpp
             examples/terminal/TerminalSession.cpp
             examples/terminal/TerminalView.cpp
         )

@@ -74,41 +74,17 @@ struct Window::WindowImpl {
     }
     
     void registerDefaultShortcuts() {
-        // Ctrl+Q - Quit
+        // Quit: Ctrl+Q everywhere; on macOS also Cmd+Q
         shortcutManager->registerShortcut(
             {Key::Q, KeyModifier::Ctrl},
             std::make_unique<QuitCommand>()
         );
-        
-        // Ctrl+C - Copy
-        shortcutManager->registerShortcut(
-            {Key::C, KeyModifier::Ctrl},
-            std::make_unique<CopyCommand>()
-        );
-        
-        // Ctrl+V - Paste
-        shortcutManager->registerShortcut(
-            {Key::V, KeyModifier::Ctrl},
-            std::make_unique<PasteCommand>()
-        );
-        
-        // Ctrl+X - Cut
-        shortcutManager->registerShortcut(
-            {Key::X, KeyModifier::Ctrl},
-            std::make_unique<CutCommand>()
-        );
-        
-        // Ctrl+A - Select All
-        shortcutManager->registerShortcut(
-            {Key::A, KeyModifier::Ctrl},
-            std::make_unique<SelectAllCommand>()
-        );
-
 #ifdef __APPLE__
         shortcutManager->registerShortcut(
             {Key::Q, KeyModifier::Super},
             std::make_unique<QuitCommand>()
         );
+        // macOS: Copy, Cut, Paste, Select All use Cmd only (Ctrl+C/X/V/A go to focused view, e.g. terminal).
         shortcutManager->registerShortcut(
             {Key::C, KeyModifier::Super},
             std::make_unique<CopyCommand>()
@@ -123,6 +99,24 @@ struct Window::WindowImpl {
         );
         shortcutManager->registerShortcut(
             {Key::A, KeyModifier::Super},
+            std::make_unique<SelectAllCommand>()
+        );
+#else
+        // Linux/Windows: Copy, Cut, Paste, Select All use Ctrl
+        shortcutManager->registerShortcut(
+            {Key::C, KeyModifier::Ctrl},
+            std::make_unique<CopyCommand>()
+        );
+        shortcutManager->registerShortcut(
+            {Key::V, KeyModifier::Ctrl},
+            std::make_unique<PasteCommand>()
+        );
+        shortcutManager->registerShortcut(
+            {Key::X, KeyModifier::Ctrl},
+            std::make_unique<CutCommand>()
+        );
+        shortcutManager->registerShortcut(
+            {Key::A, KeyModifier::Ctrl},
             std::make_unique<SelectAllCommand>()
         );
 #endif
@@ -274,7 +268,8 @@ void Window::processKeyDownPipeline() {
 
         if (impl_->shortcutManager->handleShortcut(event, *this)) {
             KeyEvent saved = event;
-            impl_->keyboardHandler.clearPendingEvents();
+            // Clear only key events; PasteCommand may have queued text via handleTextInput.
+            impl_->keyboardHandler.clearPendingKeyEvents();
             // Re-queue the same event so the next frame dispatches to focused views without
             // running shortcut matching again (legacy behavior for copy/cut/paste, etc.).
             impl_->keyboardHandler.enqueueSyntheticKeyDown(std::move(saved));

@@ -116,6 +116,11 @@ void KeyboardInputHandler::clearPendingEvents() {
     pendingTextInputEvents_.clear();
 }
 
+void KeyboardInputHandler::clearPendingKeyEvents() {
+    pendingKeyDownEvents_.clear();
+    pendingKeyUpEvents_.clear();
+}
+
 void KeyboardInputHandler::updateModifiers(int key, bool pressed) {
     uint32_t mod = static_cast<uint32_t>(currentModifiers_);
     

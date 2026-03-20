@@ -2,6 +2,7 @@
 
 #include "Pty.hpp"
 #include "TerminalEmulator.hpp"
+#include "TerminalKeyBindings.hpp"
 
 #include <Flux/Core/KeyEvent.hpp>
 #include <Flux/Graphics/RenderContext.hpp>
@@ -9,6 +10,7 @@
 #include <atomic>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <thread>
 
@@ -31,7 +33,11 @@ public:
     [[nodiscard]] TermSnapshot snapshot() const { return emu_.snapshot(); }
 
     [[nodiscard]] bool writeBytes(const char* data, std::size_t len);
-    [[nodiscard]] bool handleKey(const KeyEvent& e);
+    /// Handle key using binding table when provided. If bindings is null, uses built-in defaults.
+    /// When a binding is a view action, *outViewAction is set and true is returned; otherwise
+    /// outViewAction is left unchanged (bytes were sent to PTY).
+    [[nodiscard]] bool handleKey(const KeyEvent& e, const TerminalKeyBindings* bindings = nullptr,
+                                 std::optional<TerminalViewAction>* outViewAction = nullptr);
     [[nodiscard]] bool pasteText(const std::string& utf8);
 
     /// Called once when the shell process exits (e.g. user typed `exit`). May run on the PTY reader thread.

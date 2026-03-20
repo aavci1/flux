@@ -162,57 +162,50 @@ bool TerminalView::handleKeyDown(const KeyEvent& event) {
         return false;
     }
 
-    using enum Key;
+    std::optional<TerminalViewAction> viewAction;
+    const bool handled = session->handleKey(event, keyBindings ? keyBindings.get() : nullptr, &viewAction);
 
-    // Font zoom (Ctrl or Cmd +/-/0) — common terminal behavior; must run before shell shortcuts.
-    if ((event.hasCtrl() || event.hasSuper()) && !event.hasAlt()) {
-        float cur = static_cast<float>(fontSize);
-        constexpr float kMin = 9.0f;
-        constexpr float kMax = 28.0f;
-        constexpr float kDefault = 14.0f;
-        switch (event.key) {
-        case Equal:
-            fontSize = std::clamp(cur + 1.0f, kMin, kMax);
+    if (handled && viewAction) {
+        // Apply view action from binding (zoom, scroll)
+        constexpr float kMinFont = 9.0f;
+        constexpr float kMaxFont = 28.0f;
+        constexpr float kDefaultFont = 14.0f;
+        switch (*viewAction) {
+        case TerminalViewAction::ZoomIn:
+            fontSize = std::clamp(static_cast<float>(fontSize) + 1.0f, kMinFont, kMaxFont);
             requestApplicationRedraw();
             return true;
-        case Minus:
-            fontSize = std::clamp(cur - 1.0f, kMin, kMax);
+        case TerminalViewAction::ZoomOut:
+            fontSize = std::clamp(static_cast<float>(fontSize) - 1.0f, kMinFont, kMaxFont);
             requestApplicationRedraw();
             return true;
-        case Num0:
-            fontSize = kDefault;
+        case TerminalViewAction::ZoomReset:
+            fontSize = kDefaultFont;
             requestApplicationRedraw();
             return true;
-        default:
-            break;
-        }
-    }
-
-    // Scroll the view buffer without sending escape sequences to the shell (Shift+…).
-    if (event.hasShift() && !event.hasCtrl() && !event.hasAlt() && !event.hasSuper()) {
-        float viewH = lastViewport.height;
-        if (viewH < 1.0f) {
-            viewH = 400.0f;
-        }
-        float lineH = cachedLineHeight > 0.5f ? cachedLineHeight : 16.0f;
-        float pagePx = std::max(lineH, viewH - lineH);
-
-        switch (event.key) {
-        case PageUp:
+        case TerminalViewAction::ScrollPageUp: {
+            float viewH = lastViewport.height < 1.0f ? 400.0f : lastViewport.height;
+            float lineH = cachedLineHeight > 0.5f ? cachedLineHeight : 16.0f;
+            float pagePx = std::max(lineH, viewH - lineH);
             scrollY = std::max(0.0f, scrollY - pagePx);
             stickToBottom = false;
             requestApplicationRedraw();
             return true;
-        case PageDown:
+        }
+        case TerminalViewAction::ScrollPageDown: {
+            float viewH = lastViewport.height < 1.0f ? 400.0f : lastViewport.height;
+            float lineH = cachedLineHeight > 0.5f ? cachedLineHeight : 16.0f;
+            float pagePx = std::max(lineH, viewH - lineH);
             scrollY += pagePx;
             requestApplicationRedraw();
             return true;
-        case Home:
+        }
+        case TerminalViewAction::ScrollHome:
             scrollY = 0.0f;
             stickToBottom = false;
             requestApplicationRedraw();
             return true;
-        case End:
+        case TerminalViewAction::ScrollEnd:
             stickToBottom = true;
             requestApplicationRedraw();
             return true;
@@ -220,11 +213,7 @@ bool TerminalView::handleKeyDown(const KeyEvent& event) {
             break;
         }
     }
-
-    if (session->handleKey(event)) {
-        return true;
-    }
-    return false;
+    return handled;
 }
 
 bool TerminalView::handleTextInput(const TextInputEvent& event) {

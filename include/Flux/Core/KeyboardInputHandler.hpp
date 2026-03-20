@@ -76,6 +76,11 @@ public:
      */
     void clearPendingEvents();
 
+    /**
+     * @brief Clear only key down/up events (keeps text input, e.g. after Paste shortcut)
+     */
+    void clearPendingKeyEvents();
+
 private:
     KeyModifier currentModifiers_;
     std::vector<KeyEvent> pendingKeyDownEvents_;
