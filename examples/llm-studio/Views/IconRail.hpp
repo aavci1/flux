@@ -32,9 +32,9 @@ struct IconRailButton {
         bool isPressed = ctx.isCurrentViewPressed();
 
         if (isActive) {
-            Rect indicator = {bounds.x, bounds.y + 6, 3, bounds.height - 12};
+            Rect indicator = {bounds.x + 1.0f, bounds.y + 5.0f, 4.0f, bounds.height - 10.0f};
             ctx.setFillStyle(FillStyle::solid(th.accent));
-            ctx.drawRect(indicator, CornerRadius(1.5f));
+            ctx.drawRect(indicator, CornerRadius(2.0f));
         }
 
         if (isPressed) {

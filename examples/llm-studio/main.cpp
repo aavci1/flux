@@ -5,7 +5,6 @@
 #include "Views/ChatView.hpp"
 #include "Views/HubView.hpp"
 #include "Views/SettingsView.hpp"
-#include "Views/ModelConfigSidebar.hpp"
 
 using namespace flux;
 using namespace llm_studio;
@@ -51,10 +50,6 @@ struct AppRoot {
         }
 
         children.push_back(MainPanel{.state = state, .expansionBias = 1.0f});
-
-        if (showSidebars) {
-            children.push_back(ModelConfigSidebar{.state = state});
-        }
 
         return EnvironmentProvider<ThemeKey>{
             .value = palette,

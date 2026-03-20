@@ -47,6 +47,7 @@ struct ModelPickerCard {
                 Text{
                     .value = m.name,
                     .fontWeight = FontWeight::semibold,
+                    .color = Theme::dark().foreground,
                     .horizontalAlignment = HorizontalAlignment::leading
                 },
                 HStack{
@@ -156,7 +157,7 @@ struct ChatView {
                     .expansionBias = 1.0f,
                     .children = {
                         VStack{
-                            .spacing = 8.0f,
+                            .spacing = 14.0f,
                             .children = std::move(msgViews)
                         }
                     }
@@ -216,16 +217,19 @@ private:
             .children = {
                 Spacer{},
                 VStack{
-                    .spacing = 24.0f,
+                    .spacing = 12.0f,
                     .children = {
                         Text{
                             .value = std::string("LLM Studio"),
+                            .fontSize = 26.0f,
                             .fontWeight = FontWeight::bold,
                             .color = d.foreground
                         },
                         Text{
-                            .value = std::string("Create a new chat from the sidebar to get started."),
-                            .color = d.secondaryForeground
+                            .value = std::string("Open the chat list and choose New Chat to begin."),
+                            .fontSize = Typography::callout,
+                            .color = d.secondaryForeground,
+                            .lineHeightMultiplier = Typography::lineHeightBody
                         }
                     }
                 },

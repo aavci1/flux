@@ -17,6 +17,7 @@
 #include <Flux/Views/TextInput.hpp>
 #include <Flux/Views/SectionHeader.hpp>
 #include <Flux/Views/SelectInput.hpp>
+#include <Flux/Core/Theme.hpp>
 #include <format>
 
 namespace llm_studio {
@@ -32,6 +33,7 @@ struct SettingsRow {
     Property<std::vector<View>> controls = {};
 
     View body() const {
+        Theme d = Theme::dark();
         std::string lbl = label;
         std::string desc = description;
         std::vector<View> controlVec = controls;
@@ -39,13 +41,14 @@ struct SettingsRow {
         std::vector<View> labelChildren;
         labelChildren.push_back(Text{
             .value = lbl,
+            .color = d.foreground,
             .horizontalAlignment = HorizontalAlignment::leading
         });
         if (!desc.empty()) {
             labelChildren.push_back(Text{
                 .value = desc,
                 .fontSize = Typography::subheadline,
-                .color = Colors::darkGray,
+                .color = d.secondaryForeground,
                 .horizontalAlignment = HorizontalAlignment::leading
             });
         }
@@ -53,16 +56,19 @@ struct SettingsRow {
         return HStack{
             .spacing = 24.0f,
             .alignItems = AlignItems::center,
-            .padding = EdgeInsets(12.0f, 0, 12.0f, 0),
+            .padding = EdgeInsets(12.0f, 8.0f, 12.0f, 8.0f),
             .children = {
                 VStack{
-                    .spacing = 8.0f,
+                    .spacing = 6.0f,
                     .expansionBias = 1.0f,
                     .children = std::move(labelChildren)
                 },
                 HStack{
                     .spacing = 8.0f,
                     .alignItems = AlignItems::center,
+                    .minWidth = 280.0f,
+                    .maxWidth = 280.0f,
+                    .justifyContent = JustifyContent::end,
                     .children = std::move(controlVec)
                 }
             }
@@ -79,6 +85,7 @@ struct SettingsView {
         if (!state) return VStack{};
 
         AppSettings settings = state->settings;
+        Theme d = Theme::dark();
 
         return VStack{
             .spacing = 0.0f,
@@ -88,46 +95,53 @@ struct SettingsView {
                     .spacing = 8.0f,
                     .justifyContent = JustifyContent::spaceBetween,
                     .alignItems = AlignItems::center,
-                    .padding = EdgeInsets(24.0f),
+                    .padding = EdgeInsets(20.0f, 28.0f, 16.0f, 28.0f),
                     .children = {
                         Text{
                             .value = std::string("Settings"),
+                            .fontSize = 22.0f,
                             .fontWeight = FontWeight::bold,
+                            .color = d.foreground,
                         },
                         HStack{
-                            .spacing = 8.0f,
+                            .spacing = 10.0f,
                             .children = {
                                 Button{
                                     .text = std::string("Reset to Defaults"),
-                                    .backgroundColor = Colors::white,
-                                    .textColor = Colors::black,
+                                    .backgroundColor = d.surfaceElevated,
+                                    .textColor = d.foreground,
                                     .padding = EdgeInsets(8, 16, 8, 16),
-                                    .cornerRadius = 4.0f,
-                                    .borderColor = Colors::gray,
+                                    .cornerRadius = 6.0f,
+                                    .borderColor = d.borderStrong,
                                     .borderWidth = 1.0f,
                                     .onClick = [this]() { state->settings = AppSettings{}; }
                                 },
                                 Button{
                                     .text = std::string("Save"),
-                                    .backgroundColor = Colors::blue,
+                                    .backgroundColor = d.accent,
+                                    .textColor = d.onAccent,
                                     .padding = EdgeInsets(8, 20, 8, 20),
-                                    .cornerRadius = 4.0f
+                                    .cornerRadius = 6.0f
                                 }
                             }
                         }
                     }
                 },
-                Divider{.borderColor = Colors::gray},
+                Divider{.borderColor = d.border},
                 ScrollArea{
                     .expansionBias = 1.0f,
                     .children = {
                         VStack{
                             .spacing = 16.0f,
-                            .padding = EdgeInsets(16.0f),
+                            .padding = EdgeInsets(8.0f, 28.0f, 32.0f, 28.0f),
                             .expansionBias = 1.0f,
-                            .maxWidth = 700.0f,
+                            .maxWidth = 720.0f,
                             .children = {
-                                SectionHeader{.title = std::string("Inference")},
+                                SectionHeader{
+                                    .title = std::string("Inference"),
+                                    .color = d.secondaryForeground,
+                                    .dividerColor = d.border,
+                                },
 
                                 SettingsRow{
                                     .label = std::string("Backend path"),
@@ -135,7 +149,7 @@ struct SettingsView {
                                     .controls = {
                                         TextInput{
                                             .value = settings.backendPath,
-                                            .inputWidth = 220.0f,
+                                            .inputWidth = 280.0f,
                                             .onValueChange = [this](const std::string& val) {
                                                 state->updateSettings([&](AppSettings& s) { s.backendPath = val; });
                                             }
@@ -148,7 +162,7 @@ struct SettingsView {
                                     .controls = {
                                         TextInput{
                                             .value = std::to_string(settings.contextLength),
-                                            .inputWidth = 100.0f,
+                                            .inputWidth = 280.0f,
                                             .onValueChange = [this](const std::string& val) {
                                                 try { state->updateSettings([&](AppSettings& s) { s.contextLength = std::stoi(val); }); }
                                                 catch (...) {}
@@ -166,9 +180,9 @@ struct SettingsView {
                                             .minValue = 0.0f,
                                             .maxValue = 100.0f,
                                             .step = 1.0f,
-                                            .activeColor = Colors::blue,
-                                            .inactiveColor = Colors::gray,
-                                            .maxWidth = 120.0f,
+                                            .activeColor = d.accent,
+                                            .inactiveColor = d.border,
+                                            .maxWidth = 220.0f,
                                             .onValueChange = [this](float v) {
                                                 state->updateSettings([v](AppSettings& s) { s.gpuLayers = static_cast<int>(v); });
                                             }
@@ -176,7 +190,7 @@ struct SettingsView {
                                         Text{
                                             .value = std::to_string(settings.gpuLayers),
                                             .fontWeight = FontWeight::medium,
-                                            .color = Colors::blue,
+                                            .color = d.accent,
                                             .minWidth = 30.0f
                                         }
                                     }
@@ -190,9 +204,9 @@ struct SettingsView {
                                             .minValue = 1.0f,
                                             .maxValue = 32.0f,
                                             .step = 1.0f,
-                                            .activeColor = Colors::blue,
-                                            .inactiveColor = Colors::gray,
-                                            .maxWidth = 120.0f,
+                                            .activeColor = d.accent,
+                                            .inactiveColor = d.border,
+                                            .maxWidth = 220.0f,
                                             .onValueChange = [this](float v) {
                                                 state->updateSettings([v](AppSettings& s) { s.threads = static_cast<int>(v); });
                                             }
@@ -200,20 +214,29 @@ struct SettingsView {
                                         Text{
                                             .value = std::to_string(settings.threads),
                                             .fontWeight = FontWeight::medium,
-                                            .color = Colors::blue,
+                                            .color = d.accent,
                                             .minWidth = 30.0f
                                         }
                                     }
                                 },
 
-                                SectionHeader{.title = std::string("Interface")},
+                                SectionHeader{
+                                    .title = std::string("Interface"),
+                                    .color = d.secondaryForeground,
+                                    .dividerColor = d.border,
+                                },
 
                                 SettingsRow{
                                     .label = std::string("Theme"),
                                     .controls = {
                                         SelectInput{
                                             .options = std::vector<std::string>{"Dark", "Light", "System"},
-                                            .selectWidth = 120.0f,
+                                            .selectWidth = 280.0f,
+                                            .bgColor = d.inputBackground,
+                                            .borderColor_ = d.borderStrong,
+                                            .textColor_ = d.inputForeground,
+                                            .mutedColor = d.secondaryForeground,
+                                            .accentColor = d.accent,
                                             .onSelect = [this](int, const std::string& val) {
                                                 state->updateSettings([&](AppSettings& s) { s.theme = val; });
                                             }
@@ -229,29 +252,33 @@ struct SettingsView {
                                             .minValue = 10.0f,
                                             .maxValue = 22.0f,
                                             .step = 1.0f,
-                                            .activeColor = Colors::blue,
-                                            .inactiveColor = Colors::gray,
-                                            .maxWidth = 100.0f,
+                                            .activeColor = d.accent,
+                                            .inactiveColor = d.border,
+                                            .maxWidth = 220.0f,
                                             .onValueChange = [this](float v) {
                                                 state->updateSettings([v](AppSettings& s) { s.fontSize = v; });
                                             }
                                         },
                                         Text{
                                             .value = std::format("{:.0f}px", settings.fontSize),
-                                            .color = Colors::blue,
+                                            .color = d.accent,
                                             .minWidth = 40.0f
                                         }
                                     }
                                 },
 
-                                SectionHeader{.title = std::string("Storage")},
+                                SectionHeader{
+                                    .title = std::string("Storage"),
+                                    .color = d.secondaryForeground,
+                                    .dividerColor = d.border,
+                                },
 
                                 SettingsRow{
                                     .label = std::string("Model directory"),
                                     .controls = {
                                         TextInput{
                                             .value = settings.modelDirectory.string(),
-                                            .inputWidth = 240.0f,
+                                            .inputWidth = 280.0f,
                                             .onValueChange = [this](const std::string& val) {
                                                 state->updateSettings([&](AppSettings& s) { s.modelDirectory = val; });
                                             }
@@ -259,7 +286,11 @@ struct SettingsView {
                                     }
                                 },
 
-                                SectionHeader{.title = std::string("HuggingFace")},
+                                SectionHeader{
+                                    .title = std::string("HuggingFace"),
+                                    .color = d.secondaryForeground,
+                                    .dividerColor = d.border,
+                                },
 
                                 SettingsRow{
                                     .label = std::string("API Token"),
@@ -271,7 +302,7 @@ struct SettingsView {
                                                 : std::string("hf_****"),
                                             .placeholder = std::string("hf_..."),
                                             .password = true,
-                                            .inputWidth = 220.0f,
+                                            .inputWidth = 280.0f,
                                             .onValueChange = [this](const std::string& val) {
                                                 state->updateSettings([&](AppSettings& s) { s.hfToken = val; });
                                             }

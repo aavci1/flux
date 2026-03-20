@@ -68,8 +68,8 @@ struct ChatHistoryItem {
             .children = {
                 VStack{
                     .backgroundColor = leftBorder,
-                    .minWidth = 3.0f,
-                    .maxWidth = 3.0f
+                    .minWidth = 4.0f,
+                    .maxWidth = 4.0f
                 },
                 VStack{
                     .spacing = 8.0f,
@@ -162,23 +162,21 @@ struct SidebarView {
 
         View listContent = sessionViews.empty()
             ? View(VStack{
-                .spacing = 16.0f,
-                .padding = 24.0f,
+                .spacing = 8.0f,
+                .padding = EdgeInsets(24.0f, 20.0f, 24.0f, 20.0f),
                 .expansionBias = 1.0f,
                 .children = {
-                    VStack{
-                        .spacing = 24.0f,
-                        .children = {
-                            Text{
-                                .value = std::string("No chat history"),
-                                .color = d.secondaryForeground.opacity(0.75f)
-                            },
-                            Text{
-                                .value = std::string("Start a new chat to begin."),
-                                .fontSize = Typography::subheadline,
-                                .color = d.tertiaryForeground
-                            }
-                        }
+                    Text{
+                        .value = std::string("No chats yet"),
+                        .fontSize = Typography::callout,
+                        .color = d.secondaryForeground,
+                        .horizontalAlignment = HorizontalAlignment::center
+                    },
+                    Text{
+                        .value = std::string("Use + New Chat above when you are ready."),
+                        .fontSize = Typography::subheadline,
+                        .color = d.tertiaryForeground,
+                        .horizontalAlignment = HorizontalAlignment::center
                     }
                 }
             })
@@ -199,7 +197,7 @@ struct SidebarView {
                     .spacing = 8.0f,
                     .justifyContent = JustifyContent::spaceBetween,
                     .alignItems = AlignItems::center,
-                    .padding = EdgeInsets(12.0f),
+                    .padding = EdgeInsets(14.0f, 16.0f, 12.0f, 16.0f),
                     .children = {
                         Text{
                             .value = std::string("Chats"),
@@ -218,13 +216,19 @@ struct SidebarView {
                     }
                 },
 
-                Button{
-                    .text = std::string("+ New Chat"),
-                    .backgroundColor = d.accent,
-                    .textColor = d.onAccent,
-                    .padding = EdgeInsets(8, 12, 8, 12),
-                    .cornerRadius = 4.0f,
-                    .onClick = [this]() { state->createNewChat(); }
+                HStack{
+                    .padding = EdgeInsets(0.0f, 16.0f, 8.0f, 16.0f),
+                    .children = {
+                        Button{
+                            .text = std::string("+ New Chat"),
+                            .backgroundColor = d.accent,
+                            .textColor = d.onAccent,
+                            .padding = EdgeInsets(10, 14, 10, 14),
+                            .cornerRadius = 6.0f,
+                            .expansionBias = 1.0f,
+                            .onClick = [this]() { state->createNewChat(); }
+                        }
+                    }
                 },
 
                 Divider{.borderColor = d.border},

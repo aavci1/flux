@@ -96,7 +96,6 @@ struct AppState {
     flux::Property<std::string> activeChatId = std::string("");
 
     flux::Property<bool> leftSidebarExpanded = true;
-    flux::Property<bool> rightSidebarExpanded = true;
 
     flux::Property<bool> isGenerating = false;
     flux::Property<std::string> streamingToken = std::string("");

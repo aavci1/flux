@@ -35,6 +35,8 @@ struct ChatBubble {
 
         Theme d = Theme::dark();
         Color bubbleBg = isUser ? d.accent.opacity(0.22f) : d.surfaceElevated;
+        Color roleColor = isUser ? d.accent : d.foreground;
+        Color timeColor = isUser ? d.secondaryForeground : d.tertiaryForeground;
 
         std::vector<View> contentViews;
 
@@ -46,13 +48,13 @@ struct ChatBubble {
                     .value = roleLabel,
                     .fontSize = Typography::subheadline,
                     .fontWeight = FontWeight::semibold,
-                    .color = isUser ? d.accent : d.secondaryForeground,
+                    .color = roleColor,
                     .horizontalAlignment = HorizontalAlignment::leading
                 },
                 Text{
                     .value = timeStr,
                     .fontSize = Typography::caption,
-                    .color = d.secondaryForeground,
+                    .color = timeColor,
                     .horizontalAlignment = HorizontalAlignment::trailing
                 }
             }
@@ -67,11 +69,18 @@ struct ChatBubble {
                     contentViews.push_back(CodeBlock{
                         .code = part.text,
                         .language = part.lang,
+                        .codeBgColor = d.codeBackground,
+                        .codeTextColor = d.foreground,
+                        .headerBgColor = d.surface.darken(0.04f),
+                        .headerTextColor = d.secondaryForeground,
+                        .headerFontSize = Typography::caption,
+                        .codeFontSize = Typography::subheadline,
                         .expansionBias = 1.0f
                     });
                 } else {
                     contentViews.push_back(Text{
                         .value = part.text,
+                        .color = d.foreground,
                         .horizontalAlignment = HorizontalAlignment::leading
                     });
                 }
@@ -84,7 +93,7 @@ struct ChatBubble {
                 .spacing = 8.0f,
                 .backgroundColor = bubbleBg,
                 .padding = EdgeInsets(12.0f, 16.0f, 12.0f, 16.0f),
-                .cornerRadius = 8.0f,
+                .cornerRadius = 10.0f,
                 .borderColor = d.borderStrong,
                 .borderWidth = 1.0f,
                 .expansionBias = 1.0f,
@@ -98,7 +107,7 @@ struct ChatBubble {
                 .spacing = 8.0f,
                 .backgroundColor = bubbleBg,
                 .padding = EdgeInsets(12.0f, 16.0f, 12.0f, 16.0f),
-                .cornerRadius = 8.0f,
+                .cornerRadius = 10.0f,
                 .borderColor = d.borderStrong,
                 .borderWidth = 1.0f,
                 .expansionBias = 1.0f,
@@ -109,7 +118,7 @@ struct ChatBubble {
 
         return HStack{
             .spacing = 0.0f,
-            .padding = EdgeInsets(4.0f, 16.0f, 4.0f, 16.0f),
+            .padding = EdgeInsets(10.0f, 16.0f, 10.0f, 16.0f),
             .children = std::move(rowChildren)
         };
     }

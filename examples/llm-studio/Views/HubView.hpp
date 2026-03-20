@@ -32,74 +32,96 @@ struct ModelCardView {
 
     View body() const {
         ModelCard c = card;
+        Theme d = Theme::dark();
 
         std::string sizeStr = formatBytes(c.sizeBytes);
         std::string likesStr = std::format("\xE2\x98\x85 {}k", c.likes / 1000);
 
-        return VStack{
-            .spacing = 8.0f,
-            .backgroundColor = Theme::dark().surfaceElevated,
-            .padding = 16.0f,
+        return HStack{
+            .spacing = 16.0f,
+            .alignItems = AlignItems::start,
+            .backgroundColor = d.surfaceElevated,
+            .padding = EdgeInsets(16.0f),
             .cornerRadius = 8.0f,
-            .borderColor = Theme::dark().borderStrong,
+            .borderColor = d.borderStrong,
             .borderWidth = 1.0f,
             .children = {
-                Text{
-                    .value = c.repoId,
-                    .fontWeight = FontWeight::semibold,
-                    .horizontalAlignment = HorizontalAlignment::leading
-                },
-                HStack{
-                    .spacing = 12.0f,
-                    .alignItems = AlignItems::center,
+                VStack{
+                    .spacing = 8.0f,
+                    .expansionBias = 1.0f,
                     .children = {
-                        Badge{
-                            .text = likesStr,
-                            .badgeColor = Colors::yellow,
-                            .textColor = Colors::black,
-                        },
-                        Badge{
-                            .text = c.format,
-                            .badgeColor = Colors::blue.opacity(0.2f),
-                            .textColor = Colors::blue,
-                        },
-                        Badge{
-                            .text = c.parameterSize,
-                            .badgeColor = Colors::lightGray,
-                            .textColor = Colors::darkGray,
-                        },
                         Text{
-                            .value = sizeStr,
-                            .fontSize = Typography::caption,
-                            .color = Colors::darkGray
+                            .value = c.repoId,
+                            .fontWeight = FontWeight::semibold,
+                            .color = d.foreground,
+                            .horizontalAlignment = HorizontalAlignment::leading
+                        },
+                        HStack{
+                            .spacing = 8.0f,
+                            .alignItems = AlignItems::center,
+                            .children = {
+                                Badge{
+                                    .text = likesStr,
+                                    .badgeColor = Colors::yellow,
+                                    .textColor = Colors::black,
+                                },
+                                Badge{
+                                    .text = c.format,
+                                    .badgeColor = d.accent.opacity(0.22f),
+                                    .textColor = d.foreground,
+                                },
+                                Badge{
+                                    .text = c.parameterSize,
+                                    .badgeColor = d.badgeBackground.opacity(0.55f),
+                                    .textColor = d.badgeForeground,
+                                },
+                            }
+                        },
+                        HStack{
+                            .spacing = 8.0f,
+                            .children = {
+                                DropdownMenu{
+                                    .label = std::string("Download"),
+                                    .bgColor = d.inputBackground,
+                                    .dropdownBgColor = d.surface,
+                                    .borderColor_ = d.borderStrong,
+                                    .textColor_ = d.inputForeground,
+                                    .mutedColor = d.secondaryForeground,
+                                    .items = std::vector<DropdownMenuItem>{
+                                        {.label = "Q4_K_M", .subtitle = "~4.6 GB", .onClick = [this, c]() {
+                                            startDownload(c.repoId, "Q4_K_M", c.sizeBytes);
+                                        }},
+                                        {.label = "Q5_K_M", .subtitle = "~5.3 GB", .onClick = [this, c]() {
+                                            startDownload(c.repoId, "Q5_K_M", c.sizeBytes);
+                                        }},
+                                        {.label = "Q8_0", .subtitle = "~7.7 GB", .onClick = [this, c]() {
+                                            startDownload(c.repoId, "Q8_0", c.sizeBytes);
+                                        }}
+                                    }
+                                },
+                                Button{
+                                    .text = std::string("View on HF"),
+                                    .backgroundColor = Colors::transparent,
+                                    .textColor = d.foreground,
+                                    .padding = EdgeInsets(6, 12, 6, 12),
+                                    .cornerRadius = 4.0f,
+                                    .borderColor = d.borderStrong,
+                                    .borderWidth = 1.0f
+                                }
+                            }
                         }
                     }
                 },
-                HStack{
-                    .spacing = 8.0f,
+                VStack{
+                    .spacing = 4.0f,
+                    .alignItems = AlignItems::end,
                     .children = {
-                        DropdownMenu{
-                            .label = std::string("Download"),
-                            .items = std::vector<DropdownMenuItem>{
-                                {.label = "Q4_K_M", .subtitle = "~4.6 GB", .onClick = [this, c]() {
-                                    startDownload(c.repoId, "Q4_K_M", c.sizeBytes);
-                                }},
-                                {.label = "Q5_K_M", .subtitle = "~5.3 GB", .onClick = [this, c]() {
-                                    startDownload(c.repoId, "Q5_K_M", c.sizeBytes);
-                                }},
-                                {.label = "Q8_0", .subtitle = "~7.7 GB", .onClick = [this, c]() {
-                                    startDownload(c.repoId, "Q8_0", c.sizeBytes);
-                                }}
-                            }
-                        },
-                        Button{
-                            .text = std::string("View on HF"),
-                            .backgroundColor = Colors::transparent,
-                            .textColor = Colors::black,
-                            .padding = EdgeInsets(6, 12, 6, 12),
-                            .cornerRadius = 4.0f,
-                            .borderColor = Colors::gray,
-                            .borderWidth = 1.0f
+                        Text{
+                            .value = sizeStr,
+                            .fontSize = Typography::subheadline,
+                            .fontWeight = FontWeight::semibold,
+                            .color = d.secondaryForeground,
+                            .horizontalAlignment = HorizontalAlignment::trailing
                         }
                     }
                 }
@@ -210,22 +232,23 @@ struct HubView {
 
         mainChildren.push_back(HStack{
             .spacing = 8.0f,
-            .padding = EdgeInsets(0, 16.0f, 8.0f, 16.0f),
+            .alignItems = AlignItems::center,
+            .padding = EdgeInsets(4.0f, 16.0f, 8.0f, 16.0f),
             .children = {
                 Badge{
                     .text = std::string("Text Gen"),
-                    .badgeColor = Colors::blue.opacity(0.2f),
-                    .textColor = Colors::blue,
+                    .badgeColor = d.accent.opacity(0.22f),
+                    .textColor = d.foreground,
                 },
                 Badge{
                     .text = std::string("GGUF"),
-                    .badgeColor = Colors::white,
-                    .textColor = Colors::darkGray,
+                    .badgeColor = d.surfaceElevated,
+                    .textColor = d.foreground,
                 },
                 Badge{
                     .text = std::string("\xE2\x89\xA4 7B"),
-                    .badgeColor = Colors::white,
-                    .textColor = Colors::darkGray,
+                    .badgeColor = d.surfaceElevated,
+                    .textColor = d.foreground,
                 }
             }
         });
