@@ -130,9 +130,22 @@ void TerminalSession::fitToSize(float widthPx, float heightPx, TextMeasurement& 
 
     if (cols != emu_.cols() || rows != emu_.rows()) {
         emu_.resize(cols, rows);
-        pty_.resize(rows, cols);
         requestApplicationRedraw();
     }
+
+    // Emulator tracks the grid immediately; the kernel/shell only after the size is stable for
+    // two consecutive layout passes. Each TIOCSWINSZ tends to trigger SIGWINCH → zsh redraws prompt.
+    if (cols == stableFitCols_ && rows == stableFitRows_) {
+        ++stableFitGenerations_;
+    } else {
+        stableFitCols_ = cols;
+        stableFitRows_ = rows;
+        stableFitGenerations_ = 1;
+    }
+    if (stableFitGenerations_ >= 2) {
+        pty_.resize(rows, cols);
+    }
+
     lastFitCols_ = cols;
     lastFitRows_ = rows;
 }

@@ -53,6 +53,12 @@ private:
     int lastLayoutPixelW_{-1};
     int lastLayoutPixelH_{-1};
     int lastLayoutFontQuant_{-1};
+
+    /// Coalesce PTY winsize (SIGWINCH): only notify kernel after two consecutive fitToSize calls
+    /// with the same cols×rows so rapid font zoom does not spam the shell with redrawn prompts.
+    int stableFitCols_{-1};
+    int stableFitRows_{-1};
+    int stableFitGenerations_{0};
 };
 
 } // namespace flux::term
