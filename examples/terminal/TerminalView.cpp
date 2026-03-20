@@ -84,8 +84,10 @@ void TerminalView::render(RenderContext& ctx, const Rect& bounds) const {
         ? cachedLineHeight
         : (fs * Typography::lineHeightTight < fs * 1.1f ? fs * 1.2f : fs * Typography::lineHeightTight);
 
-    const int cursorRow = std::clamp(snap.cursorRow, 0, std::max(0, snap.rows - 1));
-    const std::size_t totalLines = snap.screenStart + static_cast<std::size_t>(cursorRow) + 1;
+    // Full buffer height for layout/scroll: scrollback + screen (invariant: lines.size() == screenStart + rows).
+    // Using screenStart + cursorRow + 1 was wrong when the cursor was not on the last row and jumped
+    // whenever rows changed (font zoom), which looked like random lines added/removed.
+    const std::size_t totalLines = snap.lines.size();
     const float contentH = static_cast<float>(totalLines) * lineH;
     const float maxScroll = std::max(0.0f, contentH - content.height);
     if (!stickToBottom) {
