@@ -99,6 +99,9 @@ static Key keyCodeToFluxKey(unsigned short keyCode) {
         case kVK_CapsLock: return Key::CapsLock;
         case kVK_ANSI_Minus: return Key::Minus;
         case kVK_ANSI_Equal: return Key::Equal;
+        case kVK_ANSI_KeypadPlus: return Key::Equal;
+        case kVK_ANSI_KeypadMinus: return Key::Minus;
+        case kVK_ANSI_Keypad0: return Key::Num0;
         case kVK_ANSI_LeftBracket: return Key::LeftBracket;
         case kVK_ANSI_RightBracket: return Key::RightBracket;
         case kVK_ANSI_Semicolon: return Key::Semicolon;
@@ -307,6 +310,35 @@ struct MacWindowImpl {
     }
 }
 
+/// Cmd/Ctrl + =/-/0 are used for terminal font zoom. Handle them here and return YES so AppKit does
+/// not also send keyDown + insertText (duplicate PTY input) or trigger default menu items (e.g. Zoom).
+- (BOOL)performKeyEquivalent:(NSEvent*)event {
+    NSEventModifierFlags mf = [event modifierFlags];
+    bool cmdOrCtrl = (mf & NSEventModifierFlagCommand) || (mf & NSEventModifierFlagControl);
+    if (!cmdOrCtrl) {
+        return [super performKeyEquivalent:event];
+    }
+    unsigned short code = [event keyCode];
+    bool isZoomKey = (code == kVK_ANSI_Equal || code == kVK_ANSI_Minus || code == kVK_ANSI_0
+        || code == kVK_ANSI_KeypadPlus || code == kVK_ANSI_KeypadMinus || code == kVK_ANSI_Keypad0);
+    if (!isZoomKey) {
+        return [super performKeyEquivalent:event];
+    }
+    auto* host = static_cast<flux::MacWindow*>(self.hostPtr);
+    if (!host) {
+        return NO;
+    }
+    flux::Key k = flux::detail::keyCodeToFluxKey(code);
+    if (k == flux::Key::Unknown) {
+        return [super performKeyEquivalent:event];
+    }
+    flux::KeyModifier mods = flux::detail::nsModifierFlagsToFlux(mf);
+    if (flux::Window* w = host->eventTarget()) {
+        w->handleKeyDown(static_cast<int>(k), mods);
+    }
+    return YES;
+}
+
 - (void)keyDown:(NSEvent*)event {
     auto* host = static_cast<flux::MacWindow*>(self.hostPtr);
     if (!host) return;
@@ -361,6 +393,13 @@ struct MacWindowImpl {
     (void)replacementRange;
     auto* host = static_cast<flux::MacWindow*>(self.hostPtr);
     if (!host) return;
+    NSEvent* ev = [NSApp currentEvent];
+    if (ev != nil) {
+        NSEventModifierFlags mf = [ev modifierFlags];
+        if ((mf & NSEventModifierFlagCommand) != 0 || (mf & NSEventModifierFlagControl) != 0) {
+            return;
+        }
+    }
     NSString* s = string;
     if (s.length == 0) return;
     std::string utf8([s UTF8String] ?: "");
