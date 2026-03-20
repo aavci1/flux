@@ -2,8 +2,14 @@
 #include <cstring>
 #include <algorithm>
 #include <fstream>
+#include <span>
+#include <string_view>
 #include <vector>
 #include <stdexcept>
+
+#if defined(FLUX_HAS_EMBEDDED_SHADERS)
+#include "FluxEmbeddedShaders.hpp"
+#endif
 
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
@@ -100,17 +106,41 @@ void GPURendererBackend::ensurePipelines() {
     if (pipelinesReady_) return;
     ensureQuadVertexBuffer();
 
-    static std::string vertMSLStr = readFileStr("sdf_quad.vert.glsl.metal");
-    static std::string lineVertMSLStr = readFileStr("sdf_line.vert.glsl.metal");
-    static std::string rectMSLStr = readFileStr("rect.frag.glsl.metal");
-    static std::string circleMSLStr = readFileStr("circle.frag.glsl.metal");
-    static std::string lineMSLStr = readFileStr("line.frag.glsl.metal");
+#if defined(FLUX_HAS_EMBEDDED_SHADERS)
+    const std::string_view vertMSLStr = flux::gpu::embedded::msl_sdf_quad_vert_glsl();
+    const std::string_view lineVertMSLStr = flux::gpu::embedded::msl_sdf_line_vert_glsl();
+    const std::string_view rectMSLStr = flux::gpu::embedded::msl_rect_frag_glsl();
+    const std::string_view circleMSLStr = flux::gpu::embedded::msl_circle_frag_glsl();
+    const std::string_view lineMSLStr = flux::gpu::embedded::msl_line_frag_glsl();
 
-    static auto vertSPV = readFileBin("sdf_quad.vert.glsl.spv");
-    static auto lineVertSPV = readFileBin("sdf_line.vert.glsl.spv");
-    static auto rectSPV = readFileBin("rect.frag.glsl.spv");
-    static auto circleSPV = readFileBin("circle.frag.glsl.spv");
-    static auto lineSPV = readFileBin("line.frag.glsl.spv");
+    const auto vertSPV = flux::gpu::embedded::spv_sdf_quad_vert_glsl();
+    const auto lineVertSPV = flux::gpu::embedded::spv_sdf_line_vert_glsl();
+    const auto rectSPV = flux::gpu::embedded::spv_rect_frag_glsl();
+    const auto circleSPV = flux::gpu::embedded::spv_circle_frag_glsl();
+    const auto lineSPV = flux::gpu::embedded::spv_line_frag_glsl();
+#else
+    static const std::string vertMSLStrStored = readFileStr("sdf_quad.vert.glsl.metal");
+    static const std::string lineVertMSLStrStored = readFileStr("sdf_line.vert.glsl.metal");
+    static const std::string rectMSLStrStored = readFileStr("rect.frag.glsl.metal");
+    static const std::string circleMSLStrStored = readFileStr("circle.frag.glsl.metal");
+    static const std::string lineMSLStrStored = readFileStr("line.frag.glsl.metal");
+    const std::string_view vertMSLStr = vertMSLStrStored;
+    const std::string_view lineVertMSLStr = lineVertMSLStrStored;
+    const std::string_view rectMSLStr = rectMSLStrStored;
+    const std::string_view circleMSLStr = circleMSLStrStored;
+    const std::string_view lineMSLStr = lineMSLStrStored;
+
+    static const std::vector<uint8_t> vertSPVStored = readFileBin("sdf_quad.vert.glsl.spv");
+    static const std::vector<uint8_t> lineVertSPVStored = readFileBin("sdf_line.vert.glsl.spv");
+    static const std::vector<uint8_t> rectSPVStored = readFileBin("rect.frag.glsl.spv");
+    static const std::vector<uint8_t> circleSPVStored = readFileBin("circle.frag.glsl.spv");
+    static const std::vector<uint8_t> lineSPVStored = readFileBin("line.frag.glsl.spv");
+    const std::span<const uint8_t> vertSPV = vertSPVStored;
+    const std::span<const uint8_t> lineVertSPV = lineVertSPVStored;
+    const std::span<const uint8_t> rectSPV = rectSPVStored;
+    const std::span<const uint8_t> circleSPV = circleSPVStored;
+    const std::span<const uint8_t> lineSPV = lineSPVStored;
+#endif
 
     // Per-vertex layout: float2 position
     gpu::VertexBufferLayout vertLayout;
@@ -131,14 +161,16 @@ void GPURendererBackend::ensurePipelines() {
         {6, 72, gpu::VertexFormat::Float2},  // viewport
     };
 
-    auto makeShaderSrc = [](const std::string& msl, const std::vector<uint8_t>& spv) {
+    auto makeShaderSrc = [](std::string_view msl, std::span<const uint8_t> spv) {
         gpu::ShaderSource s;
         s.msl = msl;
-        if (!spv.empty()) s.spirv = spv;
+        if (!spv.empty()) {
+            s.spirv = spv;
+        }
         return s;
     };
 
-    auto makePipeline = [&](const std::string& fragMSL, const std::vector<uint8_t>& fragSPV) {
+    auto makePipeline = [&](std::string_view fragMSL, std::span<const uint8_t> fragSPV) {
         gpu::RenderPipelineDesc desc;
         desc.vertexShader = makeShaderSrc(vertMSLStr, vertSPV);
         desc.fragmentShader = makeShaderSrc(fragMSL, fragSPV);
@@ -165,10 +197,21 @@ void GPURendererBackend::ensurePipelines() {
     }
 
     // Glyph pipeline
-    static std::string glyphVertMSL = readFileStr("glyph.vert.glsl.metal");
-    static std::string glyphFragMSL = readFileStr("glyph.frag.glsl.metal");
-    static auto glyphVertSPV = readFileBin("glyph.vert.glsl.spv");
-    static auto glyphFragSPV = readFileBin("glyph.frag.glsl.spv");
+#if defined(FLUX_HAS_EMBEDDED_SHADERS)
+    const std::string_view glyphVertMSL = flux::gpu::embedded::msl_glyph_vert_glsl();
+    const std::string_view glyphFragMSL = flux::gpu::embedded::msl_glyph_frag_glsl();
+    const auto glyphVertSPV = flux::gpu::embedded::spv_glyph_vert_glsl();
+    const auto glyphFragSPV = flux::gpu::embedded::spv_glyph_frag_glsl();
+#else
+    static const std::string glyphVertMSLStored = readFileStr("glyph.vert.glsl.metal");
+    static const std::string glyphFragMSLStored = readFileStr("glyph.frag.glsl.metal");
+    const std::string_view glyphVertMSL = glyphVertMSLStored;
+    const std::string_view glyphFragMSL = glyphFragMSLStored;
+    static const std::vector<uint8_t> glyphVertSPVStored = readFileBin("glyph.vert.glsl.spv");
+    static const std::vector<uint8_t> glyphFragSPVStored = readFileBin("glyph.frag.glsl.spv");
+    const std::span<const uint8_t> glyphVertSPV = glyphVertSPVStored;
+    const std::span<const uint8_t> glyphFragSPV = glyphFragSPVStored;
+#endif
 
     gpu::VertexBufferLayout glyphInstLayout;
     glyphInstLayout.stride = sizeof(GlyphInstance);
@@ -193,10 +236,21 @@ void GPURendererBackend::ensurePipelines() {
     }
 
     // Path pipeline — non-instanced, per-vertex color
-    static std::string pathVertMSL = readFileStr("path.vert.glsl.metal");
-    static std::string pathFragMSL = readFileStr("path.frag.glsl.metal");
-    static auto pathVertSPV = readFileBin("path.vert.glsl.spv");
-    static auto pathFragSPV = readFileBin("path.frag.glsl.spv");
+#if defined(FLUX_HAS_EMBEDDED_SHADERS)
+    const std::string_view pathVertMSL = flux::gpu::embedded::msl_path_vert_glsl();
+    const std::string_view pathFragMSL = flux::gpu::embedded::msl_path_frag_glsl();
+    const auto pathVertSPV = flux::gpu::embedded::spv_path_vert_glsl();
+    const auto pathFragSPV = flux::gpu::embedded::spv_path_frag_glsl();
+#else
+    static const std::string pathVertMSLStored = readFileStr("path.vert.glsl.metal");
+    static const std::string pathFragMSLStored = readFileStr("path.frag.glsl.metal");
+    const std::string_view pathVertMSL = pathVertMSLStored;
+    const std::string_view pathFragMSL = pathFragMSLStored;
+    static const std::vector<uint8_t> pathVertSPVStored = readFileBin("path.vert.glsl.spv");
+    static const std::vector<uint8_t> pathFragSPVStored = readFileBin("path.frag.glsl.spv");
+    const std::span<const uint8_t> pathVertSPV = pathVertSPVStored;
+    const std::span<const uint8_t> pathFragSPV = pathFragSPVStored;
+#endif
 
     {
         gpu::VertexBufferLayout pathVertLayout;
@@ -220,10 +274,21 @@ void GPURendererBackend::ensurePipelines() {
     }
 
     // Image pipeline — instanced textured quads
-    static std::string imageVertMSL = readFileStr("image.vert.glsl.metal");
-    static std::string imageFragMSL = readFileStr("image.frag.glsl.metal");
-    static auto imageVertSPV = readFileBin("image.vert.glsl.spv");
-    static auto imageFragSPV = readFileBin("image.frag.glsl.spv");
+#if defined(FLUX_HAS_EMBEDDED_SHADERS)
+    const std::string_view imageVertMSL = flux::gpu::embedded::msl_image_vert_glsl();
+    const std::string_view imageFragMSL = flux::gpu::embedded::msl_image_frag_glsl();
+    const auto imageVertSPV = flux::gpu::embedded::spv_image_vert_glsl();
+    const auto imageFragSPV = flux::gpu::embedded::spv_image_frag_glsl();
+#else
+    static const std::string imageVertMSLStored = readFileStr("image.vert.glsl.metal");
+    static const std::string imageFragMSLStored = readFileStr("image.frag.glsl.metal");
+    const std::string_view imageVertMSL = imageVertMSLStored;
+    const std::string_view imageFragMSL = imageFragMSLStored;
+    static const std::vector<uint8_t> imageVertSPVStored = readFileBin("image.vert.glsl.spv");
+    static const std::vector<uint8_t> imageFragSPVStored = readFileBin("image.frag.glsl.spv");
+    const std::span<const uint8_t> imageVertSPV = imageVertSPVStored;
+    const std::span<const uint8_t> imageFragSPV = imageFragSPVStored;
+#endif
 
     {
         gpu::VertexBufferLayout imgInstLayout;
