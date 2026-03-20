@@ -61,6 +61,7 @@ conan/
 *.gcov
 coverage/
 __pycache__
+tests/ui/screenshots_terminal_verify/
 
 # Documentation build
 docs/_build/

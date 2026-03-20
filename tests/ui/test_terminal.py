@@ -5,11 +5,20 @@ Requires a Unix-like host (same as the terminal executable).
 """
 
 import os
+import struct
 import time
 import unittest
 from typing import Optional
 
 from flux_test_client import FluxAppProcess, FluxTestClient, center_of, find_by_focus_key
+
+
+def _png_dimensions(png: bytes) -> tuple[int, int]:
+    if len(png) < 24 or png[:8] != b"\x89PNG\r\n\x1a\n":
+        raise ValueError("not a PNG")
+    # IHDR: chunk length 13 at offset 8, data starts at 16
+    w, h = struct.unpack(">II", png[16:24])
+    return int(w), int(h)
 
 
 def _terminal_exe(build_dir: str) -> str:
@@ -73,6 +82,67 @@ class TestTerminal(unittest.TestCase):
             term = find_by_focus_key(tree, "terminal")
             v3 = float(term.get("value", str(v2)))
             self.assertAlmostEqual(v3, 14.0, places=3, msg="Ctrl+0 should reset to default 14px")
+        finally:
+            proc.stop()
+
+    def test_font_zoom_screenshots_cycle(self):
+        """Capture PNGs before/after repeated zoom; window size must stay stable (same PNG dimensions)."""
+        build_dir = os.environ.get("FLUX_BUILD_DIR", os.path.join(os.path.dirname(__file__), "..", "..", "build"))
+        build_dir = os.path.abspath(build_dir)
+        exe = _terminal_exe(build_dir)
+        self.assertTrue(os.path.isfile(exe), f"missing {exe}; build with BUILD_UI_TESTS=ON")
+
+        out_dir = os.path.join(os.path.dirname(__file__), "screenshots_terminal_verify")
+        os.makedirs(out_dir, exist_ok=True)
+
+        proc = FluxAppProcess(exe)
+        proc.start()
+        try:
+            client = FluxTestClient(unix_socket=proc.unix_socket)
+            _wait_for_terminal_view(client)
+            tree = client.get_ui()
+            term = find_by_focus_key(tree, "terminal")
+            self.assertIsNotNone(term)
+            cx, cy = center_of(term)
+            client.click(cx, cy)
+            time.sleep(0.15)
+
+            shots: list[tuple[str, bytes]] = []
+            png0 = client.get_screenshot()
+            shots.append(("01_baseline.png", png0))
+
+            for _ in range(4):
+                client.press_key("Equal", modifiers=["ctrl"])
+                time.sleep(0.05)
+            png1 = client.get_screenshot()
+            shots.append(("02_after_zoom_in_x4.png", png1))
+
+            for _ in range(4):
+                client.press_key("Minus", modifiers=["ctrl"])
+                time.sleep(0.05)
+            for _ in range(4):
+                client.press_key("Equal", modifiers=["ctrl"])
+                time.sleep(0.05)
+            for _ in range(4):
+                client.press_key("Minus", modifiers=["ctrl"])
+                time.sleep(0.05)
+            png2 = client.get_screenshot()
+            shots.append(("03_after_zoom_cycles.png", png2))
+
+            dims: list[tuple[int, int]] = []
+            for name, data in shots:
+                self.assertGreater(len(data), 2000, f"{name} should be a non-trivial PNG")
+                dims.append(_png_dimensions(data))
+                path = os.path.join(out_dir, name)
+                with open(path, "wb") as f:
+                    f.write(data)
+
+            self.assertEqual(
+                dims[0],
+                dims[1],
+                "zoom in should not change framebuffer dimensions (regression: layout/scroll bug)",
+            )
+            self.assertEqual(dims[0], dims[2], "zoom cycles should keep same window screenshot size")
         finally:
             proc.stop()
 

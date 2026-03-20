@@ -100,13 +100,14 @@ void TerminalSession::fitToSize(float widthPx, float heightPx, TextMeasurement& 
     lastLayoutFontQuant_ = fontQ;
 
     std::string face = fontName.empty() ? std::string("Monaco") : fontName;
-    TextStyle st = makeTextStyle(face, FontWeight::regular, fontSize, Typography::lineHeightTight, 0.0f);
+    // Must match TerminalView render (semibold "M" cell width + same line height rules).
+    TextStyle st = makeTextStyle(face, FontWeight::semibold, fontSize, Typography::lineHeightTight, 0.0f);
     float cellW = measure.measureText("M", st).width;
     if (cellW < 4.0f) {
         cellW = 8.0f;
     }
     float lineH = fontSize * Typography::lineHeightTight;
-    if (lineH < fontSize) {
+    if (lineH < fontSize * 1.1f) {
         lineH = fontSize * 1.2f;
     }
     int cols = std::max(1, static_cast<int>(static_cast<float>(pixelW) / cellW));
