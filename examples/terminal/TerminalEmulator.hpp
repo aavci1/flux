@@ -40,8 +40,12 @@ public:
     [[nodiscard]] std::size_t scrollbackLines() const;
 
 private:
+    [[nodiscard]] Cell defaultCell() const;
+    void growLineTo(std::vector<Cell>& line, int minCols) const;
+    void trimTrailingEmpty(std::vector<Cell>& line) const;
+    void setCellDefault(std::vector<Cell>& line, int c) const;
+
     void clearScreen();
-    void fillLine(std::vector<Cell>& line) const;
     void ensureScreen();
     /// Grow buffer only through the current cursor row (no full-screen empty padding).
     void ensureForCursor();

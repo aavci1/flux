@@ -120,9 +120,10 @@ void TerminalView::render(RenderContext& ctx, const Rect& bounds) const {
         }
         const std::vector<Cell>& line = snap.lines[li];
 
-        const int drawCols = std::min(snap.cols, static_cast<int>(line.size()));
-        for (int col = 0; col < drawCols; ++col) {
-            const Cell& cell = line[static_cast<std::size_t>(col)];
+        // Sparse lines: columns past line.size() are implicit default cells (no storage).
+        for (int col = 0; col < snap.cols; ++col) {
+            const Cell cell =
+                col < static_cast<int>(line.size()) ? line[static_cast<std::size_t>(col)] : Cell{};
             const float cx = content.x + static_cast<float>(col) * cellW;
 
             if (cell.bg != defaultBg) {
