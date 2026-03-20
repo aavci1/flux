@@ -9,6 +9,14 @@
 
 namespace flux::term {
 
+namespace {
+
+constexpr bool verticalRangesOverlap(float a0, float a1, float b0, float b1) {
+    return a1 >= b0 && a0 <= b1;
+}
+
+} // namespace
+
 void TerminalView::init() {
     clip = true;
     focusable = true;
@@ -54,8 +62,8 @@ void TerminalView::render(RenderContext& ctx, const Rect& bounds) const {
         return;
     }
 
-    EdgeInsets pad = padding;
-    Rect content = {
+    const EdgeInsets pad = padding;
+    const Rect content = {
         bounds.x + pad.left,
         bounds.y + pad.top,
         bounds.width - pad.horizontal(),
@@ -63,66 +71,60 @@ void TerminalView::render(RenderContext& ctx, const Rect& bounds) const {
     };
     lastViewport = content;
 
-    TermSnapshot snap = session->snapshot();
-    float fs = fontSize;
+    const TermSnapshot snap = session->snapshot();
+    const float fs = fontSize;
     std::string face = fontFamily;
     if (face.empty()) {
         face = "Monaco";
     }
-    TextStyle baseStyle = makeTextStyle(face, FontWeight::semibold, fs, Typography::lineHeightTight, 0.0f);
+    const TextStyle baseStyle = makeTextStyle(face, FontWeight::semibold, fs, Typography::lineHeightTight, 0.0f);
     float cellW = ctx.measureText("M", baseStyle).width;
-    if (cellW < 4.0f) {
-        cellW = 8.0f;
-    }
-    float lineH = fs * Typography::lineHeightTight;
-    if (lineH < fs * 1.1f) {
-        lineH = fs * 1.2f;
-    }
+    cellW = cellW < 4.0f ? 8.0f : cellW;
+    const float lineH = cachedLineHeight > 0.5f
+        ? cachedLineHeight
+        : (fs * Typography::lineHeightTight < fs * 1.1f ? fs * 1.2f : fs * Typography::lineHeightTight);
 
     const int cursorRow = std::clamp(snap.cursorRow, 0, std::max(0, snap.rows - 1));
     const std::size_t totalLines = snap.screenStart + static_cast<std::size_t>(cursorRow) + 1;
-    float contentH = static_cast<float>(totalLines) * lineH;
-    float maxScroll = std::max(0.0f, contentH - content.height);
-    if (stickToBottom) {
-        scrollY = maxScroll;
-    } else {
+    const float contentH = static_cast<float>(totalLines) * lineH;
+    const float maxScroll = std::max(0.0f, contentH - content.height);
+    if (!stickToBottom) {
         scrollY = std::clamp(scrollY, 0.0f, maxScroll);
         if (maxScroll > 0.0f && scrollY >= maxScroll - 1.0f) {
-            scrollY = maxScroll;
             stickToBottom = true;
         }
+    }
+    if (stickToBottom) {
+        scrollY = maxScroll;
     }
 
     ctx.save();
     Path clipPath;
-    clipPath.rect(Rect(content.x, content.y, content.width, content.height));
+    clipPath.rect(content);
     ctx.clipPath(clipPath);
 
     const Color defaultBg = Color::rgb(30, 30, 30);
+    const float viewTop = content.y;
+    const float viewBottom = content.y + content.height;
+    const float originY = viewTop - scrollY;
 
     for (std::size_t li = 0; li < totalLines; ++li) {
-        float lineTop = content.y - scrollY + static_cast<float>(li) * lineH;
-        float lineBottom = lineTop + lineH;
-        if (lineBottom < content.y || lineTop > content.y + content.height) {
+        const float lineTop = originY + static_cast<float>(li) * lineH;
+        const float lineBottom = lineTop + lineH;
+        if (!verticalRangesOverlap(lineTop, lineBottom, viewTop, viewBottom)) {
             continue;
         }
-
-        const std::vector<Cell>* linePtr = nullptr;
-        if (li < snap.lines.size()) {
-            linePtr = &snap.lines[li];
-        }
-        if (!linePtr) {
+        if (li >= snap.lines.size()) {
             continue;
         }
-        const std::vector<Cell>& line = *linePtr;
+        const std::vector<Cell>& line = snap.lines[li];
 
         const int drawCols = std::min(snap.cols, static_cast<int>(line.size()));
-        float x = content.x;
         for (int col = 0; col < drawCols; ++col) {
             const Cell& cell = line[static_cast<std::size_t>(col)];
-            float cx = x + static_cast<float>(col) * cellW;
+            const float cx = content.x + static_cast<float>(col) * cellW;
 
-            if (cell.bg.r != defaultBg.r || cell.bg.g != defaultBg.g || cell.bg.b != defaultBg.b || cell.bg.a != defaultBg.a) {
+            if (cell.bg != defaultBg) {
                 ctx.setFillStyle(FillStyle::solid(cell.bg));
                 ctx.setStrokeStyle(StrokeStyle::none());
                 ctx.drawRect(Rect(cx, lineTop, cellW, lineH));
@@ -139,12 +141,11 @@ void TerminalView::render(RenderContext& ctx, const Rect& bounds) const {
         }
     }
 
-    // Caret
     if (ctx.isCurrentViewFocused()) {
-        std::size_t absLine = snap.screenStart + static_cast<std::size_t>(snap.cursorRow);
-        float caretTop = content.y - scrollY + static_cast<float>(absLine) * lineH;
-        float caretX = content.x + static_cast<float>(snap.cursorCol) * cellW;
-        if (caretTop + lineH >= content.y && caretTop <= content.y + content.height) {
+        const std::size_t absLine = snap.screenStart + static_cast<std::size_t>(snap.cursorRow);
+        const float caretTop = originY + static_cast<float>(absLine) * lineH;
+        const float caretX = content.x + static_cast<float>(snap.cursorCol) * cellW;
+        if (verticalRangesOverlap(caretTop, caretTop + lineH, viewTop, viewBottom)) {
             ctx.setFillStyle(FillStyle::solid(Color::rgb(200, 200, 200).opacity(0.85f)));
             ctx.setStrokeStyle(StrokeStyle::none());
             ctx.drawRect(Rect(caretX + 1.0f, caretTop + 1.0f, std::max(1.0f, cellW * 0.35f), lineH - 2.0f));
