@@ -34,8 +34,6 @@ public:
 private:
     int masterFd_{-1};
     pid_t childPid_{-1};
-    int lastWsRows_{-1};
-    int lastWsCols_{-1};
 };
 
 } // namespace flux::term

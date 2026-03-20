@@ -35,15 +35,9 @@ void setWinsize(int fd, int rows, int cols) {
 
 } // namespace
 
-Pty::Pty(Pty&& o) noexcept
-    : masterFd_(o.masterFd_)
-    , childPid_(o.childPid_)
-    , lastWsRows_(o.lastWsRows_)
-    , lastWsCols_(o.lastWsCols_) {
+Pty::Pty(Pty&& o) noexcept : masterFd_(o.masterFd_), childPid_(o.childPid_) {
     o.masterFd_ = -1;
     o.childPid_ = -1;
-    o.lastWsRows_ = -1;
-    o.lastWsCols_ = -1;
 }
 
 Pty& Pty::operator=(Pty&& o) noexcept {
@@ -51,12 +45,8 @@ Pty& Pty::operator=(Pty&& o) noexcept {
         close();
         masterFd_ = o.masterFd_;
         childPid_ = o.childPid_;
-        lastWsRows_ = o.lastWsRows_;
-        lastWsCols_ = o.lastWsCols_;
         o.masterFd_ = -1;
         o.childPid_ = -1;
-        o.lastWsRows_ = -1;
-        o.lastWsCols_ = -1;
     }
     return *this;
 }
@@ -74,8 +64,6 @@ bool Pty::start(int rows, int cols, const std::string& shellPath) {
     }
 
     setWinsize(master, rows, cols);
-    lastWsRows_ = rows;
-    lastWsCols_ = cols;
 
     pid_t pid = fork();
     if (pid < 0) {
@@ -127,15 +115,9 @@ bool Pty::start(int rows, int cols, const std::string& shellPath) {
 }
 
 void Pty::resize(int rows, int cols) {
-    if (masterFd_ < 0) {
-        return;
+    if (masterFd_ >= 0) {
+        setWinsize(masterFd_, rows, cols);
     }
-    if (rows == lastWsRows_ && cols == lastWsCols_) {
-        return;
-    }
-    setWinsize(masterFd_, rows, cols);
-    lastWsRows_ = rows;
-    lastWsCols_ = cols;
 }
 
 ssize_t Pty::read(char* buf, std::size_t cap) {
@@ -172,8 +154,6 @@ void Pty::close() {
         ::close(masterFd_);
         masterFd_ = -1;
     }
-    lastWsRows_ = -1;
-    lastWsCols_ = -1;
     if (childPid_ > 0) {
         int status = 0;
         // Shell has usually already exited when we close; reap to avoid zombies.
