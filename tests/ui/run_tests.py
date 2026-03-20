@@ -20,6 +20,8 @@ import subprocess
 import sys
 import unittest
 
+_IS_UNIX = sys.platform != "win32"
+
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "..", ".."))
 DEFAULT_BUILD_DIR = os.path.join(PROJECT_ROOT, "build")
@@ -37,6 +39,8 @@ ALL_TEST_MODULES = [
     "test_dialog",
     "test_nested_state",
 ]
+if _IS_UNIX:
+    ALL_TEST_MODULES.append("test_terminal")
 
 UI_TEST_TARGETS = [
     "ui_test_layout",
@@ -51,6 +55,8 @@ UI_TEST_TARGETS = [
     "ui_test_dialog",
     "ui_test_nested_state",
 ]
+if _IS_UNIX:
+    UI_TEST_TARGETS.append("ui_test_terminal")
 
 
 def build_ui_tests(build_dir: str):

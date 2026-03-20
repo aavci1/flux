@@ -36,6 +36,11 @@ public:
      * @brief Handle text input
      */
     void handleTextInput(const std::string& text);
+
+    /**
+     * @brief Queue a key down with explicit modifiers (e.g. synthetic test IPC).
+     */
+    void enqueueSyntheticKeyDown(KeyEvent event);
     
     /**
      * @brief Get current modifier state

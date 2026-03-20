@@ -353,6 +353,13 @@ struct has_selected_bool<T, std::void_t<
 >> : std::true_type {};
 
 template<typename T, typename = void>
+struct has_fontSize_float : std::false_type {};
+template<typename T>
+struct has_fontSize_float<T, std::void_t<
+    decltype(static_cast<float>(std::declval<const T&>().fontSize))
+>> : std::true_type {};
+
+template<typename T, typename = void>
 struct has_selection_state : std::false_type {};
 template<typename T>
 struct has_selection_state<T, std::void_t<
@@ -1255,6 +1262,12 @@ template<ViewComponent T>
 inline std::string ViewAdapter<T>::getAccessibleValue() const {
     if constexpr (has_value_float<T>::value) {
         float v = static_cast<float>(component.value);
+        char buf[32];
+        std::snprintf(buf, sizeof(buf), "%.4g", v);
+        return std::string(buf);
+    }
+    if constexpr (has_fontSize_float<T>::value && !has_value_float<T>::value) {
+        float v = static_cast<float>(component.fontSize);
         char buf[32];
         std::snprintf(buf, sizeof(buf), "%.4g", v);
         return std::string(buf);

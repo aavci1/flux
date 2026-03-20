@@ -1,4 +1,5 @@
 #include <Flux/Core/Window.hpp>
+#include <Flux/Core/KeyEvent.hpp>
 #include <Flux/Core/LayoutTree.hpp>
 #include <Flux/Core/KeyboardInputHandler.hpp>
 #include <Flux/Core/MouseInputHandler.hpp>
@@ -421,8 +422,28 @@ void Window::processSyntheticEvents() {
                 handleTextInput(e.text);
                 break;
             case TestServer::SyntheticEvent::KeyPress:
-                handleKeyDown(e.keyCode);
-                handleKeyUp(e.keyCode);
+                if (e.explicitKeyModifiers) {
+                    KeyEvent ev;
+                    ev.key = keyFromRawCode(static_cast<uint32_t>(e.keyCode));
+                    ev.modifiers = e.keyModifiers;
+                    ev.rawKeyCode = static_cast<uint32_t>(e.keyCode);
+                    ev.isRepeat = false;
+                    if (impl_->shortcutManager->handleShortcut(ev, *this)) {
+                        // Shortcut consumed (e.g. paste)
+                    } else if (ev.key == Key::Tab && !ev.hasCtrl() && !ev.hasAlt()
+                               && impl_->focusState.getFocusableViewCount() > 1) {
+                        if (ev.hasShift()) {
+                            impl_->focusState.focusPrevious();
+                        } else {
+                            impl_->focusState.focusNext();
+                        }
+                    } else {
+                        impl_->keyboardHandler.enqueueSyntheticKeyDown(ev);
+                    }
+                } else {
+                    handleKeyDown(e.keyCode);
+                    handleKeyUp(e.keyCode);
+                }
                 break;
             case TestServer::SyntheticEvent::Scroll:
                 handleMouseScroll(e.x, e.y, e.deltaX, e.deltaY);

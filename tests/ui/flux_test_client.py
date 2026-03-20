@@ -121,8 +121,11 @@ class FluxTestClient:
     def type_text(self, text: str) -> dict:
         return self._rpc_json_post(Op.Type, {"text": text})
 
-    def press_key(self, key: str) -> dict:
-        return self._rpc_json_post(Op.Key, {"key": key})
+    def press_key(self, key: str, modifiers: list[str] | None = None) -> dict:
+        body: dict = {"key": key}
+        if modifiers:
+            body["modifiers"] = modifiers
+        return self._rpc_json_post(Op.Key, body)
 
     def scroll(self, x: float, y: float, delta_x: float = 0, delta_y: float = 0) -> dict:
         return self._rpc_json_post(Op.Scroll, {"x": x, "y": y, "deltaX": delta_x, "deltaY": delta_y})

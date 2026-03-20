@@ -445,14 +445,29 @@ if(BUILD_UI_TESTS)
     add_executable(ui_test_nested_state tests/ui/apps/test_nested_state.cpp)
     target_link_libraries(ui_test_nested_state PRIVATE flux)
 
+    set(FLUX_UI_TEST_TARGETS
+        ui_test_layout ui_test_button ui_test_checkbox_toggle
+        ui_test_radio_select ui_test_text_input ui_test_focus
+        ui_test_scroll ui_test_visibility ui_test_slider
+        ui_test_dialog ui_test_nested_state
+    )
+    if(UNIX)
+        add_executable(ui_test_terminal
+            examples/terminal/main.cpp
+            examples/terminal/Pty.cpp
+            examples/terminal/TerminalEmulator.cpp
+            examples/terminal/TerminalSession.cpp
+            examples/terminal/TerminalView.cpp
+        )
+        target_include_directories(ui_test_terminal PRIVATE ${CMAKE_SOURCE_DIR}/examples/terminal)
+        target_link_libraries(ui_test_terminal PRIVATE flux util)
+        list(APPEND FLUX_UI_TEST_TARGETS ui_test_terminal)
+    endif()
+
     add_custom_target(run_ui_tests
         COMMAND ${CMAKE_COMMAND} -E env FLUX_BUILD_DIR=${CMAKE_BINARY_DIR}
             python3 ${CMAKE_SOURCE_DIR}/tests/ui/run_tests.py -v
-        DEPENDS
-            ui_test_layout ui_test_button ui_test_checkbox_toggle
-            ui_test_radio_select ui_test_text_input ui_test_focus
-            ui_test_scroll ui_test_visibility ui_test_slider
-            ui_test_dialog ui_test_nested_state
+        DEPENDS ${FLUX_UI_TEST_TARGETS}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         COMMENT "Running Flux UI tests..."
     )

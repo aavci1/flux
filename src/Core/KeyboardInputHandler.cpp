@@ -54,6 +54,10 @@ void KeyboardInputHandler::handleTextInput(const std::string& text) {
     pendingTextInputEvents_.push_back(event);
 }
 
+void KeyboardInputHandler::enqueueSyntheticKeyDown(KeyEvent event) {
+    pendingKeyDownEvents_.push_back(std::move(event));
+}
+
 void KeyboardInputHandler::processPendingEvents(LayoutNode& layoutTree, FocusState& focusState) {
     // Process pending key down events
     for (const auto& event : pendingKeyDownEvents_) {

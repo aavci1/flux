@@ -112,6 +112,8 @@ public:
         float deltaX = 0, deltaY = 0;
         std::string text;
         int keyCode = 0;
+        KeyModifier keyModifiers = KeyModifier::None;
+        bool explicitKeyModifiers = false;
         uint64_t seq = 0;
     };
 
@@ -336,8 +338,19 @@ private:
     void handleKeyBinary(int fd, const std::string& body) {
         std::string keyStr = parseString(body, "key");
         int keyCode = keyNameToCode(keyStr);
+        KeyModifier mods = KeyModifier::None;
+        bool explicitMods = false;
+        if (body.find("\"modifiers\"") != std::string::npos) {
+            explicitMods = true;
+            mods = parseModifiersList(body);
+        }
 
-        enqueueAndWait({SyntheticEvent::KeyPress, 0, 0, 0, 0, "", keyCode});
+        SyntheticEvent ev{};
+        ev.type = SyntheticEvent::KeyPress;
+        ev.keyCode = keyCode;
+        ev.keyModifiers = mods;
+        ev.explicitKeyModifiers = explicitMods;
+        enqueueAndWait(std::move(ev));
 
         std::string resp = R"({"ok":true,"action":"key","key":")" + escapeJson(keyStr) + "\"}";
         sendBinaryResponse(fd, 0, 0, resp.data(), resp.size());
@@ -439,6 +452,39 @@ private:
         return json.substr(pos, end - pos);
     }
 
+    static KeyModifier parseModifiersList(const std::string& json) {
+        uint32_t bits = 0;
+        auto pos = json.find("\"modifiers\"");
+        if (pos == std::string::npos) {
+            return KeyModifier::None;
+        }
+        pos = json.find('[', pos);
+        if (pos == std::string::npos) {
+            return KeyModifier::None;
+        }
+        const auto end = json.find(']', pos);
+        if (end == std::string::npos) {
+            return KeyModifier::None;
+        }
+        const std::string inner = json.substr(pos + 1, end - pos - 1);
+        auto has = [&](const char* token) {
+            return inner.find(token) != std::string::npos;
+        };
+        if (has("ctrl") || has("Ctrl") || has("control") || has("Control")) {
+            bits |= static_cast<uint32_t>(KeyModifier::Ctrl);
+        }
+        if (has("shift") || has("Shift")) {
+            bits |= static_cast<uint32_t>(KeyModifier::Shift);
+        }
+        if (has("alt") || has("Alt") || has("option") || has("Option")) {
+            bits |= static_cast<uint32_t>(KeyModifier::Alt);
+        }
+        if (has("super") || has("Super") || has("meta") || has("Meta") || has("cmd") || has("Command")) {
+            bits |= static_cast<uint32_t>(KeyModifier::Super);
+        }
+        return static_cast<KeyModifier>(bits);
+    }
+
     static std::string escapeJson(const std::string& s) {
         std::string out;
         out.reserve(s.size());
@@ -471,6 +517,8 @@ private:
         if (name == "PageDown") return static_cast<int>(Key::PageDown);
         if (name == "Delete") return static_cast<int>(Key::Delete);
         if (name == "Insert") return static_cast<int>(Key::Insert);
+        if (name == "Equal" || name == "Plus") return static_cast<int>(Key::Equal);
+        if (name == "Minus") return static_cast<int>(Key::Minus);
         if (name.size() == 1 && name[0] >= 'A' && name[0] <= 'Z') {
             return static_cast<int>(Key::A) + (name[0] - 'A');
         }

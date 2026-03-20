@@ -155,6 +155,36 @@ bool TerminalSession::handleKey(const KeyEvent& e) {
         return writeBytes(s.data(), s.size());
     };
 
+    // Modifier + arrows (xterm-style): word / line navigation in readline, shells, editors.
+    if (e.hasAlt() && !e.hasCtrl()) {
+        switch (e.key) {
+        case Up:
+            return send("\x1b[1;3A");
+        case Down:
+            return send("\x1b[1;3B");
+        case Right:
+            return send("\x1b[1;3C");
+        case Left:
+            return send("\x1b[1;3D");
+        default:
+            break;
+        }
+    }
+    if (e.hasCtrl() && !e.hasAlt()) {
+        switch (e.key) {
+        case Up:
+            return send("\x1b[1;5A");
+        case Down:
+            return send("\x1b[1;5B");
+        case Right:
+            return send("\x1b[1;5C");
+        case Left:
+            return send("\x1b[1;5D");
+        default:
+            break;
+        }
+    }
+
     switch (e.key) {
     case Enter:
         return send("\r");

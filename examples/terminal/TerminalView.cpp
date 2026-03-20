@@ -162,6 +162,30 @@ bool TerminalView::handleKeyDown(const KeyEvent& event) {
 
     using enum Key;
 
+    // Font zoom (Ctrl or Cmd +/-/0) — common terminal behavior; must run before shell shortcuts.
+    if ((event.hasCtrl() || event.hasSuper()) && !event.hasAlt()) {
+        float cur = static_cast<float>(fontSize);
+        constexpr float kMin = 9.0f;
+        constexpr float kMax = 28.0f;
+        constexpr float kDefault = 14.0f;
+        switch (event.key) {
+        case Equal:
+            fontSize = std::clamp(cur + 1.0f, kMin, kMax);
+            requestApplicationRedraw();
+            return true;
+        case Minus:
+            fontSize = std::clamp(cur - 1.0f, kMin, kMax);
+            requestApplicationRedraw();
+            return true;
+        case Num0:
+            fontSize = kDefault;
+            requestApplicationRedraw();
+            return true;
+        default:
+            break;
+        }
+    }
+
     // Scroll the view buffer without sending escape sequences to the shell (Shift+…).
     if (event.hasShift() && !event.hasCtrl() && !event.hasAlt() && !event.hasSuper()) {
         float viewH = lastViewport.height;
