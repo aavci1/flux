@@ -1,4 +1,6 @@
 #include <Flux/Graphics/GPURendererBackend.hpp>
+#include <Flux/Platform/PathUtil.hpp>
+#include <Flux/Platform/PlatformRegistry.hpp>
 #include <cstring>
 #include <algorithm>
 #include <fstream>
@@ -11,34 +13,12 @@
 #include "FluxEmbeddedShaders.hpp"
 #endif
 
-#ifdef __APPLE__
-#include <mach-o/dyld.h>
-#elif defined(__linux__)
-#include <unistd.h>
-#include <climits>
-#endif
-
 namespace flux {
 
 static std::string getExeDir() {
-#ifdef __APPLE__
-    char buf[4096];
-    uint32_t size = sizeof(buf);
-    if (_NSGetExecutablePath(buf, &size) == 0) {
-        std::string p(buf);
-        auto pos = p.rfind('/');
-        if (pos != std::string::npos) return p.substr(0, pos + 1);
+    if (auto* util = PlatformRegistry::instance().pathUtil()) {
+        return util->executableDirectory();
     }
-#elif defined(__linux__)
-    char buf[PATH_MAX];
-    ssize_t len = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
-    if (len > 0) {
-        buf[len] = '\0';
-        std::string p(buf);
-        auto pos = p.rfind('/');
-        if (pos != std::string::npos) return p.substr(0, pos + 1);
-    }
-#endif
     return {};
 }
 

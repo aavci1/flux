@@ -1,22 +1,22 @@
 #import <AppKit/AppKit.h>
 
-#include <Flux/Core/ClipboardUtil.hpp>
+#include <Flux/Platform/AppleClipboard.hpp>
 
 namespace flux {
 
-void setClipboardText(const std::string& text) {
+void AppleClipboard::setText(const std::string& text) {
     NSString* s = [NSString stringWithUTF8String:text.c_str()];
     if (!s) return;
     [[NSPasteboard generalPasteboard] clearContents];
     [[NSPasteboard generalPasteboard] setString:s forType:NSPasteboardTypeString];
 }
 
-bool hasClipboardText() {
+bool AppleClipboard::hasText() {
     NSString* s = [[NSPasteboard generalPasteboard] stringForType:NSPasteboardTypeString];
     return s != nil && s.length > 0;
 }
 
-std::string getClipboardText() {
+std::string AppleClipboard::getText() {
     NSString* s = [[NSPasteboard generalPasteboard] stringForType:NSPasteboardTypeString];
     if (!s) return {};
     const char* utf8 = [s UTF8String];

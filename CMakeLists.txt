@@ -146,18 +146,9 @@ set(FLUX_SOURCES
     src/Core/ShortcutManager.cpp
 )
 
-if(APPLE)
-    list(APPEND FLUX_SOURCES
-        src/Core/ClipboardUtil.mm
-    )
-else()
-    list(APPEND FLUX_SOURCES
-        src/Core/ClipboardUtilSDL.cpp
-    )
-endif()
-
 list(APPEND FLUX_SOURCES
-    src/Core/PlatformWindowFactory.cpp
+    src/Platform/PlatformRegistry.cpp
+    src/Platform/EventLoopWake.cpp
     src/Core/Demangle.cpp
     src/Core/Element.cpp
     src/Graphics/FontProvider.cpp
@@ -184,14 +175,33 @@ list(APPEND FLUX_SOURCES
 
 if(APPLE)
     list(APPEND FLUX_SOURCES
+        src/Platform/PlatformRegistryApple.mm
+        src/Platform/MacWindowFactory.mm
+        src/Platform/AppleClipboard.mm
+        src/Platform/AppleFontResolver.mm
+        src/Platform/AppleEventLoopWake.mm
+        src/Platform/ApplePathUtil.mm
         src/Platform/MacWindow.mm
-        src/Platform/WakeEventLoop.mm
     )
 else()
     list(APPEND FLUX_SOURCES
+        src/Platform/PlatformRegistrySDL.cpp
+        src/Platform/SDLWindowFactory.cpp
+        src/Platform/SDLClipboard.cpp
+        src/Platform/SDLEventLoopWake.cpp
         src/Platform/SDLWindow.cpp
-        src/Platform/WakeEventLoopSDL.cpp
     )
+    if(UNIX)
+        list(APPEND FLUX_SOURCES
+            src/Platform/LinuxFontResolver.cpp
+            src/Platform/LinuxPathUtil.cpp
+        )
+    else()
+        list(APPEND FLUX_SOURCES
+            src/Platform/StubFontResolver.cpp
+            src/Platform/StubPathUtil.cpp
+        )
+    endif()
 endif()
 
 if(NOT APPLE AND FLUX_ENABLE_NANOVG)

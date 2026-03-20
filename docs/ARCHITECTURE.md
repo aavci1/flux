@@ -25,7 +25,7 @@ flux/
 │       │   ├── KeyboardInputHandler.hpp  Keyboard input handling
 │       │   ├── MouseInputHandler.hpp     Mouse input handling
 │       │   ├── ShortcutManager.hpp       Global shortcuts
-│       │   ├── PlatformWindowFactory.hpp Platform abstraction
+│       │   ├── ClipboardUtil.hpp (thin wrappers → PlatformRegistry)
 │       │   └── WindowEventObserver.hpp   Window event observation
 │       ├── Views/                  Components + Layouts (16 headers)
 │       │   ├── Text.hpp           Text display
@@ -49,11 +49,12 @@ flux/
 │       │   ├── Renderer.hpp
 │       │   ├── NanoVGRenderer.hpp
 │       │   └── Path.hpp
-│       └── Platform/               Platform support (4 headers)
+│       └── Platform/               Platform support
 │           ├── PlatformWindow.hpp
-│           ├── WaylandWindow.hpp
-│           ├── WaylandProtocols.hpp
-│           └── WaylandCursor.hpp
+│           ├── PlatformWindowFactory.hpp
+│           ├── PlatformRegistry.hpp
+│           ├── Clipboard, FontResolver, PathUtil, EventLoopWake
+│           └── … (SDL / Apple implementations)
 ├── src/
 │   ├── Core/
 │   │   ├── Application.cpp        Event loop, window management
@@ -62,7 +63,7 @@ flux/
 │   │   ├── MouseInputHandler.cpp     Mouse input processing
 │   │   ├── FocusState.cpp            Focus state management
 │   │   ├── ShortcutManager.cpp       Shortcut handling
-│   │   └── PlatformWindowFactory.cpp Platform factory
+│   │   └── (platform factories live under src/Platform/)
 │   ├── Graphics/
 │   │   ├── NanoVGRenderContext.cpp  NanoVG rendering implementation
 │   │   ├── NanoVGRenderer.cpp       Renderer implementation

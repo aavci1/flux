@@ -1,10 +1,10 @@
 #import <AppKit/AppKit.h>
 
-#include <Flux/Platform/EventLoopWake.hpp>
+#include <Flux/Platform/AppleEventLoopWake.hpp>
 
 namespace flux {
 
-void wakePlatformEventLoop() {
+void AppleEventLoopWake::wake() {
     if (!NSApp) return;
     NSEvent* ev =
         [NSEvent otherEventWithType:NSEventTypeApplicationDefined

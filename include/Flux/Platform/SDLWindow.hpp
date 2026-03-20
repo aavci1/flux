@@ -16,7 +16,7 @@ class Window;
 class SDLWindow : public PlatformWindow {
 public:
     SDLWindow(const std::string& title, const Size& size, bool resizable, bool fullscreen,
-              RenderBackendType backend = kDefaultRenderBackend);
+              RenderBackendType backend = RenderBackendType::GPU_Auto);
     ~SDLWindow() override;
 
     void resize(const Size& newSize) override;
@@ -50,7 +50,7 @@ private:
     SDL_GLContext glContext_ = nullptr;
     std::unique_ptr<PlatformRenderer> renderer_;
     Window* fluxWindow_ = nullptr;
-    RenderBackendType backendType_ = kDefaultRenderBackend;
+    RenderBackendType backendType_ = RenderBackendType::GPU_Auto;
 
     Size size_;
     bool fullscreen_ = false;

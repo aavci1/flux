@@ -1,17 +1,17 @@
-#include <Flux/Core/ClipboardUtil.hpp>
+#include <Flux/Platform/SDLClipboard.hpp>
 #include <SDL3/SDL.h>
 
 namespace flux {
 
-void setClipboardText(const std::string& text) {
+void SDLClipboard::setText(const std::string& text) {
     SDL_SetClipboardText(text.c_str());
 }
 
-bool hasClipboardText() {
+bool SDLClipboard::hasText() {
     return SDL_HasClipboardText();
 }
 
-std::string getClipboardText() {
+std::string SDLClipboard::getText() {
     if (!SDL_HasClipboardText()) return {};
     char* text = SDL_GetClipboardText();
     if (!text) return {};

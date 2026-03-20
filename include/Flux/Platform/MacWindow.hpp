@@ -19,7 +19,7 @@ struct MacWindowImpl;
 class MacWindow : public PlatformWindow {
 public:
     MacWindow(const std::string& title, const Size& size, bool resizable, bool fullscreen,
-              RenderBackendType backend = kDefaultRenderBackend);
+              RenderBackendType backend = RenderBackendType::GPU_Auto);
     ~MacWindow() override;
 
     void resize(const Size& newSize) override;
@@ -66,7 +66,7 @@ private:
     bool shouldClose_ = false;
     CursorType currentCursor_ = CursorType::Default;
     Window* fluxWindow_ = nullptr;
-    RenderBackendType backendType_ = kDefaultRenderBackend;
+    RenderBackendType backendType_ = RenderBackendType::GPU_Auto;
 };
 
 } // namespace flux

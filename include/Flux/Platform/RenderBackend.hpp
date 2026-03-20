@@ -9,12 +9,7 @@ enum class RenderBackendType {
     GPU_Auto
 };
 
-#if defined(__APPLE__)
-inline constexpr RenderBackendType kDefaultRenderBackend = RenderBackendType::GPU_Metal;
-#elif defined(FLUX_HAS_NANOVG)
-inline constexpr RenderBackendType kDefaultRenderBackend = RenderBackendType::NanoVG;
-#else
-inline constexpr RenderBackendType kDefaultRenderBackend = RenderBackendType::GPU_Vulkan;
-#endif
+/// Default GPU/render backend for this build — use `PlatformRegistry::instance().defaultRenderBackend()`.
+/// Header defaults (e.g. `GPU_Auto`) are resolved by the platform window factory.
 
 } // namespace flux

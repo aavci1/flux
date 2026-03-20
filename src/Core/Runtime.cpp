@@ -1,6 +1,7 @@
 #include <Flux/Core/Runtime.hpp>
 #include <Flux/Core/Window.hpp>
-#include <Flux/Core/PlatformWindowFactory.hpp>
+#include <Flux/Platform/PlatformRegistry.hpp>
+#include <Flux/Platform/PlatformWindowFactory.hpp>
 #include <Flux/Platform/PlatformWindow.hpp>
 #include <Flux/Core/Log.hpp>
 #include <algorithm>
@@ -50,7 +51,7 @@ Runtime::Runtime(int argc, char** argv) {
                 continue;
             }
             const char* b = argv[++i];
-            PlatformWindowFactory* factory = getDefaultPlatformFactory();
+            PlatformWindowFactory* factory = PlatformRegistry::instance().windowFactory();
             bool ok = false;
             if (std::strcmp(b, "metal") == 0) {
 #ifdef __APPLE__

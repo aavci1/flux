@@ -75,7 +75,6 @@ include/
     │   ├── KeyboardInputHandler.hpp
     │   ├── MouseInputHandler.hpp
     │   ├── ShortcutManager.hpp
-    │   ├── PlatformWindowFactory.hpp
     │   └── WindowEventObserver.hpp
     ├── Views/                  // UI components and layouts (16 headers)
     │   ├── Text.hpp           // Text display
@@ -99,11 +98,11 @@ include/
     │   ├── Renderer.hpp
     │   ├── NanoVGRenderer.hpp
     │   └── Path.hpp
-    └── Platform/               // Platform support (4 headers)
+    └── Platform/               // Platform abstractions + SDL / Apple backends
         ├── PlatformWindow.hpp
-        ├── WaylandWindow.hpp
-        ├── WaylandProtocols.hpp
-        └── WaylandCursor.hpp
+        ├── PlatformWindowFactory.hpp
+        ├── PlatformRegistry.hpp
+        └── …
 ```
 
 ## Components

@@ -6,7 +6,8 @@
 #include <Flux/Core/FocusState.hpp>
 #include <Flux/Core/ShortcutManager.hpp>
 #include <Flux/Core/WindowEventObserver.hpp>
-#include <Flux/Core/PlatformWindowFactory.hpp>
+#include <Flux/Platform/PlatformRegistry.hpp>
+#include <Flux/Platform/PlatformWindowFactory.hpp>
 #include <Flux/Graphics/Renderer.hpp>
 #include <Flux/Graphics/RenderContext.hpp>
 #include <Flux/Platform/PlatformWindow.hpp>
@@ -74,52 +75,7 @@ struct Window::WindowImpl {
     }
     
     void registerDefaultShortcuts() {
-        // Quit: Ctrl+Q everywhere; on macOS also Cmd+Q
-        shortcutManager->registerShortcut(
-            {Key::Q, KeyModifier::Ctrl},
-            std::make_unique<QuitCommand>()
-        );
-#ifdef __APPLE__
-        shortcutManager->registerShortcut(
-            {Key::Q, KeyModifier::Super},
-            std::make_unique<QuitCommand>()
-        );
-        // macOS: Copy, Cut, Paste, Select All use Cmd only (Ctrl+C/X/V/A go to focused view, e.g. terminal).
-        shortcutManager->registerShortcut(
-            {Key::C, KeyModifier::Super},
-            std::make_unique<CopyCommand>()
-        );
-        shortcutManager->registerShortcut(
-            {Key::V, KeyModifier::Super},
-            std::make_unique<PasteCommand>()
-        );
-        shortcutManager->registerShortcut(
-            {Key::X, KeyModifier::Super},
-            std::make_unique<CutCommand>()
-        );
-        shortcutManager->registerShortcut(
-            {Key::A, KeyModifier::Super},
-            std::make_unique<SelectAllCommand>()
-        );
-#else
-        // Linux/Windows: Copy, Cut, Paste, Select All use Ctrl
-        shortcutManager->registerShortcut(
-            {Key::C, KeyModifier::Ctrl},
-            std::make_unique<CopyCommand>()
-        );
-        shortcutManager->registerShortcut(
-            {Key::V, KeyModifier::Ctrl},
-            std::make_unique<PasteCommand>()
-        );
-        shortcutManager->registerShortcut(
-            {Key::X, KeyModifier::Ctrl},
-            std::make_unique<CutCommand>()
-        );
-        shortcutManager->registerShortcut(
-            {Key::A, KeyModifier::Ctrl},
-            std::make_unique<SelectAllCommand>()
-        );
-#endif
+        PlatformRegistry::instance().registerWindowShortcuts(*shortcutManager);
     }
     
     void notifyObservers(std::function<void(WindowEventObserver*, Window*)> callback, Window* window) {
@@ -132,7 +88,7 @@ struct Window::WindowImpl {
 // Window public interface implementation
 
 Window::Window(const WindowConfig& config)
-    : Window(config, getDefaultPlatformFactory()) {
+    : Window(config, PlatformRegistry::instance().windowFactory()) {
 }
 
 Window::Window(const WindowConfig& config, PlatformWindowFactory* factory)
