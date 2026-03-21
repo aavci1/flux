@@ -1,8 +1,12 @@
 #include <Flux/Core/Element.hpp>
 #include <Flux/Core/View.hpp>
 #include <Flux/Core/Log.hpp>
+#include <algorithm>
+#include <unordered_map>
 
 namespace flux {
+
+uint64_t Element::sNextRenderVersion_ = 1;
 
 Element::Element() = default;
 
@@ -61,6 +65,7 @@ void Element::reconcile(const LayoutNode& newNode) {
         description->setPropertyOwner(this);
         typeName = newNode.view.getTypeName();
         key = newNode.view.getKey();
+        bumpRenderVersion();
     }
 
     cachedBounds = newNode.bounds;
@@ -69,6 +74,11 @@ void Element::reconcile(const LayoutNode& newNode) {
     layoutDirty = boundsChanged;
 
     reconcileChildren(newNode.children);
+
+    subtreeRenderVersion_ = renderVersion_;
+    for (auto& child : children) {
+        subtreeRenderVersion_ = std::max(subtreeRenderVersion_, child->subtreeRenderVersion_);
+    }
 }
 
 void Element::reconcileChildren(const std::vector<LayoutNode>& newChildren) {
@@ -131,6 +141,10 @@ void Element::reconcileChildren(const std::vector<LayoutNode>& newChildren) {
     for (auto& child : children) {
         child->parent = this;
     }
+}
+
+void Element::bumpRenderVersion() {
+    renderVersion_ = sNextRenderVersion_++;
 }
 
 Element* Element::findByFocusKey(const std::string& key) {

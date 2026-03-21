@@ -80,6 +80,52 @@ std::optional<CommandCompiler::PathTessCacheKey> CommandCompiler::makePathTessCa
     return k;
 }
 
+CommandCompiler::StateFingerprint CommandCompiler::computeStateFingerprint() const {
+    StateFingerprint fp;
+    fp.m00 = quantizeAffine(current_.m00);
+    fp.m01 = quantizeAffine(current_.m01);
+    fp.m02 = quantizeAffine(current_.m02);
+    fp.m10 = quantizeAffine(current_.m10);
+    fp.m11 = quantizeAffine(current_.m11);
+    fp.m12 = quantizeAffine(current_.m12);
+    fp.qOpacity = quantizeAffine(current_.opacity);
+    fp.scissor = current_.scissor;
+    return fp;
+}
+
+void CommandCompiler::spliceCacheEntry(const CachedElementData& entry, CompiledBatches& out) {
+    auto& g = out.groups.back();
+    uint32_t pathVertBase = static_cast<uint32_t>(out.pathVertices.size()) - g.pathOffset;
+
+    for (auto& op : entry.drawOps) {
+        DrawOp adjusted = op;
+        switch (op.type) {
+            case DrawOpType::Rect:   adjusted.offset += g.rectCount; break;
+            case DrawOpType::Circle: adjusted.offset += g.circleCount; break;
+            case DrawOpType::Line:   adjusted.offset += g.lineCount; break;
+            case DrawOpType::Glyph:  adjusted.offset += g.glyphCount; break;
+            case DrawOpType::Path:   adjusted.offset += pathVertBase; break;
+            case DrawOpType::Image:  adjusted.offset += static_cast<uint32_t>(g.imageDraws.size()); break;
+        }
+        g.drawOps.push_back(adjusted);
+    }
+
+    out.rects.insert(out.rects.end(), entry.rects.begin(), entry.rects.end());
+    g.rectCount += static_cast<uint32_t>(entry.rects.size());
+
+    out.circles.insert(out.circles.end(), entry.circles.begin(), entry.circles.end());
+    g.circleCount += static_cast<uint32_t>(entry.circles.size());
+
+    out.lines.insert(out.lines.end(), entry.lines.begin(), entry.lines.end());
+    g.lineCount += static_cast<uint32_t>(entry.lines.size());
+
+    out.glyphs.insert(out.glyphs.end(), entry.glyphs.begin(), entry.glyphs.end());
+    g.glyphCount += static_cast<uint32_t>(entry.glyphs.size());
+
+    out.pathVertices.insert(out.pathVertices.end(), entry.pathVerts.begin(), entry.pathVerts.end());
+    g.pathCount += static_cast<uint32_t>(entry.pathVerts.size());
+}
+
 static ScissorState intersectScissor(const ScissorState& a, const ScissorState& b) {
     if (!a.active) return b;
     if (!b.active) return a;
@@ -91,6 +137,11 @@ static ScissorState intersectScissor(const ScissorState& a, const ScissorState& 
 }
 
 void CommandCompiler::startNewGroup(CompiledBatches& out) {
+    // Mark all active element tracks as having a scissor break
+    for (auto& t : elementTrackStack_) {
+        t.hadScissorBreak = true;
+    }
+
     DrawGroup g;
     g.scissor = current_.scissor;
     g.rectOffset   = static_cast<uint32_t>(out.rects.size());
@@ -128,6 +179,9 @@ void CommandCompiler::compile(const RenderCommandBuffer& buffer,
     current_.stroke = StrokeStyle::none();
     current_.textStyle = TextStyle{};
     stateStack_.clear();
+    elementTrackStack_.clear();
+    ++compileFrame_;
+    cacheStats_ = {};
 
     startNewGroup(out);
 
@@ -273,8 +327,99 @@ void CommandCompiler::compile(const RenderCommandBuffer& buffer,
                 pushImagePath(out, buffer.str(pathStrId), rect, fit, cr, alpha);
                 break;
             }
+            case CmdOp::BeginElement: {
+                uint32_t idLo = r.readUint32();
+                uint32_t idHi = r.readUint32();
+                uintptr_t elemId = static_cast<uintptr_t>(idLo) |
+                                   (static_cast<uintptr_t>(idHi) << 32);
+                uint32_t verLo = r.readUint32();
+                uint32_t verHi = r.readUint32();
+                uint64_t subtreeVer = static_cast<uint64_t>(verLo) |
+                                      (static_cast<uint64_t>(verHi) << 32);
+                uint32_t endOffset = r.readUint32();
+
+                auto fp = computeStateFingerprint();
+                auto cacheIt = elementCache_.find(elemId);
+                if (cacheIt != elementCache_.end()) {
+                    auto& entry = cacheIt->second;
+                    if (entry.subtreeVersion == subtreeVer &&
+                        entry.fingerprint == fp &&
+                        !entry.hasScissorBreaks) {
+                        entry.lastAccessFrame = compileFrame_;
+                        spliceCacheEntry(entry, out);
+                        ++cacheStats_.hits;
+                        r.seekTo(endOffset);
+                        // Consume the EndElement opcode
+                        if (r.hasNext()) r.nextOp();
+                        break;
+                    }
+                }
+
+                ++cacheStats_.misses;
+                elementTrackStack_.push_back({
+                    elemId, subtreeVer, fp,
+                    out.rects.size(), out.circles.size(), out.lines.size(),
+                    out.glyphs.size(), out.pathVertices.size(),
+                    out.groups.back().drawOps.size(),
+                    current_.scissor, false
+                });
+                break;
+            }
+            case CmdOp::EndElement: {
+                if (!elementTrackStack_.empty()) {
+                    auto& t = elementTrackStack_.back();
+
+                    // Detect scissor breaks (group structure changed during this element)
+                    bool scissorBroke = t.hadScissorBreak ||
+                                       (current_.scissor != t.entryScissor);
+
+                    CachedElementData entry;
+                    entry.subtreeVersion = t.subtreeVersion;
+                    entry.fingerprint = t.fingerprint;
+                    entry.lastAccessFrame = compileFrame_;
+                    entry.hasScissorBreaks = scissorBroke;
+
+                    if (!scissorBroke) {
+                        entry.rects.assign(out.rects.begin() + static_cast<ptrdiff_t>(t.rectStart), out.rects.end());
+                        entry.circles.assign(out.circles.begin() + static_cast<ptrdiff_t>(t.circleStart), out.circles.end());
+                        entry.lines.assign(out.lines.begin() + static_cast<ptrdiff_t>(t.lineStart), out.lines.end());
+                        entry.glyphs.assign(out.glyphs.begin() + static_cast<ptrdiff_t>(t.glyphStart), out.glyphs.end());
+                        entry.pathVerts.assign(out.pathVertices.begin() + static_cast<ptrdiff_t>(t.pathStart), out.pathVertices.end());
+
+                        auto& g = out.groups.back();
+                        auto opBegin = g.drawOps.begin() + static_cast<ptrdiff_t>(t.drawOpStart);
+                        entry.drawOps.assign(opBegin, g.drawOps.end());
+
+                        // Compute the group-local counts that existed when this element started
+                        uint32_t rectCountAtStart = g.rectCount - static_cast<uint32_t>(entry.rects.size());
+                        uint32_t circleCountAtStart = g.circleCount - static_cast<uint32_t>(entry.circles.size());
+                        uint32_t lineCountAtStart = g.lineCount - static_cast<uint32_t>(entry.lines.size());
+                        uint32_t glyphCountAtStart = g.glyphCount - static_cast<uint32_t>(entry.glyphs.size());
+                        uint32_t pathVertAtStart = static_cast<uint32_t>(t.pathStart) - g.pathOffset;
+
+                        for (auto& dop : entry.drawOps) {
+                            switch (dop.type) {
+                                case DrawOpType::Rect:   dop.offset -= rectCountAtStart; break;
+                                case DrawOpType::Circle: dop.offset -= circleCountAtStart; break;
+                                case DrawOpType::Line:   dop.offset -= lineCountAtStart; break;
+                                case DrawOpType::Glyph:  dop.offset -= glyphCountAtStart; break;
+                                case DrawOpType::Path:   dop.offset -= pathVertAtStart; break;
+                                default: break;
+                            }
+                        }
+                    }
+
+                    elementCache_[t.elementId] = std::move(entry);
+
+                    elementTrackStack_.pop_back();
+                }
+                break;
+            }
         }
     }
+
+    // Propagate scissor-break flag up the tracking stack when a group starts
+    // (already handled inline via startNewGroup detection below)
 
     rectPeak_ = std::max(rectPeak_, out.rects.size());
     circlePeak_ = std::max(circlePeak_, out.circles.size());
@@ -282,6 +427,17 @@ void CommandCompiler::compile(const RenderCommandBuffer& buffer,
     glyphPeak_ = std::max(glyphPeak_, out.glyphs.size());
     pathVertPeak_ = std::max(pathVertPeak_, out.pathVertices.size());
     groupPeak_ = std::max(groupPeak_, out.groups.size());
+
+    // Evict stale cache entries every 120 frames
+    if (compileFrame_ % 120 == 0) {
+        for (auto it = elementCache_.begin(); it != elementCache_.end();) {
+            if (compileFrame_ - it->second.lastAccessFrame > 60) {
+                it = elementCache_.erase(it);
+            } else {
+                ++it;
+            }
+        }
+    }
 }
 
 void CommandCompiler::applyTransform(float& x, float& y) const {
