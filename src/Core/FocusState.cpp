@@ -270,14 +270,23 @@ int FocusState::findViewIndexByKey(const std::string& key) const {
     return -1;
 }
 
-std::string FocusState::generateAutoKey(const Element* element, int registrationIndex) const {
+std::string FocusState::generateAutoKey(const Element* element, int /*registrationIndex*/) const {
     std::ostringstream oss;
     if (element && element->description) {
         oss << element->description->getTypeName();
     } else {
         oss << "unknown";
     }
-    oss << "_" << registrationIndex;
+
+    std::vector<size_t> path;
+    for (const Element* e = element; e != nullptr; e = e->parent) {
+        path.push_back(e->structuralIndex);
+    }
+    oss << "@";
+    for (auto it = path.rbegin(); it != path.rend(); ++it) {
+        if (it != path.rbegin()) oss << '/';
+        oss << *it;
+    }
     return oss.str();
 }
 
