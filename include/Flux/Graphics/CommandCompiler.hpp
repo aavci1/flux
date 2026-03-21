@@ -129,7 +129,7 @@ private:
         float opacity = 1;
         FillStyle fill;
         StrokeStyle stroke;
-        TextStyle textStyle;  // must save/restore with save/restore like NanoVG
+        TextStyle textStyle;
         ScissorState scissor;
     };
 

@@ -5,8 +5,8 @@
 namespace flux {
 
 void MacWindowFactory::setRenderBackend(RenderBackendType backend) {
-    if (backend == RenderBackendType::NanoVG || backend == RenderBackendType::GPU_Vulkan) {
-        throw std::runtime_error("Render backend not available on macOS (use Metal)");
+    if (backend == RenderBackendType::GPU_Vulkan) {
+        throw std::runtime_error("Vulkan backend not available on macOS (use Metal)");
     }
     if (backend == RenderBackendType::GPU_Auto || backend == RenderBackendType::GPU_Metal) {
         backend_ = RenderBackendType::GPU_Metal;

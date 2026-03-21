@@ -11,18 +11,6 @@ add_definitions(-w)
 find_package(Threads REQUIRED)
 find_package(Freetype REQUIRED)
 
-option(FLUX_ENABLE_NANOVG "Build NanoVG OpenGL backend (Linux/Windows only; off by default)" OFF)
-
-if(APPLE)
-    if(FLUX_ENABLE_NANOVG)
-        message(FATAL_ERROR "NanoVG/OpenGL is not supported on macOS. Use native Cocoa + Metal (default).")
-    endif()
-endif()
-
-if(FLUX_ENABLE_NANOVG AND NOT APPLE)
-    find_package(OpenGL REQUIRED)
-endif()
-
 include(FetchContent)
 
 # SDL3: Linux/Windows only (macOS uses native Cocoa)
@@ -44,32 +32,10 @@ if(NOT APPLE)
 endif()
 
 # Pin commits match former submodules; override with -DFLUX_*_GIT_TAG=...
-set(FLUX_NANOVG_GIT_REPOSITORY "https://github.com/inniyah/nanovg.git" CACHE STRING "NanoVG Git repository")
-set(FLUX_NANOVG_GIT_TAG "313ef1368bb186c7df21a578e4c5700061a7a68c" CACHE STRING "NanoVG Git tag or commit")
 set(FLUX_NANOSVG_GIT_REPOSITORY "https://github.com/memononen/nanosvg.git" CACHE STRING "NanoSVG Git repository")
 set(FLUX_NANOSVG_GIT_TAG "66579081d84b613daa49a64f76357ce65925e13b" CACHE STRING "NanoSVG Git tag or commit")
 set(FLUX_STB_GIT_REPOSITORY "https://github.com/nothings/stb.git" CACHE STRING "stb Git repository")
 set(FLUX_STB_GIT_TAG "fede005abaf93d9d7f3a679d1999b2db341b360f" CACHE STRING "stb Git tag or commit")
-
-# NanoVG: Populate only when enabled (upstream CMake also defines target "nanovg" — would clash with ours)
-if(FLUX_ENABLE_NANOVG)
-    if(EXISTS "${CMAKE_SOURCE_DIR}/third_party/nanovg/src/nanovg.c")
-        set(NANOVG_SOURCE_DIR "${CMAKE_SOURCE_DIR}/third_party/nanovg")
-        message(STATUS "NanoVG: using local third_party/nanovg")
-    else()
-        FetchContent_Declare(flux_nanovg
-            GIT_REPOSITORY ${FLUX_NANOVG_GIT_REPOSITORY}
-            GIT_TAG ${FLUX_NANOVG_GIT_TAG}
-            GIT_SUBMODULES "" # upstream has optional submodules; not needed for core sources
-        )
-        FetchContent_GetProperties(flux_nanovg)
-        if(NOT flux_nanovg_POPULATED)
-            message(STATUS "NanoVG: fetching ${FLUX_NANOVG_GIT_TAG} from ${FLUX_NANOVG_GIT_REPOSITORY}")
-            FetchContent_Populate(flux_nanovg)
-        endif()
-        set(NANOVG_SOURCE_DIR "${flux_nanovg_SOURCE_DIR}")
-    endif()
-endif()
 
 if(EXISTS "${CMAKE_SOURCE_DIR}/third_party/nanosvg/src/nanosvg.h")
     set(NANOSVG_SOURCE_DIR "${CMAKE_SOURCE_DIR}/third_party/nanosvg/src")
@@ -127,13 +93,6 @@ foreach(_flux_stb_shim_h IN LISTS _flux_stb_shim_headers)
     get_filename_component(_flux_stb_shim_name "${_flux_stb_shim_h}" NAME)
     configure_file("${_flux_stb_shim_h}" "${FLUX_STB_SHIM_DIR}/stb/${_flux_stb_shim_name}" COPYONLY)
 endforeach()
-
-# NanoVG includes <GL/gl.h> on non-Apple
-if(NOT APPLE AND FLUX_ENABLE_NANOVG)
-    set(FLUX_GL_SHIM_DIR "${CMAKE_BINARY_DIR}/flux_gl_shim")
-    file(MAKE_DIRECTORY "${FLUX_GL_SHIM_DIR}/GL")
-    file(WRITE "${FLUX_GL_SHIM_DIR}/GL/gl.h" "#include <GL/gl.h>\n")
-endif()
 
 # Flux library sources
 set(FLUX_SOURCES
@@ -210,14 +169,6 @@ else()
     endif()
 endif()
 
-if(NOT APPLE AND FLUX_ENABLE_NANOVG)
-    list(APPEND FLUX_SOURCES
-        src/Graphics/NanoVGRenderer.cpp
-        src/Graphics/NanoVGRenderContext.cpp
-        src/Graphics/NanoVGBackend.cpp
-    )
-endif()
-
 # GPU backend sources
 list(APPEND FLUX_SOURCES src/GPU/DeviceFactory.cpp)
 
@@ -225,9 +176,9 @@ if(APPLE)
     list(APPEND FLUX_SOURCES src/GPU/Metal/MetalDevice.mm)
 endif()
 
-# Vulkan: Linux/Windows when not building NanoVG
+# Vulkan: Linux/Windows
 set(FLUX_VULKAN_AVAILABLE OFF)
-if(NOT APPLE AND NOT FLUX_ENABLE_NANOVG)
+if(NOT APPLE)
     find_package(Vulkan QUIET)
     if(NOT Vulkan_FOUND)
         find_path(Vulkan_INCLUDE_DIR vulkan/vulkan.h HINTS /opt/homebrew/include /usr/local/include)
@@ -239,7 +190,7 @@ if(NOT APPLE AND NOT FLUX_ENABLE_NANOVG)
     if(Vulkan_FOUND)
         set(FLUX_VULKAN_AVAILABLE ON)
     else()
-        message(FATAL_ERROR "Vulkan not found. Install the Vulkan SDK or configure with -DFLUX_ENABLE_NANOVG=ON for OpenGL/NanoVG.")
+        message(FATAL_ERROR "Vulkan not found. Install the Vulkan SDK.")
     endif()
 endif()
 
@@ -254,33 +205,6 @@ if(FLUX_VULKAN_AVAILABLE)
     FetchContent_MakeAvailable(VulkanMemoryAllocator)
 
     list(APPEND FLUX_SOURCES src/GPU/Vulkan/VulkanDevice.cpp)
-endif()
-
-# Build NanoVG (optional, non-macOS only)
-if(FLUX_ENABLE_NANOVG AND NOT APPLE)
-    add_library(nanovg STATIC
-        ${NANOVG_SOURCE_DIR}/src/nanovg.c
-        ${NANOVG_SOURCE_DIR}/src/nanovg_gl.c
-        ${NANOVG_SOURCE_DIR}/src/nanovg_gl_utils.c
-    )
-
-    target_include_directories(nanovg PUBLIC
-        ${NANOVG_SOURCE_DIR}/src
-        ${FLUX_STB_SHIM_DIR}
-    )
-    target_include_directories(nanovg PRIVATE ${FLUX_GL_SHIM_DIR})
-
-    target_link_libraries(nanovg PUBLIC
-        Freetype::Freetype
-        OpenGL::GL
-    )
-
-    set_target_properties(nanovg PROPERTIES
-        C_STANDARD 99
-        C_STANDARD_REQUIRED ON
-    )
-
-    target_compile_definitions(nanovg PRIVATE NANOVG_GL2 FONS_USE_FREETYPE)
 endif()
 
 # Flux static library
@@ -300,11 +224,6 @@ target_link_libraries(flux PUBLIC
 )
 if(NOT APPLE)
     target_link_libraries(flux PUBLIC SDL3::SDL3)
-endif()
-
-if(FLUX_ENABLE_NANOVG AND NOT APPLE)
-    target_link_libraries(flux PUBLIC OpenGL::GL nanovg)
-    target_compile_definitions(flux PUBLIC FLUX_HAS_NANOVG=1)
 endif()
 
 if(APPLE)

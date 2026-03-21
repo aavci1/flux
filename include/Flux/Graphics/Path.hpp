@@ -82,7 +82,7 @@ public:
     };
 
     // ============================================================================
-    // ITERATION API — used by NanoVG*, PathFlattener, etc.
+    // ITERATION API — used by PathFlattener, CommandCompiler, etc.
     // ============================================================================
 
     struct CommandView {

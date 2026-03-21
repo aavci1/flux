@@ -3,7 +3,6 @@
 namespace flux {
 
 enum class RenderBackendType {
-    NanoVG,
     GPU_Metal,
     GPU_Vulkan,
     GPU_Auto

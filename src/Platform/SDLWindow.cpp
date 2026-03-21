@@ -1,7 +1,4 @@
 #include <Flux/Platform/SDLWindow.hpp>
-#if defined(FLUX_HAS_NANOVG)
-#include <Flux/Platform/NanoVGRenderer.hpp>
-#endif
 #include <Flux/Platform/GPUPlatformRenderer.hpp>
 #include <Flux/Platform/NativeGraphicsSurface.hpp>
 #include <Flux/Core/Window.hpp>
@@ -18,36 +15,13 @@ SDLWindow::SDLWindow(const std::string& title, const Size& size, bool resizable,
     , fullscreen_(fullscreen)
     , backendType_(backend)
 {
-#if !defined(FLUX_HAS_NANOVG)
-    if (backend == RenderBackendType::NanoVG) {
-        throw std::runtime_error(
-            "NanoVG backend was not built; configure CMake with -DFLUX_ENABLE_NANOVG=ON");
-    }
-#endif
-    bool useGPU = (backend != RenderBackendType::NanoVG);
-
-    if (useGPU && backend == RenderBackendType::GPU_Auto) {
+    if (backend == RenderBackendType::GPU_Auto) {
         backendType_ = RenderBackendType::GPU_Vulkan;
     }
 
-    if (!useGPU) {
-#if defined(FLUX_HAS_NANOVG)
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
-        SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
-        SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-#endif
-    }
-
-    Uint64 flags = SDL_WINDOW_HIGH_PIXEL_DENSITY;
+    Uint64 flags = SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_VULKAN;
     if (resizable) flags |= SDL_WINDOW_RESIZABLE;
     if (fullscreen) flags |= SDL_WINDOW_FULLSCREEN;
-
-    if (!useGPU) {
-        flags |= SDL_WINDOW_OPENGL;
-    } else {
-        flags |= SDL_WINDOW_VULKAN;
-    }
 
     window_ = SDL_CreateWindow(
         title.c_str(),
@@ -62,39 +36,15 @@ SDLWindow::SDLWindow(const std::string& title, const Size& size, bool resizable,
 
     float dpi = SDL_GetWindowDisplayScale(window_);
 
-    if (!useGPU) {
-#if defined(FLUX_HAS_NANOVG)
-        glContext_ = SDL_GL_CreateContext(window_);
-        if (!glContext_) {
-            SDL_DestroyWindow(window_);
-            window_ = nullptr;
-            throw std::runtime_error(std::string("Failed to create GL context: ") + SDL_GetError());
-        }
-        SDL_GL_MakeCurrent(window_, glContext_);
-        SDL_GL_SetSwapInterval(1);
-
-        auto nanoRenderer = std::make_unique<NanoVGRenderer>();
-        if (!nanoRenderer->initialize(
-                static_cast<int>(size.width),
-                static_cast<int>(size.height),
-                dpi, dpi)) {
-            throw std::runtime_error("Failed to initialize NanoVG renderer");
-        }
-        renderer_ = std::move(nanoRenderer);
-#else
-        throw std::runtime_error("NanoVG backend unavailable");
-#endif
-    } else {
-        auto gpuRenderer = std::make_unique<GPUPlatformRenderer>(gpu::Backend::Vulkan);
-        gpuRenderer->setGraphicsSurface(gpu::NativeGraphicsSurface::fromSdlWindow(window_));
-        if (!gpuRenderer->initialize(
-                static_cast<int>(size.width),
-                static_cast<int>(size.height),
-                dpi, dpi)) {
-            throw std::runtime_error("Failed to initialize GPU renderer");
-        }
-        renderer_ = std::move(gpuRenderer);
+    auto gpuRenderer = std::make_unique<GPUPlatformRenderer>(gpu::Backend::Vulkan);
+    gpuRenderer->setGraphicsSurface(gpu::NativeGraphicsSurface::fromSdlWindow(window_));
+    if (!gpuRenderer->initialize(
+            static_cast<int>(size.width),
+            static_cast<int>(size.height),
+            dpi, dpi)) {
+        throw std::runtime_error("Failed to initialize GPU renderer");
     }
+    renderer_ = std::move(gpuRenderer);
 
     windowMap_[SDL_GetWindowID(window_)] = this;
 
@@ -112,9 +62,6 @@ SDLWindow::~SDLWindow() {
         SDL_DestroyCursor(sdlCursor_);
     }
     renderer_.reset();
-    if (glContext_) {
-        SDL_GL_DestroyContext(glContext_);
-    }
     if (window_) {
         SDL_DestroyWindow(window_);
     }
@@ -150,9 +97,6 @@ PlatformRenderer* SDLWindow::platformRenderer() {
 }
 
 void SDLWindow::swapBuffers() {
-    if (window_ && glContext_) {
-        SDL_GL_SwapWindow(window_);
-    }
 }
 
 float SDLWindow::dpiScaleX() const {

@@ -452,8 +452,8 @@ MacWindow::MacWindow(const std::string& title, const Size& size, bool resizable,
     : size_(size)
     , fullscreen_(fullscreen)
     , backendType_(backend) {
-    if (backend == RenderBackendType::NanoVG || backend == RenderBackendType::GPU_Vulkan) {
-        throw std::runtime_error("macOS native build supports Metal only (invalid render backend)");
+    if (backend == RenderBackendType::GPU_Vulkan) {
+        throw std::runtime_error("macOS native build supports Metal only");
     }
     if (backend == RenderBackendType::GPU_Auto) backendType_ = RenderBackendType::GPU_Metal;
 
