@@ -87,13 +87,6 @@ Runtime::Runtime(int argc, char** argv) {
                 } catch (const std::exception&) {
                     ok = false;
                 }
-            } else if (std::strcmp(b, "nanovg") == 0) {
-#ifndef __APPLE__
-#if defined(FLUX_HAS_NANOVG)
-                factory->setRenderBackend(RenderBackendType::NanoVG);
-                ok = true;
-#endif
-#endif
             }
             if (!ok) {
                 backendArgInvalid_ = true;

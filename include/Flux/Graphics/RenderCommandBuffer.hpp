@@ -23,7 +23,7 @@ enum class CmdOp : uint32_t {
 class RenderCommandBuffer {
 public:
     // =========================================================================
-    // Sequential reader for consumers (CommandCompiler, NanoVGBackend, etc.)
+    // Sequential reader for consumers (CommandCompiler, etc.)
     // =========================================================================
 
     class Reader {
@@ -51,7 +51,7 @@ public:
     };
 
     // =========================================================================
-    // Command writing (producers: GPURenderContext, NanoVGRenderContext)
+    // Command writing (producers: GPURenderContext)
     // =========================================================================
 
     void pushSave()    { writeOp(CmdOp::Save); }

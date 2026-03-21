@@ -47,7 +47,6 @@ public:
 
 private:
     SDL_Window* window_ = nullptr;
-    SDL_GLContext glContext_ = nullptr;
     std::unique_ptr<PlatformRenderer> renderer_;
     Window* fluxWindow_ = nullptr;
     RenderBackendType backendType_ = RenderBackendType::GPU_Auto;
