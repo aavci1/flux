@@ -18,9 +18,6 @@ public:
     std::unordered_map<std::string, int>& imageCache() { return imageCache_; }
 
 private:
-    /// Set for the duration of execute() so text/image-path commands resolve interned strings.
-    const RenderCommandBuffer* cmdBuffer_ = nullptr;
-
     NVGcontext* nvg_;
     std::unordered_map<std::string, int> fontCache_;
     std::unordered_map<std::string, int> imageCache_;
@@ -29,29 +26,13 @@ private:
     StrokeStyle currentStroke_;
     TextStyle currentText_;
 
-    void dispatch(const CmdSave&);
-    void dispatch(const CmdRestore&);
-    void dispatch(const CmdTranslate&);
-    void dispatch(const CmdRotate&);
-    void dispatch(const CmdScale&);
-    void dispatch(const CmdSetOpacity&);
-    void dispatch(const CmdSetFillStyle&);
-    void dispatch(const CmdSetStrokeStyle&);
-    void dispatch(const CmdSetTextStyle&);
-    void dispatch(const CmdDrawRect&);
-    void dispatch(const CmdDrawCircle&);
-    void dispatch(const CmdDrawLine&);
-    void dispatch(const CmdDrawPath&);
-    void dispatch(const CmdDrawText&);
-    void dispatch(const CmdDrawTextBox&);
-    void dispatch(const CmdDrawImage&);
-    void dispatch(const CmdDrawImagePath&);
-    void dispatch(const CmdClipPath&);
-    void dispatch(const CmdClear&);
-
     void applyFill();
     void applyStroke();
     int resolveFont(const std::string& name, FontWeight weight);
+
+    void drawPath(const Path& path);
+    void drawImage(int imageId, const Rect& rect, ImageFit fit,
+                   const CornerRadius& cr, float alpha);
 };
 
 } // namespace flux

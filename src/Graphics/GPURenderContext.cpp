@@ -23,12 +23,12 @@ void GPURenderContext::beginFrame() {
 }
 
 void GPURenderContext::clear(const Color& color) {
-    if (cmdBuf_) cmdBuf_->push(CmdClear{color});
+    if (cmdBuf_) cmdBuf_->pushClear(color);
 }
 
 void GPURenderContext::present() {
     RenderCommandBuffer* buf = cmdBuf_ ? cmdBuf_ : &ownedBuffer_;
-    if (gpuBackend_ && !buf->commands().empty()) {
+    if (gpuBackend_ && !buf->empty()) {
         gpuBackend_->execute(*buf);
     }
     cmdBuf_ = nullptr;
@@ -47,7 +47,7 @@ void GPURenderContext::updateDPIScale(float dpiScaleX, float dpiScaleY) {
 
 void GPURenderContext::save() {
     transformStack_.push_back(transform_);
-    if (cmdBuf_) cmdBuf_->push(CmdSave{});
+    if (cmdBuf_) cmdBuf_->pushSave();
 }
 
 void GPURenderContext::restore() {
@@ -55,7 +55,7 @@ void GPURenderContext::restore() {
         transform_ = transformStack_.back();
         transformStack_.pop_back();
     }
-    if (cmdBuf_) cmdBuf_->push(CmdRestore{});
+    if (cmdBuf_) cmdBuf_->pushRestore();
 }
 
 void GPURenderContext::reset() {
@@ -70,7 +70,7 @@ void GPURenderContext::translate(float x, float y) {
     transform_.matrix[5] += transform_.matrix[1] * x + transform_.matrix[3] * y;
     transform_.tx += x;
     transform_.ty += y;
-    if (cmdBuf_) cmdBuf_->push(CmdTranslate{x, y});
+    if (cmdBuf_) cmdBuf_->pushTranslate(x, y);
 }
 
 void GPURenderContext::rotate(float angle) {
@@ -84,7 +84,7 @@ void GPURenderContext::rotate(float angle) {
     transform_.matrix[2] = -m00 * si + m01 * co;
     transform_.matrix[1] = m10 * co + m11 * si;
     transform_.matrix[3] = -m10 * si + m11 * co;
-    if (cmdBuf_) cmdBuf_->push(CmdRotate{angle});
+    if (cmdBuf_) cmdBuf_->pushRotate(angle);
 }
 
 void GPURenderContext::scale(float sx, float sy) {
@@ -94,7 +94,7 @@ void GPURenderContext::scale(float sx, float sy) {
     transform_.matrix[2] *= sy;
     transform_.matrix[1] *= sx;
     transform_.matrix[3] *= sy;
-    if (cmdBuf_) cmdBuf_->push(CmdScale{sx, sy});
+    if (cmdBuf_) cmdBuf_->pushScale(sx, sy);
 }
 
 void GPURenderContext::skewX(float) {}
@@ -119,7 +119,7 @@ void GPURenderContext::getTransform(float* matrix) {
 void GPURenderContext::setCompositeOperation(CompositeOperation) {}
 
 void GPURenderContext::setOpacity(float alpha) {
-    if (cmdBuf_) cmdBuf_->push(CmdSetOpacity{alpha});
+    if (cmdBuf_) cmdBuf_->pushSetOpacity(alpha);
 }
 
 void GPURenderContext::setShapeAntiAlias(bool) {}
@@ -151,7 +151,7 @@ void GPURenderContext::setDashPattern(const std::vector<float>& pattern, float o
 
 void GPURenderContext::setStrokeStyle(const StrokeStyle& style) {
     currentStroke_ = style;
-    if (cmdBuf_) cmdBuf_->push(CmdSetStrokeStyle{style});
+    if (cmdBuf_) cmdBuf_->pushSetStrokeStyle(style);
 }
 
 void GPURenderContext::setFillColor(const Color& color) {
@@ -165,37 +165,37 @@ void GPURenderContext::setPathWinding(PathWinding winding) {
 
 void GPURenderContext::setFillStyle(const FillStyle& style) {
     currentFill_ = style;
-    if (cmdBuf_) cmdBuf_->push(CmdSetFillStyle{style});
+    if (cmdBuf_) cmdBuf_->pushSetFillStyle(style);
 }
 
 void GPURenderContext::drawPath(const Path& path) {
     if (path.isEmpty()) return;
-    if (cmdBuf_) cmdBuf_->push(CmdDrawPath{path});
+    if (cmdBuf_) cmdBuf_->pushDrawPath(path);
 }
 
 void GPURenderContext::drawCircle(const Point& center, float radius) {
-    if (cmdBuf_) cmdBuf_->push(CmdDrawCircle{center, radius});
+    if (cmdBuf_) cmdBuf_->pushDrawCircle(center, radius);
 }
 
 void GPURenderContext::drawLine(const Point& start, const Point& end) {
-    if (cmdBuf_) cmdBuf_->push(CmdDrawLine{start, end});
+    if (cmdBuf_) cmdBuf_->pushDrawLine(start, end);
 }
 
 void GPURenderContext::drawRect(const Rect& rect, const CornerRadius& cornerRadius) {
-    if (cmdBuf_) cmdBuf_->push(CmdDrawRect{rect, cornerRadius});
+    if (cmdBuf_) cmdBuf_->pushDrawRect(rect, cornerRadius);
 }
 
 void GPURenderContext::drawEllipse(const Point& center, float radiusX, float radiusY) {
     Path p;
     p.ellipse(center, radiusX, radiusY);
-    if (cmdBuf_) cmdBuf_->push(CmdDrawPath{p});
+    if (cmdBuf_) cmdBuf_->pushDrawPath(std::move(p));
 }
 
 void GPURenderContext::drawArc(const Point& center, float radius,
                                 float startAngle, float endAngle, bool clockwise) {
     Path p;
     p.arc(center, radius, startAngle, endAngle, clockwise);
-    if (cmdBuf_) cmdBuf_->push(CmdDrawPath{p});
+    if (cmdBuf_) cmdBuf_->pushDrawPath(std::move(p));
 }
 
 void GPURenderContext::setFont(const std::string& name, FontWeight weight) {
@@ -219,14 +219,14 @@ void GPURenderContext::setLineHeight(float height) {
 
 void GPURenderContext::setTextStyle(const TextStyle& style) {
     currentTextStyle_ = style;
-    if (cmdBuf_) cmdBuf_->push(CmdSetTextStyle{style});
+    if (cmdBuf_) cmdBuf_->pushSetTextStyle(style);
 }
 
 void GPURenderContext::drawText(const std::string& text, const Point& position,
                                 HorizontalAlignment hAlign, VerticalAlignment vAlign) {
     if (cmdBuf_) {
         uint32_t sid = cmdBuf_->internString(std::string(text));
-        cmdBuf_->push(CmdDrawText{sid, position, hAlign, vAlign});
+        cmdBuf_->pushDrawText(sid, position, hAlign, vAlign);
     }
 }
 
@@ -234,7 +234,7 @@ void GPURenderContext::drawTextBox(const std::string& text, const Point& positio
                                     float maxWidth, HorizontalAlignment hAlign) {
     if (cmdBuf_) {
         uint32_t sid = cmdBuf_->internString(std::string(text));
-        cmdBuf_->push(CmdDrawTextBox{sid, position, maxWidth, hAlign});
+        cmdBuf_->pushDrawTextBox(sid, position, maxWidth, hAlign);
     }
 }
 
@@ -302,19 +302,19 @@ void GPURenderContext::deleteImage(int) {}
 
 void GPURenderContext::drawImage(int imageId, const Rect& rect, ImageFit fit,
                                   const CornerRadius& cornerRadius, float alpha) {
-    if (cmdBuf_) cmdBuf_->push(CmdDrawImage{imageId, rect, fit, cornerRadius, alpha});
+    if (cmdBuf_) cmdBuf_->pushDrawImage(imageId, rect, fit, cornerRadius, alpha);
 }
 
 void GPURenderContext::drawImage(const std::string& path, const Rect& rect, ImageFit fit,
                                   const CornerRadius& cornerRadius, float alpha) {
     if (cmdBuf_) {
         uint32_t pid = cmdBuf_->internString(std::string(path));
-        cmdBuf_->push(CmdDrawImagePath{pid, rect, fit, cornerRadius, alpha});
+        cmdBuf_->pushDrawImagePath(pid, rect, fit, cornerRadius, alpha);
     }
 }
 
 void GPURenderContext::clipPath(const Path& path) {
-    if (cmdBuf_) cmdBuf_->push(CmdClipPath{path});
+    if (cmdBuf_) cmdBuf_->pushClipPath(path);
 }
 
 void GPURenderContext::resetClip() {}

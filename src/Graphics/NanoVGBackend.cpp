@@ -7,137 +7,249 @@
 namespace flux {
 
 void NanoVGBackend::execute(const RenderCommandBuffer& buffer) {
-    cmdBuffer_ = &buffer;
-    for (const auto& cmd : buffer.commands()) {
-        std::visit([this](const auto& c) { dispatch(c); }, cmd);
+    auto r = buffer.reader();
+    while (r.hasNext()) {
+        CmdOp op = r.nextOp();
+        switch (op) {
+            case CmdOp::Save:    nvgSave(nvg_);    break;
+            case CmdOp::Restore: nvgRestore(nvg_);  break;
+
+            case CmdOp::Translate: {
+                float x = r.readFloat(), y = r.readFloat();
+                nvgTranslate(nvg_, x, y);
+                break;
+            }
+            case CmdOp::Rotate:
+                nvgRotate(nvg_, r.readFloat());
+                break;
+            case CmdOp::Scale: {
+                float sx = r.readFloat(), sy = r.readFloat();
+                nvgScale(nvg_, sx, sy);
+                break;
+            }
+
+            case CmdOp::SetOpacity:
+                nvgGlobalAlpha(nvg_, r.readFloat());
+                break;
+
+            case CmdOp::SetFillStyle: {
+                const FillStyle& s = buffer.fillStyle(r.readUint32());
+                currentFill_ = s;
+                NVGpaint paint;
+                switch (s.type) {
+                    case FillStyle::Type::None:
+                        paint = nvgLinearGradient(nvg_, 0, 0, 0, 0,
+                            nvgRGBAf(0, 0, 0, 0), nvgRGBAf(0, 0, 0, 0));
+                        break;
+                    case FillStyle::Type::Solid:
+                        paint = nvgLinearGradient(nvg_, 0, 0, 0, 0,
+                            nvgRGBAf(s.color.r, s.color.g, s.color.b, s.color.a),
+                            nvgRGBAf(s.color.r, s.color.g, s.color.b, s.color.a));
+                        break;
+                    case FillStyle::Type::LinearGradient:
+                        paint = nvgLinearGradient(nvg_,
+                            s.startPoint.x, s.startPoint.y, s.endPoint.x, s.endPoint.y,
+                            nvgRGBAf(s.startColor.r, s.startColor.g, s.startColor.b, s.startColor.a),
+                            nvgRGBAf(s.endColor.r, s.endColor.g, s.endColor.b, s.endColor.a));
+                        break;
+                    case FillStyle::Type::RadialGradient:
+                        paint = nvgRadialGradient(nvg_,
+                            s.center.x, s.center.y, s.innerRadius, s.outerRadius,
+                            nvgRGBAf(s.startColor.r, s.startColor.g, s.startColor.b, s.startColor.a),
+                            nvgRGBAf(s.endColor.r, s.endColor.g, s.endColor.b, s.endColor.a));
+                        break;
+                    case FillStyle::Type::BoxGradient:
+                        paint = nvgBoxGradient(nvg_,
+                            s.bounds.x, s.bounds.y, s.bounds.width, s.bounds.height,
+                            s.cornerRadius, s.feather,
+                            nvgRGBAf(s.startColor.r, s.startColor.g, s.startColor.b, s.startColor.a),
+                            nvgRGBAf(s.endColor.r, s.endColor.g, s.endColor.b, s.endColor.a));
+                        break;
+                    case FillStyle::Type::ImagePattern:
+                        paint = nvgImagePattern(nvg_,
+                            s.imageOrigin.x, s.imageOrigin.y,
+                            s.imageSize.width, s.imageSize.height,
+                            s.imageAngle, s.imageId, s.imageAlpha);
+                        break;
+                }
+                nvgFillPaint(nvg_, paint);
+                int winding = (s.winding == PathWinding::Clockwise) ? NVG_CW : NVG_CCW;
+                nvgPathWinding(nvg_, winding);
+                break;
+            }
+
+            case CmdOp::SetStrokeStyle: {
+                const StrokeStyle& s = buffer.strokeStyle(r.readUint32());
+                currentStroke_ = s;
+                nvgStrokeColor(nvg_, nvgRGBAf(s.color.r, s.color.g, s.color.b, s.color.a));
+                nvgStrokeWidth(nvg_, s.width);
+                int cap = NVG_BUTT;
+                switch (s.cap) {
+                    case LineCap::Butt:   cap = NVG_BUTT;   break;
+                    case LineCap::Round:  cap = NVG_ROUND;  break;
+                    case LineCap::Square: cap = NVG_SQUARE; break;
+                }
+                nvgLineCap(nvg_, cap);
+                int join = NVG_MITER;
+                switch (s.join) {
+                    case LineJoin::Miter: join = NVG_MITER; break;
+                    case LineJoin::Round: join = NVG_ROUND; break;
+                    case LineJoin::Bevel: join = NVG_BEVEL; break;
+                }
+                nvgLineJoin(nvg_, join);
+                nvgMiterLimit(nvg_, s.miterLimit);
+                break;
+            }
+
+            case CmdOp::SetTextStyle: {
+                const TextStyle& s = buffer.textStyle(r.readUint32());
+                currentText_ = s;
+                int font = resolveFont(s.fontName, s.weight);
+                nvgFontFaceId(nvg_, font);
+                nvgFontSize(nvg_, s.size);
+                nvgTextLetterSpacing(nvg_, s.letterSpacing);
+                nvgTextLineHeight(nvg_, s.lineHeight);
+                break;
+            }
+
+            case CmdOp::DrawRect: {
+                Rect b{r.readFloat(), r.readFloat(), r.readFloat(), r.readFloat()};
+                CornerRadius cr{r.readFloat(), r.readFloat(), r.readFloat(), r.readFloat()};
+                nvgBeginPath(nvg_);
+                if (cr.isZero()) {
+                    nvgRect(nvg_, b.x, b.y, b.width, b.height);
+                } else if (cr.isUniform()) {
+                    nvgRoundedRect(nvg_, b.x, b.y, b.width, b.height, cr.topLeft);
+                } else {
+                    nvgRoundedRectVarying(nvg_, b.x, b.y, b.width, b.height,
+                        cr.topLeft, cr.topRight, cr.bottomRight, cr.bottomLeft);
+                }
+                applyFill();
+                applyStroke();
+                break;
+            }
+
+            case CmdOp::DrawCircle: {
+                float cx = r.readFloat(), cy = r.readFloat(), radius = r.readFloat();
+                nvgBeginPath(nvg_);
+                nvgCircle(nvg_, cx, cy, radius);
+                applyFill();
+                applyStroke();
+                break;
+            }
+
+            case CmdOp::DrawLine: {
+                float x0 = r.readFloat(), y0 = r.readFloat();
+                float x1 = r.readFloat(), y1 = r.readFloat();
+                nvgBeginPath(nvg_);
+                nvgMoveTo(nvg_, x0, y0);
+                nvgLineTo(nvg_, x1, y1);
+                applyStroke();
+                break;
+            }
+
+            case CmdOp::DrawPath: {
+                const Path& path = buffer.path(r.readUint32());
+                drawPath(path);
+                break;
+            }
+
+            case CmdOp::DrawText: {
+                uint32_t strId = r.readUint32();
+                float px = r.readFloat(), py = r.readFloat();
+                auto hAlign = static_cast<HorizontalAlignment>(r.readUint32());
+                auto vAlign = static_cast<VerticalAlignment>(r.readUint32());
+                const std::string& text = buffer.str(strId);
+                int align = 0;
+                switch (hAlign) {
+                    case HorizontalAlignment::leading:  align |= NVG_ALIGN_LEFT;   break;
+                    case HorizontalAlignment::center:   align |= NVG_ALIGN_CENTER; break;
+                    case HorizontalAlignment::trailing: align |= NVG_ALIGN_RIGHT;  break;
+                    case HorizontalAlignment::justify:  align |= NVG_ALIGN_LEFT;   break;
+                }
+                switch (vAlign) {
+                    case VerticalAlignment::top:    align |= NVG_ALIGN_TOP;    break;
+                    case VerticalAlignment::center: align |= NVG_ALIGN_MIDDLE; break;
+                    case VerticalAlignment::bottom: align |= NVG_ALIGN_BOTTOM; break;
+                }
+                nvgTextAlign(nvg_, align);
+                nvgText(nvg_, px, py, text.c_str(), nullptr);
+                break;
+            }
+
+            case CmdOp::DrawTextBox: {
+                uint32_t strId = r.readUint32();
+                float px = r.readFloat(), py = r.readFloat();
+                float maxWidth = r.readFloat();
+                auto hAlign = static_cast<HorizontalAlignment>(r.readUint32());
+                const std::string& text = buffer.str(strId);
+                int align = NVG_ALIGN_TOP;
+                switch (hAlign) {
+                    case HorizontalAlignment::leading:  align |= NVG_ALIGN_LEFT;   break;
+                    case HorizontalAlignment::center:   align |= NVG_ALIGN_CENTER; break;
+                    case HorizontalAlignment::trailing: align |= NVG_ALIGN_RIGHT;  break;
+                    case HorizontalAlignment::justify:  align |= NVG_ALIGN_LEFT;   break;
+                }
+                nvgTextAlign(nvg_, align);
+                nvgTextBox(nvg_, px, py, maxWidth, text.c_str(), nullptr);
+                break;
+            }
+
+            case CmdOp::DrawImage: {
+                int imageId = r.readInt32();
+                Rect rect{r.readFloat(), r.readFloat(), r.readFloat(), r.readFloat()};
+                auto fit = static_cast<ImageFit>(r.readUint32());
+                CornerRadius cr{r.readFloat(), r.readFloat(), r.readFloat(), r.readFloat()};
+                float alpha = r.readFloat();
+                drawImage(imageId, rect, fit, cr, alpha);
+                break;
+            }
+
+            case CmdOp::DrawImagePath: {
+                uint32_t pathStrId = r.readUint32();
+                Rect rect{r.readFloat(), r.readFloat(), r.readFloat(), r.readFloat()};
+                auto fit = static_cast<ImageFit>(r.readUint32());
+                CornerRadius cr{r.readFloat(), r.readFloat(), r.readFloat(), r.readFloat()};
+                float alpha = r.readFloat();
+                const std::string& imgPath = buffer.str(pathStrId);
+                auto it = imageCache_.find(imgPath);
+                int imgId = -1;
+                if (it != imageCache_.end()) {
+                    imgId = it->second;
+                } else {
+                    imgId = nvgCreateImage(nvg_, imgPath.c_str(), 0);
+                    if (imgId >= 0) imageCache_[imgPath] = imgId;
+                }
+                if (imgId >= 0) {
+                    drawImage(imgId, rect, fit, cr, alpha);
+                }
+                break;
+            }
+
+            case CmdOp::ClipPath: {
+                const Path& clipPath = buffer.path(r.readUint32());
+                Rect b = clipPath.getBounds();
+                nvgIntersectScissor(nvg_, b.x, b.y, b.width, b.height);
+                break;
+            }
+
+            case CmdOp::Clear: {
+                float cr = r.readFloat(), cg = r.readFloat(), cb = r.readFloat(), ca = r.readFloat();
+                nvgBeginPath(nvg_);
+                nvgRect(nvg_, 0, 0, 99999, 99999);
+                nvgFillColor(nvg_, nvgRGBAf(cr, cg, cb, ca));
+                nvgFill(nvg_);
+                break;
+            }
+        }
     }
-    cmdBuffer_ = nullptr;
 }
 
-// State
-void NanoVGBackend::dispatch(const CmdSave&) { nvgSave(nvg_); }
-void NanoVGBackend::dispatch(const CmdRestore&) { nvgRestore(nvg_); }
-
-// Transforms
-void NanoVGBackend::dispatch(const CmdTranslate& c) { nvgTranslate(nvg_, c.x, c.y); }
-void NanoVGBackend::dispatch(const CmdRotate& c) { nvgRotate(nvg_, c.angle); }
-void NanoVGBackend::dispatch(const CmdScale& c) { nvgScale(nvg_, c.sx, c.sy); }
-
-// Styles
-void NanoVGBackend::dispatch(const CmdSetOpacity& c) { nvgGlobalAlpha(nvg_, c.opacity); }
-
-void NanoVGBackend::dispatch(const CmdSetFillStyle& c) {
-    currentFill_ = c.style;
-    NVGpaint paint;
-    switch (c.style.type) {
-        case FillStyle::Type::None:
-            paint = nvgLinearGradient(nvg_, 0, 0, 0, 0,
-                nvgRGBAf(0, 0, 0, 0), nvgRGBAf(0, 0, 0, 0));
-            break;
-        case FillStyle::Type::Solid:
-            paint = nvgLinearGradient(nvg_, 0, 0, 0, 0,
-                nvgRGBAf(c.style.color.r, c.style.color.g, c.style.color.b, c.style.color.a),
-                nvgRGBAf(c.style.color.r, c.style.color.g, c.style.color.b, c.style.color.a));
-            break;
-        case FillStyle::Type::LinearGradient:
-            paint = nvgLinearGradient(nvg_,
-                c.style.startPoint.x, c.style.startPoint.y,
-                c.style.endPoint.x, c.style.endPoint.y,
-                nvgRGBAf(c.style.startColor.r, c.style.startColor.g, c.style.startColor.b, c.style.startColor.a),
-                nvgRGBAf(c.style.endColor.r, c.style.endColor.g, c.style.endColor.b, c.style.endColor.a));
-            break;
-        case FillStyle::Type::RadialGradient:
-            paint = nvgRadialGradient(nvg_,
-                c.style.center.x, c.style.center.y,
-                c.style.innerRadius, c.style.outerRadius,
-                nvgRGBAf(c.style.startColor.r, c.style.startColor.g, c.style.startColor.b, c.style.startColor.a),
-                nvgRGBAf(c.style.endColor.r, c.style.endColor.g, c.style.endColor.b, c.style.endColor.a));
-            break;
-        case FillStyle::Type::BoxGradient:
-            paint = nvgBoxGradient(nvg_,
-                c.style.bounds.x, c.style.bounds.y,
-                c.style.bounds.width, c.style.bounds.height,
-                c.style.cornerRadius, c.style.feather,
-                nvgRGBAf(c.style.startColor.r, c.style.startColor.g, c.style.startColor.b, c.style.startColor.a),
-                nvgRGBAf(c.style.endColor.r, c.style.endColor.g, c.style.endColor.b, c.style.endColor.a));
-            break;
-        case FillStyle::Type::ImagePattern:
-            paint = nvgImagePattern(nvg_,
-                c.style.imageOrigin.x, c.style.imageOrigin.y,
-                c.style.imageSize.width, c.style.imageSize.height,
-                c.style.imageAngle, c.style.imageId, c.style.imageAlpha);
-            break;
-    }
-    nvgFillPaint(nvg_, paint);
-    int winding = (c.style.winding == PathWinding::Clockwise) ? NVG_CW : NVG_CCW;
-    nvgPathWinding(nvg_, winding);
-}
-
-void NanoVGBackend::dispatch(const CmdSetStrokeStyle& c) {
-    currentStroke_ = c.style;
-    nvgStrokeColor(nvg_, nvgRGBAf(c.style.color.r, c.style.color.g, c.style.color.b, c.style.color.a));
-    nvgStrokeWidth(nvg_, c.style.width);
-    int cap = NVG_BUTT;
-    switch (c.style.cap) {
-        case LineCap::Butt: cap = NVG_BUTT; break;
-        case LineCap::Round: cap = NVG_ROUND; break;
-        case LineCap::Square: cap = NVG_SQUARE; break;
-    }
-    nvgLineCap(nvg_, cap);
-    int join = NVG_MITER;
-    switch (c.style.join) {
-        case LineJoin::Miter: join = NVG_MITER; break;
-        case LineJoin::Round: join = NVG_ROUND; break;
-        case LineJoin::Bevel: join = NVG_BEVEL; break;
-    }
-    nvgLineJoin(nvg_, join);
-    nvgMiterLimit(nvg_, c.style.miterLimit);
-}
-
-void NanoVGBackend::dispatch(const CmdSetTextStyle& c) {
-    currentText_ = c.style;
-    int font = resolveFont(c.style.fontName, c.style.weight);
-    nvgFontFaceId(nvg_, font);
-    nvgFontSize(nvg_, c.style.size);
-    nvgTextLetterSpacing(nvg_, c.style.letterSpacing);
-    nvgTextLineHeight(nvg_, c.style.lineHeight);
-}
-
-// Shapes
-void NanoVGBackend::dispatch(const CmdDrawRect& c) {
+void NanoVGBackend::drawPath(const Path& path) {
+    if (path.isEmpty()) return;
     nvgBeginPath(nvg_);
-    if (c.cornerRadius.isZero()) {
-        nvgRect(nvg_, c.bounds.x, c.bounds.y, c.bounds.width, c.bounds.height);
-    } else if (c.cornerRadius.isUniform()) {
-        nvgRoundedRect(nvg_, c.bounds.x, c.bounds.y, c.bounds.width, c.bounds.height, c.cornerRadius.topLeft);
-    } else {
-        nvgRoundedRectVarying(nvg_, c.bounds.x, c.bounds.y, c.bounds.width, c.bounds.height,
-            c.cornerRadius.topLeft, c.cornerRadius.topRight,
-            c.cornerRadius.bottomRight, c.cornerRadius.bottomLeft);
-    }
-    applyFill();
-    applyStroke();
-}
-
-void NanoVGBackend::dispatch(const CmdDrawCircle& c) {
-    nvgBeginPath(nvg_);
-    nvgCircle(nvg_, c.center.x, c.center.y, c.radius);
-    applyFill();
-    applyStroke();
-}
-
-void NanoVGBackend::dispatch(const CmdDrawLine& c) {
-    nvgBeginPath(nvg_);
-    nvgMoveTo(nvg_, c.from.x, c.from.y);
-    nvgLineTo(nvg_, c.to.x, c.to.y);
-    applyStroke();
-}
-
-void NanoVGBackend::dispatch(const CmdDrawPath& c) {
-    if (c.path.isEmpty()) return;
-    nvgBeginPath(nvg_);
-    for (size_t ci = 0; ci < c.path.commandCount(); ++ci) {
-        auto cv = c.path.command(ci);
+    for (size_t ci = 0; ci < path.commandCount(); ++ci) {
+        auto cv = path.command(ci);
         switch (cv.type) {
             case Path::CommandType::SetWinding: {
                 int w = (cv.winding == PathWinding::Clockwise) ? NVG_CW : NVG_CCW;
@@ -151,11 +263,13 @@ void NanoVGBackend::dispatch(const CmdDrawPath& c) {
                 if (cv.dataCount >= 2) nvgLineTo(nvg_, cv.data[0], cv.data[1]);
                 break;
             case Path::CommandType::QuadTo:
-                if (cv.dataCount >= 4) nvgQuadTo(nvg_, cv.data[0], cv.data[1], cv.data[2], cv.data[3]);
+                if (cv.dataCount >= 4)
+                    nvgQuadTo(nvg_, cv.data[0], cv.data[1], cv.data[2], cv.data[3]);
                 break;
             case Path::CommandType::BezierTo:
                 if (cv.dataCount >= 6)
-                    nvgBezierTo(nvg_, cv.data[0], cv.data[1], cv.data[2], cv.data[3], cv.data[4], cv.data[5]);
+                    nvgBezierTo(nvg_, cv.data[0], cv.data[1], cv.data[2],
+                               cv.data[3], cv.data[4], cv.data[5]);
                 break;
             case Path::CommandType::ArcTo:
                 if (cv.dataCount >= 5)
@@ -164,7 +278,8 @@ void NanoVGBackend::dispatch(const CmdDrawPath& c) {
             case Path::CommandType::Arc:
                 if (cv.dataCount >= 6) {
                     bool cw = cv.data[5] > 0.5f;
-                    nvgArc(nvg_, cv.data[0], cv.data[1], cv.data[2], cv.data[3], cv.data[4], cw ? NVG_CW : NVG_CCW);
+                    nvgArc(nvg_, cv.data[0], cv.data[1], cv.data[2],
+                          cv.data[3], cv.data[4], cw ? NVG_CW : NVG_CCW);
                 }
                 break;
             case Path::CommandType::Rect:
@@ -191,113 +306,49 @@ void NanoVGBackend::dispatch(const CmdDrawPath& c) {
     applyStroke();
 }
 
-// Text
-void NanoVGBackend::dispatch(const CmdDrawText& c) {
-    if (!cmdBuffer_) return;
-    const std::string& text = cmdBuffer_->str(c.textStrId);
-    int align = 0;
-    switch (c.hAlign) {
-        case HorizontalAlignment::leading: align |= NVG_ALIGN_LEFT; break;
-        case HorizontalAlignment::center: align |= NVG_ALIGN_CENTER; break;
-        case HorizontalAlignment::trailing: align |= NVG_ALIGN_RIGHT; break;
-        case HorizontalAlignment::justify: align |= NVG_ALIGN_LEFT; break;
-    }
-    switch (c.vAlign) {
-        case VerticalAlignment::top: align |= NVG_ALIGN_TOP; break;
-        case VerticalAlignment::center: align |= NVG_ALIGN_MIDDLE; break;
-        case VerticalAlignment::bottom: align |= NVG_ALIGN_BOTTOM; break;
-    }
-    nvgTextAlign(nvg_, align);
-    nvgText(nvg_, c.position.x, c.position.y, text.c_str(), nullptr);
-}
-
-void NanoVGBackend::dispatch(const CmdDrawTextBox& c) {
-    if (!cmdBuffer_) return;
-    const std::string& text = cmdBuffer_->str(c.textStrId);
-    int align = NVG_ALIGN_TOP;
-    switch (c.hAlign) {
-        case HorizontalAlignment::leading: align |= NVG_ALIGN_LEFT; break;
-        case HorizontalAlignment::center: align |= NVG_ALIGN_CENTER; break;
-        case HorizontalAlignment::trailing: align |= NVG_ALIGN_RIGHT; break;
-        case HorizontalAlignment::justify: align |= NVG_ALIGN_LEFT; break;
-    }
-    nvgTextAlign(nvg_, align);
-    nvgTextBox(nvg_, c.position.x, c.position.y, c.maxWidth, text.c_str(), nullptr);
-}
-
-// Images
-void NanoVGBackend::dispatch(const CmdDrawImage& c) {
+void NanoVGBackend::drawImage(int imageId, const Rect& rect, ImageFit fit,
+                               const CornerRadius& cr, float alpha) {
     int w, h;
-    nvgImageSize(nvg_, c.imageId, &w, &h);
+    nvgImageSize(nvg_, imageId, &w, &h);
     if (w <= 0 || h <= 0) return;
 
-    Rect imgRect = c.rect;
+    Rect imgRect = rect;
     float iw = static_cast<float>(w), ih = static_cast<float>(h);
-    switch (c.fit) {
+    switch (fit) {
         case ImageFit::Fill: break;
         case ImageFit::Cover: {
-            float s = std::max(c.rect.width / iw, c.rect.height / ih);
+            float s = std::max(rect.width / iw, rect.height / ih);
             float sw = iw * s, sh = ih * s;
-            imgRect = {c.rect.x + (c.rect.width - sw) / 2, c.rect.y + (c.rect.height - sh) / 2, sw, sh};
+            imgRect = {rect.x + (rect.width - sw) / 2, rect.y + (rect.height - sh) / 2, sw, sh};
             break;
         }
         case ImageFit::Contain: {
-            float s = std::min(c.rect.width / iw, c.rect.height / ih);
+            float s = std::min(rect.width / iw, rect.height / ih);
             float sw = iw * s, sh = ih * s;
-            imgRect = {c.rect.x + (c.rect.width - sw) / 2, c.rect.y + (c.rect.height - sh) / 2, sw, sh};
+            imgRect = {rect.x + (rect.width - sw) / 2, rect.y + (rect.height - sh) / 2, sw, sh};
             break;
         }
         case ImageFit::None: {
-            imgRect = {c.rect.x + (c.rect.width - iw) / 2, c.rect.y + (c.rect.height - ih) / 2, iw, ih};
+            imgRect = {rect.x + (rect.width - iw) / 2, rect.y + (rect.height - ih) / 2, iw, ih};
             break;
         }
     }
 
-    NVGpaint paint = nvgImagePattern(nvg_, imgRect.x, imgRect.y, imgRect.width, imgRect.height, 0, c.imageId, c.alpha);
+    NVGpaint paint = nvgImagePattern(nvg_, imgRect.x, imgRect.y, imgRect.width, imgRect.height,
+                                     0, imageId, alpha);
     nvgBeginPath(nvg_);
-    if (c.cornerRadius.isZero()) {
-        nvgRect(nvg_, c.rect.x, c.rect.y, c.rect.width, c.rect.height);
-    } else if (c.cornerRadius.isUniform()) {
-        nvgRoundedRect(nvg_, c.rect.x, c.rect.y, c.rect.width, c.rect.height, c.cornerRadius.topLeft);
+    if (cr.isZero()) {
+        nvgRect(nvg_, rect.x, rect.y, rect.width, rect.height);
+    } else if (cr.isUniform()) {
+        nvgRoundedRect(nvg_, rect.x, rect.y, rect.width, rect.height, cr.topLeft);
     } else {
-        nvgRoundedRectVarying(nvg_, c.rect.x, c.rect.y, c.rect.width, c.rect.height,
-            c.cornerRadius.topLeft, c.cornerRadius.topRight, c.cornerRadius.bottomRight, c.cornerRadius.bottomLeft);
+        nvgRoundedRectVarying(nvg_, rect.x, rect.y, rect.width, rect.height,
+            cr.topLeft, cr.topRight, cr.bottomRight, cr.bottomLeft);
     }
     nvgFillPaint(nvg_, paint);
     nvgFill(nvg_);
 }
 
-void NanoVGBackend::dispatch(const CmdDrawImagePath& c) {
-    if (!cmdBuffer_) return;
-    const std::string& path = cmdBuffer_->str(c.pathStrId);
-    auto it = imageCache_.find(path);
-    int imageId = -1;
-    if (it != imageCache_.end()) {
-        imageId = it->second;
-    } else {
-        imageId = nvgCreateImage(nvg_, path.c_str(), 0);
-        if (imageId >= 0) imageCache_[path] = imageId;
-    }
-    if (imageId >= 0) {
-        dispatch(CmdDrawImage{imageId, c.rect, c.fit, c.cornerRadius, c.alpha});
-    }
-}
-
-// Clipping — scissor is scoped by the surrounding CmdSave/CmdRestore pair
-void NanoVGBackend::dispatch(const CmdClipPath& c) {
-    Rect b = c.path.getBounds();
-    nvgIntersectScissor(nvg_, b.x, b.y, b.width, b.height);
-}
-
-// Clear
-void NanoVGBackend::dispatch(const CmdClear& c) {
-    nvgBeginPath(nvg_);
-    nvgRect(nvg_, 0, 0, 99999, 99999);
-    nvgFillColor(nvg_, nvgRGBAf(c.color.r, c.color.g, c.color.b, c.color.a));
-    nvgFill(nvg_);
-}
-
-// Helpers
 void NanoVGBackend::applyFill() {
     if (currentFill_.type != FillStyle::Type::None) nvgFill(nvg_);
 }

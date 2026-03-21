@@ -148,14 +148,18 @@ private:
     /// True if linear part is axis-aligned (scale + translation only, no rotation/shear).
     bool isAxisAligned() const;
     void startNewGroup(CompiledBatches& out);
-    void pushRect(CompiledBatches& out, const CmdDrawRect& cmd);
-    void pushCircle(CompiledBatches& out, const CmdDrawCircle& cmd);
-    void pushLine(CompiledBatches& out, const CmdDrawLine& cmd);
-    void pushText(CompiledBatches& out, const CmdDrawText& cmd, const RenderCommandBuffer& buffer);
-    void pushTextBox(CompiledBatches& out, const CmdDrawTextBox& cmd, const RenderCommandBuffer& buffer);
-    void pushPath(CompiledBatches& out, const CmdDrawPath& cmd);
-    void pushImage(CompiledBatches& out, const CmdDrawImage& cmd);
-    void pushImagePath(CompiledBatches& out, const CmdDrawImagePath& cmd, const RenderCommandBuffer& buffer);
+    void pushRect(CompiledBatches& out, const Rect& bounds, const CornerRadius& cr);
+    void pushCircle(CompiledBatches& out, const Point& center, float radius);
+    void pushLine(CompiledBatches& out, const Point& from, const Point& to);
+    void pushText(CompiledBatches& out, const std::string& text,
+                  const Point& pos, HorizontalAlignment hAlign, VerticalAlignment vAlign);
+    void pushTextBox(CompiledBatches& out, const std::string& text,
+                     const Point& pos, float maxWidth, HorizontalAlignment hAlign);
+    void pushPath(CompiledBatches& out, const Path& path);
+    void pushImage(CompiledBatches& out, int imageId, const Rect& rect,
+                   ImageFit fit, const CornerRadius& cr, float alpha);
+    void pushImagePath(CompiledBatches& out, const std::string& imgPath, const Rect& rect,
+                       ImageFit fit, const CornerRadius& cr, float alpha);
 
     void fillInstanceColors(SDFQuadInstance& inst) const;
     ImageInstance makeImageInstance(const Rect& rect, float alpha) const;
