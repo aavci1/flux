@@ -158,21 +158,8 @@ struct TextInput {
         float pad = inputPadding;
         float rad = inputCornerRadius;
         bool isFocused = ctx.isCurrentViewFocused();
-        bool isHovered = ctx.isCurrentViewHovered();
 
-        ctx.setFillStyle(FillStyle::solid(bgColor));
-        ctx.setStrokeStyle(StrokeStyle::none());
-        ctx.drawRect(bounds, CornerRadius(rad));
-
-        Color bc = isFocused ? static_cast<Color>(focusBorderColor)
-                 : isHovered ? static_cast<Color>(borderCol).lighten(0.3f)
-                 : static_cast<Color>(borderCol);
-        float bw = isFocused ? 2.0f : 1.0f;
-        Path border;
-        border.rect(bounds, CornerRadius(rad));
-        ctx.setFillStyle(FillStyle::none());
-        ctx.setStrokeStyle(StrokeStyle::solid(bc, bw));
-        ctx.drawPath(border);
+        ViewHelpers::drawInputFieldChrome(ctx, bounds, bgColor, borderCol, focusBorderColor, rad);
 
         Rect textArea = {bounds.x + pad, bounds.y, bounds.width - pad * 2, bounds.height};
         float fs = fontSize;

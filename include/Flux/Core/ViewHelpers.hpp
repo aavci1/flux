@@ -130,6 +130,27 @@ inline void drawBackgroundImageScaledToContain(RenderContext& ctx, const std::st
     ctx.drawImage(imagePath, bounds, ImageFit::Contain);
 }
 
+inline void drawInputFieldChrome(RenderContext& ctx, const Rect& bounds,
+                                 Color bgColor, Color borderCol, Color focusBorderColor,
+                                 float cornerRadius) {
+    bool isFocused = ctx.isCurrentViewFocused();
+    bool isHovered = ctx.isCurrentViewHovered();
+
+    ctx.setFillStyle(FillStyle::solid(bgColor));
+    ctx.setStrokeStyle(StrokeStyle::none());
+    ctx.drawRect(bounds, CornerRadius(cornerRadius));
+
+    Color bc = isFocused ? focusBorderColor
+             : isHovered ? borderCol.lighten(0.3f)
+             : borderCol;
+    float bw = isFocused ? 2.0f : 1.0f;
+    Path border;
+    border.rect(bounds, CornerRadius(cornerRadius));
+    ctx.setFillStyle(FillStyle::none());
+    ctx.setStrokeStyle(StrokeStyle::solid(bc, bw));
+    ctx.drawPath(border);
+}
+
 } // namespace ViewHelpers
 
 } // namespace flux
