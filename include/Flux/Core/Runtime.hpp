@@ -32,9 +32,7 @@ public:
         return *current_;
     }
 
-    void requestRedraw() {
-        needsRedraw_.store(true, std::memory_order_relaxed);
-    }
+    void requestRedraw();
 
     bool isTestMode() const { return testMode_; }
     int testPort() const { return testPort_; }

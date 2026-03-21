@@ -1,5 +1,6 @@
 #include <Flux/Core/Runtime.hpp>
 #include <Flux/Core/Window.hpp>
+#include <Flux/Platform/EventLoopWake.hpp>
 #include <Flux/Platform/PlatformRegistry.hpp>
 #include <Flux/Platform/PlatformWindowFactory.hpp>
 #include <Flux/Platform/PlatformWindow.hpp>
@@ -31,6 +32,11 @@ void requestApplicationRedraw() {
 
 uint64_t currentBodyGeneration() {
     return bodyGeneration_.load(std::memory_order_relaxed);
+}
+
+void Runtime::requestRedraw() {
+    needsRedraw_.store(true, std::memory_order_relaxed);
+    wakePlatformEventLoop();
 }
 
 Runtime::Runtime(int argc, char** argv) {
@@ -118,7 +124,7 @@ Window& Runtime::createWindow(const WindowConfig& config) {
     window->addObserver(this);
     Window& ref = *window;
     windows_.push_back(std::move(window));
-    needsRedraw_.store(true, std::memory_order_relaxed);
+    requestRedraw();
 
     if (testMode_) {
         ref.enableTestMode(testPort_, testSocketPath_);
@@ -171,7 +177,7 @@ int Runtime::run() {
 
 void Runtime::onRedrawRequested(Window* window) {
     (void)window;
-    needsRedraw_.store(true, std::memory_order_relaxed);
+    requestRedraw();
 }
 
 void Runtime::onWindowClosing(Window* window) {
