@@ -321,8 +321,10 @@ void GlyphAtlas::expandDirtyRect(uint32_t x, uint32_t y, uint32_t w, uint32_t h)
 }
 
 void GlyphAtlas::clearTextLayoutCaches() {
-    measureCache_.clear();
-    wrapLineCache_.clear();
+    measureLru_.clear();
+    measureIndex_.clear();
+    wrapLru_.clear();
+    wrapIndex_.clear();
 }
 
 void GlyphAtlas::markFullAtlasDirty() {
@@ -338,9 +340,10 @@ void GlyphAtlas::markFullAtlasDirty() {
 Size GlyphAtlas::measureText(const std::string& text, float fontSize, uint16_t fontIndex) {
     uint16_t fsz = static_cast<uint16_t>(fontSize);
     MeasureKey key{text, fsz, fontIndex};
-    auto hit = measureCache_.find(key);
-    if (hit != measureCache_.end()) {
-        return hit->second;
+    auto idxIt = measureIndex_.find(key);
+    if (idxIt != measureIndex_.end()) {
+        measureLru_.splice(measureLru_.end(), measureLru_, idxIt->second);
+        return idxIt->second->second;
     }
 
     float width = 0, maxH = 0;
@@ -357,10 +360,12 @@ Size GlyphAtlas::measureText(const std::string& text, float fontSize, uint16_t f
         }
     });
     Size sz{width, std::max(maxH, fontSize)};
-    if (measureCache_.size() >= kAtlasTextCacheMax) {
-        measureCache_.clear();
+    while (measureIndex_.size() >= kAtlasTextCacheMax) {
+        measureIndex_.erase(measureLru_.front().first);
+        measureLru_.pop_front();
     }
-    measureCache_.emplace(std::move(key), sz);
+    measureLru_.push_back({std::move(key), sz});
+    measureIndex_[measureLru_.back().first] = std::prev(measureLru_.end());
     return sz;
 }
 
@@ -381,9 +386,10 @@ std::vector<std::string> GlyphAtlas::wrapText(const std::string& text, float fon
     uint16_t fsz = static_cast<uint16_t>(fontSize);
     const int32_t wq = static_cast<int32_t>(std::round(maxWidth * 2.0f));
     WrapKey wkey{text, fsz, wq, fontIndex};
-    auto wit = wrapLineCache_.find(wkey);
-    if (wit != wrapLineCache_.end()) {
-        return wit->second;
+    auto widxIt = wrapIndex_.find(wkey);
+    if (widxIt != wrapIndex_.end()) {
+        wrapLru_.splice(wrapLru_.end(), wrapLru_, widxIt->second);
+        return widxIt->second->second;
     }
 
     std::vector<std::string> lines;
@@ -426,11 +432,14 @@ std::vector<std::string> GlyphAtlas::wrapText(const std::string& text, float fon
     if (!currentLine.empty()) lines.push_back(currentLine);
     if (lines.empty()) lines.push_back("");
 
-    if (wrapLineCache_.size() >= kAtlasTextCacheMax) {
-        wrapLineCache_.clear();
+    while (wrapIndex_.size() >= kAtlasTextCacheMax) {
+        wrapIndex_.erase(wrapLru_.front().first);
+        wrapLru_.pop_front();
     }
-    auto [stored, _] = wrapLineCache_.emplace(WrapKey{text, fsz, wq, fontIndex}, std::move(lines));
-    return stored->second;
+    wrapLru_.push_back({WrapKey{text, fsz, wq, fontIndex}, std::move(lines)});
+    auto lastIt = std::prev(wrapLru_.end());
+    wrapIndex_[lastIt->first] = lastIt;
+    return lastIt->second;
 }
 
 std::vector<GlyphInstance> GlyphAtlas::layoutText(const std::string& text, float x, float y,

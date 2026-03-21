@@ -4,6 +4,7 @@
 #include <Flux/GPU/Device.hpp>
 #include <ft2build.h>
 #include FT_FREETYPE_H
+#include <list>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -166,8 +167,18 @@ private:
     };
 
     static constexpr std::size_t kAtlasTextCacheMax = 2048;
-    std::unordered_map<MeasureKey, Size, MeasureKeyHash> measureCache_;
-    std::unordered_map<WrapKey, std::vector<std::string>, WrapKeyHash> wrapLineCache_;
+
+    using MeasureEntry = std::pair<MeasureKey, Size>;
+    std::list<MeasureEntry> measureLru_;
+    std::unordered_map<MeasureKey,
+                       std::list<MeasureEntry>::iterator,
+                       MeasureKeyHash> measureIndex_;
+
+    using WrapEntry = std::pair<WrapKey, std::vector<std::string>>;
+    std::list<WrapEntry> wrapLru_;
+    std::unordered_map<WrapKey,
+                       std::list<WrapEntry>::iterator,
+                       WrapKeyHash> wrapIndex_;
 };
 
 } // namespace flux

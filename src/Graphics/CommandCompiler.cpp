@@ -503,12 +503,15 @@ void CommandCompiler::pushText(CompiledBatches& out, const std::string& text,
 void CommandCompiler::pushPath(CompiledBatches& out, const Path& path) {
     auto keyOpt = makePathTessCacheKey(path, out.viewportWidth, out.viewportHeight);
     if (keyOpt) {
-        auto it = pathTessCache_.find(*keyOpt);
-        if (it != pathTessCache_.end()) {
+        auto idxIt = pathTessIndex_.find(*keyOpt);
+        if (idxIt != pathTessIndex_.end()) {
+            auto lruIt = idxIt->second;
+            pathTessLru_.splice(pathTessLru_.end(), pathTessLru_, lruIt);
+            const auto& cached = lruIt->second;
             size_t pathStart = out.pathVertices.size();
             auto& g = out.groups.back();
-            out.pathVertices.insert(out.pathVertices.end(), it->second.begin(), it->second.end());
-            g.pathCount += static_cast<uint32_t>(it->second.size());
+            out.pathVertices.insert(out.pathVertices.end(), cached.begin(), cached.end());
+            g.pathCount += static_cast<uint32_t>(cached.size());
             const size_t pathEnd = out.pathVertices.size();
             if (pathEnd > pathStart) {
                 g.drawOps.push_back({DrawOpType::Path, static_cast<uint32_t>(pathStart - g.pathOffset),
@@ -555,10 +558,13 @@ void CommandCompiler::pushPath(CompiledBatches& out, const Path& path) {
     g.pathCount += static_cast<uint32_t>(built.size());
 
     if (keyOpt && !built.empty() && built.size() <= 512000) {
-        if (pathTessCache_.size() >= kPathTessCacheMaxEntries) {
-            pathTessCache_.clear();
+        while (pathTessIndex_.size() >= kPathTessCacheMaxEntries) {
+            auto& oldest = pathTessLru_.front();
+            pathTessIndex_.erase(oldest.first);
+            pathTessLru_.pop_front();
         }
-        pathTessCache_.emplace(*keyOpt, std::move(built));
+        pathTessLru_.push_back({*keyOpt, std::move(built)});
+        pathTessIndex_[*keyOpt] = std::prev(pathTessLru_.end());
     }
 
     const size_t pathEnd = out.pathVertices.size();
