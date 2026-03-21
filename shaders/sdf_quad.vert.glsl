@@ -10,6 +10,7 @@ layout(location = 3) in vec4 inFillColor;
 layout(location = 4) in vec4 inStrokeColor;
 layout(location = 5) in vec2 inStrokeOpacity; // x=strokeWidth, y=opacity
 layout(location = 6) in vec2 inViewport;   // viewport width, height
+layout(location = 7) in vec4 inRotationPad; // .x = radians, screen rotation of local quad
 
 layout(location = 0) out vec2 fragLocalPos;
 layout(location = 1) out vec2 fragHalfSize;
@@ -26,12 +27,17 @@ void main() {
     float pad = max(inStrokeOpacity.x, 1.0);
     vec2 paddedHalf = halfSize + pad;
 
-    vec2 screenPos = center + inPos * paddedHalf;
+    vec2 localOffset = inPos * paddedHalf;
+    float cr = cos(inRotationPad.x);
+    float sr = sin(inRotationPad.x);
+    vec2 worldOffset = vec2(localOffset.x * cr - localOffset.y * sr,
+                            localOffset.x * sr + localOffset.y * cr);
+    vec2 screenPos = center + worldOffset;
     vec2 ndc = (screenPos / inViewport) * 2.0 - 1.0;
     ndc.y = -ndc.y;
     gl_Position = vec4(ndc, 0.0, 1.0);
 
-    fragLocalPos = inPos * paddedHalf;
+    fragLocalPos = localOffset;
     fragHalfSize = halfSize;
     fragCorners = inCorners;
     fragFillColor = inFillColor;
