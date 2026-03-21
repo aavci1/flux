@@ -5,6 +5,7 @@
 
 #include <stack>
 #include <unordered_map>
+#include <list>
 #include <memory>
 
 namespace flux {
@@ -22,8 +23,11 @@ private:
     // Font cache
     std::unordered_map<std::string, int> fontCache_;
 
-    // Image cache
-    std::unordered_map<std::string, int> imageCache_;
+    // Image cache with LRU eviction
+    static constexpr size_t kMaxImageCacheEntries = 256;
+    struct ImageCacheEntry { std::string path; int nvgId; };
+    std::list<ImageCacheEntry> imageLru_;
+    std::unordered_map<std::string, std::list<ImageCacheEntry>::iterator> imageIndex_;
 
     // Current styles
     FillStyle currentFillStyle_;

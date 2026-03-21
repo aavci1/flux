@@ -212,14 +212,7 @@ void NanoVGBackend::execute(const RenderCommandBuffer& buffer) {
                 CornerRadius cr{r.readFloat(), r.readFloat(), r.readFloat(), r.readFloat()};
                 float alpha = r.readFloat();
                 const std::string& imgPath = buffer.str(pathStrId);
-                auto it = imageCache_.find(imgPath);
-                int imgId = -1;
-                if (it != imageCache_.end()) {
-                    imgId = it->second;
-                } else {
-                    imgId = nvgCreateImage(nvg_, imgPath.c_str(), 0);
-                    if (imgId >= 0) imageCache_[imgPath] = imgId;
-                }
+                int imgId = getOrCreateImage(imgPath);
                 if (imgId >= 0) {
                     drawImage(imgId, rect, fit, cr, alpha);
                 }
@@ -372,6 +365,28 @@ int NanoVGBackend::resolveFont(const std::string& name, FontWeight weight) {
     if (font == -1) font = 0;
     fontCache_[key] = font;
     return font;
+}
+
+int NanoVGBackend::getOrCreateImage(const std::string& path) {
+    auto it = imageIndex_.find(path);
+    if (it != imageIndex_.end()) {
+        imageLru_.splice(imageLru_.end(), imageLru_, it->second);
+        return it->second->nvgId;
+    }
+
+    int imgId = nvgCreateImage(nvg_, path.c_str(), 0);
+    if (imgId < 0) return -1;
+
+    if (imageIndex_.size() >= kMaxImageCacheEntries) {
+        auto& front = imageLru_.front();
+        nvgDeleteImage(nvg_, front.nvgId);
+        imageIndex_.erase(front.path);
+        imageLru_.pop_front();
+    }
+
+    imageLru_.push_back({path, imgId});
+    imageIndex_[path] = std::prev(imageLru_.end());
+    return imgId;
 }
 
 } // namespace flux
