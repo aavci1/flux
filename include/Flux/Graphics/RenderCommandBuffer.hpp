@@ -1,9 +1,11 @@
 #pragma once
 
 #include <Flux/Graphics/RenderContext.hpp>
+#include <cstdint>
+#include <string>
+#include <unordered_map>
 #include <variant>
 #include <vector>
-#include <string>
 
 namespace flux {
 
@@ -40,14 +42,14 @@ struct CmdDrawPath { Path path; };
 // Text drawing (uses current text style and fill color)
 // =============================================================================
 struct CmdDrawText {
-    std::string text;
+    uint32_t textStrId = 0;
     Point position;
     HorizontalAlignment hAlign;
     VerticalAlignment vAlign;
 };
 
 struct CmdDrawTextBox {
-    std::string text;
+    uint32_t textStrId = 0;
     Point position;
     float maxWidth;
     HorizontalAlignment hAlign;
@@ -65,7 +67,7 @@ struct CmdDrawImage {
 };
 
 struct CmdDrawImagePath {
-    std::string path;
+    uint32_t pathStrId = 0;
     Rect rect;
     ImageFit fit;
     CornerRadius cornerRadius;
@@ -98,14 +100,32 @@ class RenderCommandBuffer {
 public:
     void push(RenderCommand cmd) { commands_.push_back(std::move(cmd)); }
 
+    /// Store string in the frame pool and return a stable id (deduplicated within the frame).
+    uint32_t internString(std::string s) {
+        auto it = stringLookup_.find(s);
+        if (it != stringLookup_.end()) return it->second;
+        uint32_t id = static_cast<uint32_t>(stringPool_.size());
+        stringPool_.push_back(std::move(s));
+        stringLookup_[stringPool_.back()] = id;
+        return id;
+    }
+
+    const std::string& str(uint32_t id) const { return stringPool_.at(id); }
+
     const std::vector<RenderCommand>& commands() const { return commands_; }
     size_t size() const { return commands_.size(); }
     bool empty() const { return commands_.empty(); }
-    void clear() { commands_.clear(); }
+    void clear() {
+        commands_.clear();
+        stringPool_.clear();
+        stringLookup_.clear();
+    }
     void reserve(size_t n) { commands_.reserve(n); }
 
 private:
     std::vector<RenderCommand> commands_;
+    std::vector<std::string> stringPool_;
+    std::unordered_map<std::string, uint32_t> stringLookup_;
 };
 
 class RenderBackend {

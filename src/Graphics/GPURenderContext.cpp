@@ -224,12 +224,18 @@ void GPURenderContext::setTextStyle(const TextStyle& style) {
 
 void GPURenderContext::drawText(const std::string& text, const Point& position,
                                 HorizontalAlignment hAlign, VerticalAlignment vAlign) {
-    if (cmdBuf_) cmdBuf_->push(CmdDrawText{text, position, hAlign, vAlign});
+    if (cmdBuf_) {
+        uint32_t sid = cmdBuf_->internString(std::string(text));
+        cmdBuf_->push(CmdDrawText{sid, position, hAlign, vAlign});
+    }
 }
 
 void GPURenderContext::drawTextBox(const std::string& text, const Point& position,
                                     float maxWidth, HorizontalAlignment hAlign) {
-    if (cmdBuf_) cmdBuf_->push(CmdDrawTextBox{text, position, maxWidth, hAlign});
+    if (cmdBuf_) {
+        uint32_t sid = cmdBuf_->internString(std::string(text));
+        cmdBuf_->push(CmdDrawTextBox{sid, position, maxWidth, hAlign});
+    }
 }
 
 Size GPURenderContext::measureText(const std::string& text, const TextStyle& style) {
@@ -301,7 +307,10 @@ void GPURenderContext::drawImage(int imageId, const Rect& rect, ImageFit fit,
 
 void GPURenderContext::drawImage(const std::string& path, const Rect& rect, ImageFit fit,
                                   const CornerRadius& cornerRadius, float alpha) {
-    if (cmdBuf_) cmdBuf_->push(CmdDrawImagePath{path, rect, fit, cornerRadius, alpha});
+    if (cmdBuf_) {
+        uint32_t pid = cmdBuf_->internString(std::string(path));
+        cmdBuf_->push(CmdDrawImagePath{pid, rect, fit, cornerRadius, alpha});
+    }
 }
 
 void GPURenderContext::clipPath(const Path& path) {

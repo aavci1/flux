@@ -6,6 +6,7 @@
 #include <Flux/Graphics/ImageCache.hpp>
 #include <Flux/GPU/Device.hpp>
 #include <memory>
+#include <vector>
 
 namespace flux {
 
@@ -59,6 +60,9 @@ private:
 
     std::unique_ptr<GlyphAtlas> glyphAtlas_;
     std::unique_ptr<ImageCache> imageCache_;
+
+    /// Reused to batch consecutive image draws that share a texture.
+    std::vector<ImageInstance> imageBatchScratch_;
 
     bool pipelinesReady_ = false;
 };

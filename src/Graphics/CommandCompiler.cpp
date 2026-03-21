@@ -2,8 +2,83 @@
 #include <cstring>
 #include <cmath>
 #include <algorithm>
+#include <optional>
 
 namespace flux {
+
+static constexpr std::size_t kPathTessCacheMaxEntries = 512;
+
+static int32_t quantizeAffine(float v) {
+    return static_cast<int32_t>(std::lround(v * 4096.0));
+}
+
+static uint32_t packArgb(const Color& c) {
+    auto u8 = [](float x) {
+        return static_cast<uint32_t>(std::clamp(x, 0.f, 1.f) * 255.f + 0.5f);
+    };
+    return (u8(c.a) << 24) | (u8(c.b) << 16) | (u8(c.g) << 8) | u8(c.r);
+}
+
+size_t CommandCompiler::PathTessCacheKeyHash::operator()(const PathTessCacheKey& k) const noexcept {
+    uint64_t h = k.pathHash;
+    auto mix = [&](uint64_t v) {
+        h ^= v + 0x9e3779b97f4a7c15ULL + (h << 6) + (h >> 2);
+    };
+    mix(static_cast<uint64_t>(static_cast<uint32_t>(k.m00)));
+    mix(static_cast<uint64_t>(static_cast<uint32_t>(k.m01)));
+    mix(static_cast<uint64_t>(static_cast<uint32_t>(k.m02)));
+    mix(static_cast<uint64_t>(static_cast<uint32_t>(k.m10)));
+    mix(static_cast<uint64_t>(static_cast<uint32_t>(k.m11)));
+    mix(static_cast<uint64_t>(static_cast<uint32_t>(k.m12)));
+    mix(static_cast<uint64_t>(static_cast<uint32_t>(k.qStrokeW)));
+    mix(static_cast<uint64_t>(k.fillArgb));
+    mix(static_cast<uint64_t>(k.strokeArgb));
+    mix(static_cast<uint64_t>(k.vpW | (static_cast<uint32_t>(k.vpH) << 16)));
+    mix(static_cast<uint64_t>(k.hasFill | (k.hasStroke << 8) | (k.strokeCap << 16) | (k.strokeJoin << 24)));
+    mix(static_cast<uint64_t>(static_cast<uint32_t>(k.qMiterLimit)));
+    return static_cast<size_t>(h);
+}
+
+std::optional<CommandCompiler::PathTessCacheKey> CommandCompiler::makePathTessCacheKey(
+    const Path& path, float vpW, float vpH) const {
+    if (current_.fill.type != FillStyle::Type::None && current_.fill.type != FillStyle::Type::Solid) {
+        return std::nullopt;
+    }
+    if (current_.stroke.type == StrokeStyle::Type::Dashed) return std::nullopt;
+    if (!current_.stroke.dashPattern.empty()) return std::nullopt;
+
+    PathTessCacheKey k{};
+    k.pathHash = path.contentHash();
+    k.m00 = quantizeAffine(current_.m00);
+    k.m01 = quantizeAffine(current_.m01);
+    k.m02 = quantizeAffine(current_.m02);
+    k.m10 = quantizeAffine(current_.m10);
+    k.m11 = quantizeAffine(current_.m11);
+    k.m12 = quantizeAffine(current_.m12);
+
+    k.hasFill = (current_.fill.type == FillStyle::Type::Solid) ? 1 : 0;
+    if (k.hasFill) {
+        Color fc = current_.fill.color;
+        fc.a *= current_.opacity;
+        k.fillArgb = packArgb(fc);
+    }
+
+    const bool hasStroke = current_.stroke.type != StrokeStyle::Type::None && current_.stroke.width > 0.f;
+    k.hasStroke = hasStroke ? 1 : 0;
+    if (hasStroke) {
+        Color sc = current_.stroke.color;
+        sc.a *= current_.opacity;
+        k.strokeArgb = packArgb(sc);
+        k.qStrokeW = quantizeAffine(current_.stroke.width * linearScale());
+        k.strokeCap = static_cast<uint8_t>(current_.stroke.cap);
+        k.strokeJoin = static_cast<uint8_t>(current_.stroke.join);
+        k.qMiterLimit = quantizeAffine(current_.stroke.miterLimit);
+    }
+
+    k.vpW = static_cast<uint16_t>(std::clamp(vpW, 0.f, 65535.f));
+    k.vpH = static_cast<uint16_t>(std::clamp(vpH, 0.f, 65535.f));
+    return k;
+}
 
 static ScissorState intersectScissor(const ScissorState& a, const ScissorState& b) {
     if (!a.active) return b;
@@ -36,6 +111,12 @@ void CommandCompiler::compile(const RenderCommandBuffer& buffer,
     out.glyphs.clear();
     out.pathVertices.clear();
     out.groups.clear();
+    out.rects.reserve(rectPeak_);
+    out.circles.reserve(circlePeak_);
+    out.lines.reserve(linePeak_);
+    out.glyphs.reserve(glyphPeak_);
+    out.pathVertices.reserve(pathVertPeak_);
+    out.groups.reserve(groupPeak_);
     out.viewportWidth = vpWidth;
     out.viewportHeight = vpHeight;
     out.clearColor = {};
@@ -113,10 +194,10 @@ void CommandCompiler::compile(const RenderCommandBuffer& buffer,
                 current_.textStyle = c.style;
             }
             else if constexpr (std::is_same_v<T, CmdDrawText>) {
-                pushText(out, c);
+                pushText(out, c, buffer);
             }
             else if constexpr (std::is_same_v<T, CmdDrawTextBox>) {
-                pushTextBox(out, c);
+                pushTextBox(out, c, buffer);
             }
             else if constexpr (std::is_same_v<T, CmdDrawPath>) {
                 pushPath(out, c);
@@ -147,10 +228,17 @@ void CommandCompiler::compile(const RenderCommandBuffer& buffer,
                 pushImage(out, c);
             }
             else if constexpr (std::is_same_v<T, CmdDrawImagePath>) {
-                pushImagePath(out, c);
+                pushImagePath(out, c, buffer);
             }
         }, cmd);
     }
+
+    rectPeak_ = std::max(rectPeak_, out.rects.size());
+    circlePeak_ = std::max(circlePeak_, out.circles.size());
+    linePeak_ = std::max(linePeak_, out.lines.size());
+    glyphPeak_ = std::max(glyphPeak_, out.glyphs.size());
+    pathVertPeak_ = std::max(pathVertPeak_, out.pathVertices.size());
+    groupPeak_ = std::max(groupPeak_, out.groups.size());
 }
 
 void CommandCompiler::applyTransform(float& x, float& y) const {
@@ -321,8 +409,11 @@ void CommandCompiler::pushLine(CompiledBatches& out, const CmdDrawLine& cmd) {
     g.lineCount++;
 }
 
-void CommandCompiler::pushText(CompiledBatches& out, const CmdDrawText& cmd) {
+void CommandCompiler::pushText(CompiledBatches& out, const CmdDrawText& cmd,
+                               const RenderCommandBuffer& buffer) {
     if (!atlas_) return;
+
+    const std::string& text = buffer.str(cmd.textStrId);
 
     auto fontIndex = atlas_->ensureFontLoaded(current_.textStyle.fontName, current_.textStyle.weight);
     if (!fontIndex) {
@@ -333,7 +424,7 @@ void CommandCompiler::pushText(CompiledBatches& out, const CmdDrawText& cmd) {
     Color textColor = current_.fill.color;
     textColor.a *= current_.opacity;
 
-    auto sz = atlas_->measureText(cmd.text, fontSize, *fontIndex);
+    auto sz = atlas_->measureText(text, fontSize, *fontIndex);
 
     std::vector<GlyphInstance> glyphs;
 
@@ -351,7 +442,7 @@ void CommandCompiler::pushText(CompiledBatches& out, const CmdDrawText& cmd) {
         if (cmd.vAlign == VerticalAlignment::center) drawY += fontSize * 0.35f;
         else if (cmd.vAlign == VerticalAlignment::top) drawY += fontSize;
 
-        glyphs = atlas_->layoutText(cmd.text, drawX, drawY, fontSize, textColor,
+        glyphs = atlas_->layoutText(text, drawX, drawY, fontSize, textColor,
                                     out.viewportWidth, out.viewportHeight, *fontIndex);
     } else {
         float drawX = cmd.position.x;
@@ -362,7 +453,7 @@ void CommandCompiler::pushText(CompiledBatches& out, const CmdDrawText& cmd) {
         if (cmd.vAlign == VerticalAlignment::center) drawY += fontSize * 0.35f;
         else if (cmd.vAlign == VerticalAlignment::top) drawY += fontSize;
 
-        glyphs = atlas_->layoutText(cmd.text, drawX, drawY, fontSize, textColor,
+        glyphs = atlas_->layoutText(text, drawX, drawY, fontSize, textColor,
                                     out.viewportWidth, out.viewportHeight, *fontIndex);
         for (auto& g : glyphs) {
             transformGlyphInstance(g);
@@ -376,19 +467,33 @@ void CommandCompiler::pushText(CompiledBatches& out, const CmdDrawText& cmd) {
 }
 
 void CommandCompiler::pushPath(CompiledBatches& out, const CmdDrawPath& cmd) {
+    auto keyOpt = makePathTessCacheKey(cmd.path, out.viewportWidth, out.viewportHeight);
+    if (keyOpt) {
+        auto it = pathTessCache_.find(*keyOpt);
+        if (it != pathTessCache_.end()) {
+            size_t pathStart = out.pathVertices.size();
+            auto& g = out.groups.back();
+            out.pathVertices.insert(out.pathVertices.end(), it->second.begin(), it->second.end());
+            g.pathCount += static_cast<uint32_t>(it->second.size());
+            const size_t pathEnd = out.pathVertices.size();
+            if (pathEnd > pathStart) {
+                g.drawOps.push_back({DrawOpType::Path, static_cast<uint32_t>(pathStart - g.pathOffset),
+                                     static_cast<uint32_t>(pathEnd - pathStart)});
+            }
+            return;
+        }
+    }
+
     auto subpaths = PathFlattener::flattenSubpaths(cmd.path);
     for (auto& sub : subpaths) {
         for (auto& p : sub) applyTransform(p.x, p.y);
     }
 
-    size_t pathStart = out.pathVertices.size();
-    auto& g = out.groups.back();
-
+    std::vector<PathVertex> built;
     auto appendPathVerts = [&](TessellatedPath&& t) {
         const auto n = t.vertices.size();
         if (n == 0) return;
-        out.pathVertices.insert(out.pathVertices.end(), t.vertices.begin(), t.vertices.end());
-        g.pathCount += static_cast<uint32_t>(n);
+        built.insert(built.end(), t.vertices.begin(), t.vertices.end());
     };
 
     if (current_.fill.type != FillStyle::Type::None) {
@@ -410,6 +515,18 @@ void CommandCompiler::pushPath(CompiledBatches& out, const CmdDrawPath& cmd) {
         }
     }
 
+    size_t pathStart = out.pathVertices.size();
+    auto& g = out.groups.back();
+    out.pathVertices.insert(out.pathVertices.end(), built.begin(), built.end());
+    g.pathCount += static_cast<uint32_t>(built.size());
+
+    if (keyOpt && !built.empty() && built.size() <= 512000) {
+        if (pathTessCache_.size() >= kPathTessCacheMaxEntries) {
+            pathTessCache_.clear();
+        }
+        pathTessCache_.emplace(*keyOpt, std::move(built));
+    }
+
     const size_t pathEnd = out.pathVertices.size();
     if (pathEnd > pathStart) {
         g.drawOps.push_back({DrawOpType::Path, static_cast<uint32_t>(pathStart - g.pathOffset),
@@ -417,8 +534,11 @@ void CommandCompiler::pushPath(CompiledBatches& out, const CmdDrawPath& cmd) {
     }
 }
 
-void CommandCompiler::pushTextBox(CompiledBatches& out, const CmdDrawTextBox& cmd) {
+void CommandCompiler::pushTextBox(CompiledBatches& out, const CmdDrawTextBox& cmd,
+                                  const RenderCommandBuffer& buffer) {
     if (!atlas_) return;
+
+    const std::string& text = buffer.str(cmd.textStrId);
 
     auto fontIndex = atlas_->ensureFontLoaded(current_.textStyle.fontName, current_.textStyle.weight);
     if (!fontIndex) {
@@ -435,10 +555,10 @@ void CommandCompiler::pushTextBox(CompiledBatches& out, const CmdDrawTextBox& cm
     if (isAxisAligned()) {
         float x = cmd.position.x, y = cmd.position.y;
         applyTransform(x, y);
-        glyphs = atlas_->layoutTextBox(cmd.text, x, y + fontSize, fontSize, maxWidth, textColor,
+        glyphs = atlas_->layoutTextBox(text, x, y + fontSize, fontSize, maxWidth, textColor,
                                         out.viewportWidth, out.viewportHeight, cmd.hAlign, *fontIndex);
     } else {
-        glyphs = atlas_->layoutTextBox(cmd.text, cmd.position.x, cmd.position.y + fontSize, fontSize,
+        glyphs = atlas_->layoutTextBox(text, cmd.position.x, cmd.position.y + fontSize, fontSize,
                                         maxWidth, textColor, out.viewportWidth, out.viewportHeight,
                                         cmd.hAlign, *fontIndex);
         for (auto& g : glyphs) {
@@ -494,7 +614,8 @@ void CommandCompiler::pushImage(CompiledBatches& out, const CmdDrawImage& cmd) {
     g.imageDraws.push_back(std::move(draw));
 }
 
-void CommandCompiler::pushImagePath(CompiledBatches& out, const CmdDrawImagePath& cmd) {
+void CommandCompiler::pushImagePath(CompiledBatches& out, const CmdDrawImagePath& cmd,
+                                    const RenderCommandBuffer& buffer) {
     const float cx = cmd.rect.x + cmd.rect.width * 0.5f;
     const float cy = cmd.rect.y + cmd.rect.height * 0.5f;
     float ox = cx, oy = cy;
@@ -507,7 +628,7 @@ void CommandCompiler::pushImagePath(CompiledBatches& out, const CmdDrawImagePath
     Rect transformed{ox - hwScr, oy - hhScr, 2.f * hwScr, 2.f * hhScr};
 
     ImageDrawCmd draw;
-    draw.path = cmd.path;
+    draw.path = buffer.str(cmd.pathStrId);
     draw.instance = makeImageInstance(transformed, cmd.alpha);
     draw.instance.rotation = rot;
     draw.instance.viewport[0] = out.viewportWidth;

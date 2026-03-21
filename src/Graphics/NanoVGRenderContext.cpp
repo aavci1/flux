@@ -418,7 +418,10 @@ void NanoVGRenderContext::setTextStyle(const TextStyle& style) {
 void NanoVGRenderContext::drawText(const std::string& text, const Point& position, HorizontalAlignment hAlign, VerticalAlignment vAlign) {
     nvgTextAlign(nvgContext_, getNVGTextAlign(hAlign, vAlign));
     nvgText(nvgContext_, position.x, position.y, text.c_str(), nullptr);
-    if (recordingBuffer_) recordingBuffer_->push(CmdDrawText{text, position, hAlign, vAlign});
+    if (recordingBuffer_) {
+        uint32_t sid = recordingBuffer_->internString(std::string(text));
+        recordingBuffer_->push(CmdDrawText{sid, position, hAlign, vAlign});
+    }
 }
 
 void NanoVGRenderContext::drawTextBox(const std::string& text, const Point& position, float maxWidth, HorizontalAlignment hAlign) {
@@ -431,7 +434,10 @@ void NanoVGRenderContext::drawTextBox(const std::string& text, const Point& posi
     }
     nvgTextAlign(nvgContext_, align);
     nvgTextBox(nvgContext_, position.x, position.y, maxWidth, text.c_str(), nullptr);
-    if (recordingBuffer_) recordingBuffer_->push(CmdDrawTextBox{text, position, maxWidth, hAlign});
+    if (recordingBuffer_) {
+        uint32_t sid = recordingBuffer_->internString(std::string(text));
+        recordingBuffer_->push(CmdDrawTextBox{sid, position, maxWidth, hAlign});
+    }
 }
 
 Size NanoVGRenderContext::measureText(const std::string& text, const TextStyle& style) {

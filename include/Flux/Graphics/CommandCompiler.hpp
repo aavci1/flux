@@ -5,8 +5,11 @@
 #include <Flux/Graphics/PathFlattener.hpp>
 #include <Flux/GPU/Types.hpp>
 #include <Flux/Core/Types.hpp>
-#include <vector>
+#include <cstdint>
 #include <array>
+#include <optional>
+#include <unordered_map>
+#include <vector>
 
 namespace flux {
 
@@ -87,10 +90,33 @@ class CommandCompiler {
 public:
     void setGlyphAtlas(GlyphAtlas* atlas) { atlas_ = atlas; }
     /// Clears and fills \p out while retaining vector capacity across frames for fewer allocations.
+    /// Always walks the full command buffer. Incremental compile (dirty subtrees / retained
+    /// command slices) requires Element/renderer integration and is not implemented here.
     void compile(const RenderCommandBuffer& buffer, float vpWidth, float vpHeight,
                  float dpiScaleX, float dpiScaleY, CompiledBatches& out);
 
 private:
+    /// Key for tessellation cache (solid fill/stroke, no dash; quantized transform).
+    struct PathTessCacheKey {
+        uint64_t pathHash = 0;
+        int32_t m00 = 0, m01 = 0, m02 = 0, m10 = 0, m11 = 0, m12 = 0;
+        int32_t qStrokeW = 0;
+        uint32_t fillArgb = 0;
+        uint32_t strokeArgb = 0;
+        uint16_t vpW = 0, vpH = 0;
+        uint8_t hasFill = 0;
+        uint8_t hasStroke = 0;
+        uint8_t strokeCap = 0;
+        uint8_t strokeJoin = 0;
+        int32_t qMiterLimit = 0;
+        bool operator==(const PathTessCacheKey& o) const = default;
+    };
+
+    struct PathTessCacheKeyHash {
+        size_t operator()(const PathTessCacheKey& k) const noexcept;
+    };
+
+    std::unordered_map<PathTessCacheKey, std::vector<PathVertex>, PathTessCacheKeyHash> pathTessCache_;
     /// 2×3 affine (column-major linear part): (x,y)' -> (m00*x+m01*y+m02, m10*x+m11*y+m12)
     struct State {
         float m00 = 1, m01 = 0, m02 = 0;
@@ -106,6 +132,14 @@ private:
     std::vector<State> stateStack_;
     State current_;
 
+    /// High-water marks for \ref CompiledBatches vectors (explicit reserve after clear).
+    size_t rectPeak_ = 0;
+    size_t circlePeak_ = 0;
+    size_t linePeak_ = 0;
+    size_t glyphPeak_ = 0;
+    size_t pathVertPeak_ = 0;
+    size_t groupPeak_ = 0;
+
     void applyTransform(float& x, float& y) const;
     void transformGlyphInstance(GlyphInstance& gi) const;
     float linearScale() const;
@@ -117,14 +151,16 @@ private:
     void pushRect(CompiledBatches& out, const CmdDrawRect& cmd);
     void pushCircle(CompiledBatches& out, const CmdDrawCircle& cmd);
     void pushLine(CompiledBatches& out, const CmdDrawLine& cmd);
-    void pushText(CompiledBatches& out, const CmdDrawText& cmd);
-    void pushTextBox(CompiledBatches& out, const CmdDrawTextBox& cmd);
+    void pushText(CompiledBatches& out, const CmdDrawText& cmd, const RenderCommandBuffer& buffer);
+    void pushTextBox(CompiledBatches& out, const CmdDrawTextBox& cmd, const RenderCommandBuffer& buffer);
     void pushPath(CompiledBatches& out, const CmdDrawPath& cmd);
     void pushImage(CompiledBatches& out, const CmdDrawImage& cmd);
-    void pushImagePath(CompiledBatches& out, const CmdDrawImagePath& cmd);
+    void pushImagePath(CompiledBatches& out, const CmdDrawImagePath& cmd, const RenderCommandBuffer& buffer);
 
     void fillInstanceColors(SDFQuadInstance& inst) const;
     ImageInstance makeImageInstance(const Rect& rect, float alpha) const;
+
+    std::optional<PathTessCacheKey> makePathTessCacheKey(const Path& path, float vpW, float vpH) const;
 };
 
 } // namespace flux

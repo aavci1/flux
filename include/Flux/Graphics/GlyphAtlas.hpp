@@ -127,6 +127,47 @@ private:
 
     void expandDirtyRect(uint32_t x, uint32_t y, uint32_t w, uint32_t h);
     void markFullAtlasDirty();
+    void clearTextLayoutCaches();
+
+    struct MeasureKey {
+        std::string text;
+        uint16_t fsz = 0;
+        uint16_t fontIndex = 0;
+        bool operator==(const MeasureKey& o) const {
+            return fsz == o.fsz && fontIndex == o.fontIndex && text == o.text;
+        }
+    };
+    struct MeasureKeyHash {
+        size_t operator()(const MeasureKey& k) const {
+            size_t h = std::hash<std::string>()(k.text);
+            h ^= k.fsz + 0x9e3779b9 + (h << 6) + (h >> 2);
+            h ^= k.fontIndex + 0x9e3779b9 + (h << 6) + (h >> 2);
+            return h;
+        }
+    };
+
+    struct WrapKey {
+        std::string text;
+        uint16_t fsz = 0;
+        int32_t maxWQ = 0;
+        uint16_t fontIndex = 0;
+        bool operator==(const WrapKey& o) const {
+            return fsz == o.fsz && maxWQ == o.maxWQ && fontIndex == o.fontIndex && text == o.text;
+        }
+    };
+    struct WrapKeyHash {
+        size_t operator()(const WrapKey& k) const {
+            size_t h = std::hash<std::string>()(k.text);
+            h ^= k.fsz + 0x9e3779b9 + (h << 6) + (h >> 2);
+            h ^= static_cast<size_t>(k.maxWQ) + 0x9e3779b9 + (h << 6) + (h >> 2);
+            h ^= k.fontIndex + 0x9e3779b9 + (h << 6) + (h >> 2);
+            return h;
+        }
+    };
+
+    static constexpr std::size_t kAtlasTextCacheMax = 2048;
+    std::unordered_map<MeasureKey, Size, MeasureKeyHash> measureCache_;
+    std::unordered_map<WrapKey, std::vector<std::string>, WrapKeyHash> wrapLineCache_;
 };
 
 } // namespace flux

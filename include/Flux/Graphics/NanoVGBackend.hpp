@@ -18,6 +18,9 @@ public:
     std::unordered_map<std::string, int>& imageCache() { return imageCache_; }
 
 private:
+    /// Set for the duration of execute() so text/image-path commands resolve interned strings.
+    const RenderCommandBuffer* cmdBuffer_ = nullptr;
+
     NVGcontext* nvg_;
     std::unordered_map<std::string, int> fontCache_;
     std::unordered_map<std::string, int> imageCache_;
