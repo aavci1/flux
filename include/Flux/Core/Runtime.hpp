@@ -62,6 +62,7 @@ private:
 
     static Runtime* current_;
     friend void requestApplicationRedraw();
+    friend void requestRedrawOnly();
 };
 
 using Application = Runtime;

@@ -166,6 +166,10 @@ public:
         if (component_) component_->setPropertyOwner(owner);
     }
 
+    void markBodyDirty() {
+        if (component_) component_->markBodyDirty();
+    }
+
     std::optional<CursorType> getCursor() const {
         return component_ ? component_->getCursor() : std::nullopt;
     }

@@ -32,6 +32,13 @@ void requestApplicationRedraw() {
     }
 }
 
+void requestRedrawOnly() {
+    if (suppressRedrawRequests_ > 0) return;
+    if (Runtime::current_) {
+        Runtime::current_->requestRedraw();
+    }
+}
+
 uint64_t currentBodyGeneration() {
     return bodyGeneration_.load(std::memory_order_relaxed);
 }

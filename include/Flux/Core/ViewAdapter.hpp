@@ -15,6 +15,7 @@ private:
     mutable T component;
     mutable std::unique_ptr<View> cachedBody_;
     mutable uint64_t cachedBodyGen_ = 0;
+    mutable bool componentDirty_ = true;
 
     const View& getCachedBody() const;
 
@@ -67,7 +68,8 @@ public:
     std::string getKey() const override;
 
     void setPropertyOwner(Element* owner) override;
-    
+    void markBodyDirty() override { componentDirty_ = true; }
+
     std::optional<CursorType> getCursor() const override;
 
     void onMounted() override;
@@ -134,9 +136,10 @@ template<ViewComponent T>
 inline const View& ViewAdapter<T>::getCachedBody() const {
     if constexpr (has_body<T>::value) {
         uint64_t gen = currentBodyGeneration();
-        if (!cachedBody_ || cachedBodyGen_ != gen) {
+        if (!cachedBody_ || componentDirty_ || cachedBodyGen_ != gen) {
             cachedBody_ = std::make_unique<View>(component.body());
             cachedBodyGen_ = gen;
+            componentDirty_ = false;
         }
     } else if (!cachedBody_) {
         cachedBody_ = std::make_unique<View>();
