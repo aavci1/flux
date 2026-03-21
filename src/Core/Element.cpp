@@ -5,6 +5,8 @@
 
 namespace flux {
 
+uint64_t Element::sNextRenderVersion_ = 1;
+
 Element::Element() = default;
 
 Element::~Element() {
@@ -64,6 +66,7 @@ void Element::reconcile(const LayoutNode& newNode) {
         description->setPropertyOwner(this);
         typeName = newNode.view.getTypeName();
         key = newNode.view.getKey();
+        bumpRenderVersion();
     }
 
     cachedBounds = newNode.bounds;
@@ -73,6 +76,11 @@ void Element::reconcile(const LayoutNode& newNode) {
     subtreeDirty = false;
 
     reconcileChildren(newNode.children);
+
+    subtreeRenderVersion_ = renderVersion_;
+    for (auto& child : children) {
+        subtreeRenderVersion_ = std::max(subtreeRenderVersion_, child->subtreeRenderVersion_);
+    }
 }
 
 void Element::reconcileChildren(const std::vector<LayoutNode>& newChildren) {
@@ -135,6 +143,10 @@ void Element::reconcileChildren(const std::vector<LayoutNode>& newChildren) {
     for (auto& child : children) {
         child->parent = this;
     }
+}
+
+void Element::bumpRenderVersion() {
+    renderVersion_ = sNextRenderVersion_++;
 }
 
 Element* Element::findByFocusKey(const std::string& key) {

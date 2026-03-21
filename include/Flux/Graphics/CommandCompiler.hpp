@@ -87,15 +87,17 @@ struct CompiledBatches {
     float viewportHeight = 0;
 };
 
-/** Walks a recorded command buffer and produces batched GPU instance data (SDF quads, glyphs, tessellated paths). */
+/** Walks a recorded command buffer and produces batched GPU instance data (SDF quads, glyphs, tessellated paths).
+ *  Supports incremental compilation: per-element compiled output is cached and reused when
+ *  an element's subtreeRenderVersion and compiler entry state are unchanged from the previous frame. */
 class CommandCompiler {
 public:
     void setGlyphAtlas(GlyphAtlas* atlas) { atlas_ = atlas; }
-    /// Clears and fills \p out while retaining vector capacity across frames for fewer allocations.
-    /// Always walks the full command buffer. Incremental compile (dirty subtrees / retained
-    /// command slices) requires Element/renderer integration and is not implemented here.
     void compile(const RenderCommandBuffer& buffer, float vpWidth, float vpHeight,
                  float dpiScaleX, float dpiScaleY, CompiledBatches& out);
+
+    struct CacheStats { size_t hits = 0, misses = 0; };
+    CacheStats lastCacheStats() const { return cacheStats_; }
 
 private:
     /// Key for tessellation cache (solid fill/stroke, no dash; quantized transform).
@@ -134,11 +136,56 @@ private:
         ScissorState scissor;
     };
 
+    // ---- Per-element compile cache ----
+
+    // Fingerprint of compiler state at an element's entry point.
+    // If this differs between frames (e.g. parent moved), the cache is invalid.
+    struct StateFingerprint {
+        int32_t m00, m01, m02, m10, m11, m12;
+        int32_t qOpacity;
+        ScissorState scissor;
+        bool operator==(const StateFingerprint&) const = default;
+    };
+    StateFingerprint computeStateFingerprint() const;
+
+    struct CachedElementData {
+        uint64_t subtreeVersion = 0;
+        StateFingerprint fingerprint{};
+        uint64_t lastAccessFrame = 0;
+        // Cached compiled instances produced by this element (incl. descendants)
+        std::vector<SDFQuadInstance> rects;
+        std::vector<SDFQuadInstance> circles;
+        std::vector<SDFQuadInstance> lines;
+        std::vector<GlyphInstance> glyphs;
+        std::vector<PathVertex> pathVerts;
+        // DrawOps with offsets relative to this element's start
+        std::vector<DrawOp> drawOps;
+        bool hasScissorBreaks = false;
+    };
+
+    std::unordered_map<uintptr_t, CachedElementData> elementCache_;
+    uint64_t compileFrame_ = 0;
+    CacheStats cacheStats_{};
+
+    struct ElementTrack {
+        uintptr_t elementId;
+        uint64_t subtreeVersion;
+        StateFingerprint fingerprint;
+        size_t rectStart, circleStart, lineStart, glyphStart, pathStart;
+        size_t drawOpStart;
+        ScissorState entryScissor;
+        bool hadScissorBreak;
+    };
+    std::vector<ElementTrack> elementTrackStack_;
+
+    void spliceCacheEntry(const CachedElementData& entry, CompiledBatches& out);
+
+    // ---- Core state ----
+
     GlyphAtlas* atlas_ = nullptr;
     std::vector<State> stateStack_;
     State current_;
 
-    /// High-water marks for \ref CompiledBatches vectors (explicit reserve after clear).
     size_t rectPeak_ = 0;
     size_t circlePeak_ = 0;
     size_t linePeak_ = 0;
