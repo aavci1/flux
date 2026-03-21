@@ -27,6 +27,11 @@ struct Slider {
     mutable float lastSliderX = 0.0f;
     mutable float lastSliderWidth = 200.0f;
 
+    void transferState(const Slider& old) {
+        lastSliderX = old.lastSliderX;
+        lastSliderWidth = old.lastSliderWidth;
+    }
+
     void init() {
         focusable = true;
 

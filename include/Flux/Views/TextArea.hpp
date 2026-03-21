@@ -42,6 +42,11 @@ struct TextArea {
     mutable size_t caretPos = std::string::npos;
     mutable float scrollY = 0.0f;
 
+    void transferState(const TextArea& old) {
+        caretPos = old.caretPos;
+        scrollY = old.scrollY;
+    }
+
     void init() {
         focusable = true;
         cursor = CursorType::Text;

@@ -144,6 +144,9 @@ public:
     // Accessibility
     virtual std::string getTextContent() const { return ""; }
     virtual std::string getAccessibleValue() const { return ""; }
+
+    // Transfer mutable interaction state from old description during reconciliation.
+    virtual void transferStateFrom(const ViewInterface&) {}
 };
 
 } // namespace flux
