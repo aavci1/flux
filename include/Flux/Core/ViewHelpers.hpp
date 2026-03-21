@@ -6,6 +6,10 @@
 
 namespace flux {
 
+inline Color resolveColor(Color c, Color themeDefault) {
+    return c.isInherit() ? themeDefault : c;
+}
+
 namespace ViewHelpers {
 
 inline void drawBackgroundImageWithSizing(RenderContext& ctx, const BackgroundImage& bgImage, const Rect& bounds);

@@ -13,8 +13,8 @@ struct Badge {
     FLUX_VIEW_PROPERTIES;
 
     Property<std::string> text = "";
-    Property<Color> badgeColor = Colors::red;
-    Property<Color> textColor = Colors::white;
+    Property<Color> badgeColor = Colors::inherit;
+    Property<Color> textColor = Colors::inherit;
     Property<float> fontSize = Typography::caption;
     Property<float> paddingHorizontal = 8.0f;
     Property<float> paddingVertical = 4.0f;
@@ -45,16 +45,15 @@ struct Badge {
 
         // Draw badge background
         Rect badgeRect = {badgeX, badgeY, badgeWidth, badgeHeight};
-        ctx.setFillStyle(FillStyle::solid(badgeColor));
+        ctx.setFillStyle(FillStyle::solid(resolveColor(badgeColor, ctx.theme().badgeBackground)));
         ctx.setStrokeStyle(StrokeStyle::none());
         ctx.drawRect(badgeRect, CornerRadius(badgeHeight / 2));
 
-        // Draw text
         float textX = badgeX + padH;
         float textY = badgeY + padV + textSize.height;
 
         ctx.setTextStyle(style);
-        ctx.setFillStyle(FillStyle::solid(textColor));
+        ctx.setFillStyle(FillStyle::solid(resolveColor(textColor, ctx.theme().badgeForeground)));
         ctx.drawText(content, {textX, textY}, HorizontalAlignment::leading, VerticalAlignment::bottom);
     }
 

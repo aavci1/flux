@@ -128,6 +128,8 @@ struct Color {
         );
     }
 
+    constexpr bool isInherit() const { return r < 0.0f; }
+
     constexpr bool operator==(const Color& other) const = default;
     constexpr bool operator!=(const Color& other) const = default;
 };
@@ -144,6 +146,7 @@ namespace Colors {
     constexpr Color transparent = Color(0, 0, 0, 0);
     constexpr Color darkGray = Color::hex(0x424242);
     constexpr Color lightGray = Color::hex(0xE0E0E0);
+    constexpr Color inherit = Color(-1.0f, -1.0f, -1.0f, -1.0f);
 }
 
 // Enums
