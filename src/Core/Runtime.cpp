@@ -5,8 +5,10 @@
 #include <Flux/Platform/PlatformWindowFactory.hpp>
 #include <Flux/Platform/PlatformWindow.hpp>
 #include <Flux/Platform/MemoryFootprint.hpp>
+#include <Flux/Animation/AnimationEngine.hpp>
 #include <Flux/Core/Log.hpp>
 #include <algorithm>
+#include <chrono>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
@@ -138,10 +140,23 @@ int Runtime::run() {
         return 1;
     }
     bool memoryReportAfterFirstFrame = false;
+    auto lastFrameTime = std::chrono::steady_clock::now();
+
     while (running_) {
+        bool animating = AnimationEngine::instance().hasActiveAnimations();
         bool redrawPending = needsRedraw_.load(std::memory_order_relaxed);
 
-        if (redrawPending) {
+        if (animating) {
+            auto now = std::chrono::steady_clock::now();
+            float dt = std::chrono::duration<float>(now - lastFrameTime).count();
+            lastFrameTime = now;
+            AnimationEngine::instance().tick(dt);
+            needsRedraw_.store(true, std::memory_order_relaxed);
+            redrawPending = true;
+
+            processEvents();
+        } else if (redrawPending) {
+            lastFrameTime = std::chrono::steady_clock::now();
             processEvents();
         } else {
             bool blinkActive = false;
@@ -154,6 +169,7 @@ int Runtime::run() {
             } else {
                 waitForEvents();
             }
+            lastFrameTime = std::chrono::steady_clock::now();
         }
 
         for (auto& window : windows_) {
@@ -170,6 +186,12 @@ int Runtime::run() {
                     programName_.empty() ? std::string("flux") : programName_;
                 logMemoryFootprintIfRequested((tag + ": first frame").c_str());
             }
+        }
+
+        // If animations are still running, keep the event loop awake
+        if (AnimationEngine::instance().hasActiveAnimations()) {
+            needsRedraw_.store(true, std::memory_order_relaxed);
+            wakePlatformEventLoop();
         }
     }
     return 0;

@@ -144,6 +144,10 @@ set(FLUX_SOURCES
     src/Core/MouseInputHandler.cpp
     src/Core/FocusState.cpp
     src/Core/ShortcutManager.cpp
+
+    # Animation
+    src/Animation/Easing.cpp
+    src/Animation/AnimationEngine.cpp
 )
 
 list(APPEND FLUX_SOURCES
@@ -379,6 +383,9 @@ if(BUILD_EXAMPLES)
 
     add_executable(calculator examples/calculator/main.cpp)
     target_link_libraries(calculator PRIVATE flux)
+
+    add_executable(animation_demo examples/animation/main.cpp)
+    target_link_libraries(animation_demo PRIVATE flux)
 
     add_executable(llm_studio examples/llm-studio/main.cpp)
     target_include_directories(llm_studio PRIVATE ${CMAKE_SOURCE_DIR}/examples/llm-studio)

@@ -13,6 +13,12 @@
 #include <Flux/Core/Runtime.hpp>
 #include <Flux/Core/Window.hpp>
 
+#include <Flux/Animation/Animation.hpp>
+#include <Flux/Animation/Animatable.hpp>
+#include <Flux/Animation/AnimatedProperty.hpp>
+#include <Flux/Animation/AnimationEngine.hpp>
+#include <Flux/Animation/Easing.hpp>
+
 #include <Flux/Platform/PlatformWindow.hpp>
 #include <Flux/Platform/PlatformRenderer.hpp>
 
