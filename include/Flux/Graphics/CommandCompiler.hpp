@@ -11,22 +11,25 @@
 namespace flux {
 
 struct SDFQuadInstance {
-    float rect[4];         // x, y, width, height
-    float corners[4];      // topLeft, topRight, bottomRight, bottomLeft
+    float rect[4];         // x, y, width, height (min corner + size; axis-aligned in local SDF space)
+    float corners[4];      // topLeft, topRight, bottomRight, bottomLeft radius (line: cos/sin in xy)
     float fillColor[4];    // r, g, b, a
     float strokeColor[4];  // r, g, b, a
     float strokeWidth;
     float opacity;
     float viewport[2];     // viewport width, height
+    float rotation;        // radians — rotates local quad in screen space (lines: 0)
+    float _pad[3];
 };
-static_assert(sizeof(SDFQuadInstance) == 80);
+static_assert(sizeof(SDFQuadInstance) == 96);
 
 struct ImageInstance {
     float screenRect[4];
     float uvRect[4];
     float tint[4];
     float viewport[2];
-    float _pad[2];
+    float rotation; // radians
+    float _pad;
 };
 static_assert(sizeof(ImageInstance) == 64);
 
@@ -88,9 +91,10 @@ public:
                  float dpiScaleX, float dpiScaleY, CompiledBatches& out);
 
 private:
+    /// 2×3 affine (column-major linear part): (x,y)' -> (m00*x+m01*y+m02, m10*x+m11*y+m12)
     struct State {
-        float translateX = 0, translateY = 0;
-        float scaleX = 1, scaleY = 1;
+        float m00 = 1, m01 = 0, m02 = 0;
+        float m10 = 0, m11 = 1, m12 = 0;
         float opacity = 1;
         FillStyle fill;
         StrokeStyle stroke;
@@ -103,6 +107,12 @@ private:
     State current_;
 
     void applyTransform(float& x, float& y) const;
+    void transformGlyphInstance(GlyphInstance& gi) const;
+    float linearScale() const;
+    /// Legacy horizontal scale (||column 0||); matches pre-affine `scaleX` for text sizing.
+    float horizontalScale() const;
+    /// True if linear part is axis-aligned (scale + translation only, no rotation/shear).
+    bool isAxisAligned() const;
     void startNewGroup(CompiledBatches& out);
     void pushRect(CompiledBatches& out, const CmdDrawRect& cmd);
     void pushCircle(CompiledBatches& out, const CmdDrawCircle& cmd);

@@ -9,6 +9,7 @@ layout(location = 3) in vec4 inFillColor;
 layout(location = 4) in vec4 inStrokeColor;
 layout(location = 5) in vec2 inStrokeOpacity;
 layout(location = 6) in vec2 inViewport;
+layout(location = 7) in vec4 inRotationPad; // .x = radians (0 for lines — world rot in endpoints)
 
 layout(location = 0) out vec2 fragLocalPos;
 layout(location = 1) out vec2 fragHalfSize;
@@ -29,8 +30,13 @@ void main() {
     // Rotate quad so line direction matches instance angle (corners.xy = cos, sin)
     float cosA = inCorners.x;
     float sinA = inCorners.y;
-    vec2 rotatedOffset = vec2(localOffset.x * cosA - localOffset.y * sinA,
-                              localOffset.x * sinA + localOffset.y * cosA);
+    vec2 lineRotated = vec2(localOffset.x * cosA - localOffset.y * sinA,
+                            localOffset.x * sinA + localOffset.y * cosA);
+
+    float cr = cos(inRotationPad.x);
+    float sr = sin(inRotationPad.x);
+    vec2 rotatedOffset = vec2(lineRotated.x * cr - lineRotated.y * sr,
+                              lineRotated.x * sr + lineRotated.y * cr);
 
     vec2 screenPos = center + rotatedOffset;
     vec2 ndc = (screenPos / inViewport) * 2.0 - 1.0;

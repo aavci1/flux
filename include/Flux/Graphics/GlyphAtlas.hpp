@@ -44,7 +44,8 @@ struct GlyphInstance {
     float uvRect[4];
     float color[4];
     float viewport[2];
-    float _pad[2];
+    float rotation; // radians, 0 = axis-aligned
+    float _pad;
 };
 static_assert(sizeof(GlyphInstance) == 64);
 

@@ -128,7 +128,7 @@ void GPURendererBackend::ensurePipelines() {
     vertLayout.perInstance = false;
     vertLayout.attributes = {{0, 0, gpu::VertexFormat::Float2}};
 
-    // Per-instance layout: SDFQuadInstance (80 bytes)
+    // Per-instance layout: SDFQuadInstance (96 bytes)
     gpu::VertexBufferLayout instLayout;
     instLayout.stride = sizeof(SDFQuadInstance);
     instLayout.perInstance = true;
@@ -139,6 +139,7 @@ void GPURendererBackend::ensurePipelines() {
         {4, 48, gpu::VertexFormat::Float4},  // strokeColor
         {5, 64, gpu::VertexFormat::Float2},  // strokeWidth + opacity
         {6, 72, gpu::VertexFormat::Float2},  // viewport
+        {7, 80, gpu::VertexFormat::Float4},  // rotation + pad
     };
 
     auto makeShaderSrc = [](std::string_view msl, std::span<const uint8_t> spv) {
@@ -201,6 +202,7 @@ void GPURendererBackend::ensurePipelines() {
         {2, 16, gpu::VertexFormat::Float4},  // uvRect
         {3, 32, gpu::VertexFormat::Float4},  // color
         {4, 48, gpu::VertexFormat::Float2},  // viewport
+        {5, 56, gpu::VertexFormat::Float4},  // rotation + pad
     };
 
     {
@@ -279,6 +281,7 @@ void GPURendererBackend::ensurePipelines() {
             {2, 16, gpu::VertexFormat::Float4},   // uvRect
             {3, 32, gpu::VertexFormat::Float4},   // tint
             {4, 48, gpu::VertexFormat::Float2},   // viewport
+            {5, 56, gpu::VertexFormat::Float4},   // rotation + pad
         };
 
         gpu::RenderPipelineDesc desc;

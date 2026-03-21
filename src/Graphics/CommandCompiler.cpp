@@ -41,8 +41,8 @@ void CommandCompiler::compile(const RenderCommandBuffer& buffer,
     out.clearColor = {};
 
     current_ = State{};
-    current_.scaleX = dpiScaleX;
-    current_.scaleY = dpiScaleY;
+    current_.m00 = dpiScaleX;
+    current_.m11 = dpiScaleY;
     current_.fill = FillStyle::none();
     current_.stroke = StrokeStyle::none();
     current_.textStyle = TextStyle{};  // default font/size until CmdSetTextStyle
@@ -70,12 +70,26 @@ void CommandCompiler::compile(const RenderCommandBuffer& buffer,
                 }
             }
             else if constexpr (std::is_same_v<T, CmdTranslate>) {
-                current_.translateX += c.x * current_.scaleX;
-                current_.translateY += c.y * current_.scaleY;
+                current_.m02 += current_.m00 * c.x + current_.m01 * c.y;
+                current_.m12 += current_.m10 * c.x + current_.m11 * c.y;
+            }
+            else if constexpr (std::is_same_v<T, CmdRotate>) {
+                const float co = std::cos(c.angle);
+                const float si = std::sin(c.angle);
+                const float n00 = current_.m00 * co + current_.m01 * si;
+                const float n01 = -current_.m00 * si + current_.m01 * co;
+                const float n10 = current_.m10 * co + current_.m11 * si;
+                const float n11 = -current_.m10 * si + current_.m11 * co;
+                current_.m00 = n00;
+                current_.m01 = n01;
+                current_.m10 = n10;
+                current_.m11 = n11;
             }
             else if constexpr (std::is_same_v<T, CmdScale>) {
-                current_.scaleX *= c.sx;
-                current_.scaleY *= c.sy;
+                current_.m00 *= c.sx;
+                current_.m01 *= c.sy;
+                current_.m10 *= c.sx;
+                current_.m11 *= c.sy;
             }
             else if constexpr (std::is_same_v<T, CmdSetOpacity>) {
                 current_.opacity = c.opacity;
@@ -109,11 +123,20 @@ void CommandCompiler::compile(const RenderCommandBuffer& buffer,
             }
             else if constexpr (std::is_same_v<T, CmdClipPath>) {
                 auto bounds = c.path.getBounds();
-                float bx = bounds.x, by = bounds.y;
-                applyTransform(bx, by);
-                ScissorState newClip{true, bx, by,
-                                     bounds.width * current_.scaleX,
-                                     bounds.height * current_.scaleY};
+                float bx = bounds.x, by = bounds.y, bw = bounds.width, bh = bounds.height;
+                float x0 = bx, y0 = by;
+                float x1 = bx + bw, y1 = by;
+                float x2 = bx + bw, y2 = by + bh;
+                float x3 = bx, y3 = by + bh;
+                applyTransform(x0, y0);
+                applyTransform(x1, y1);
+                applyTransform(x2, y2);
+                applyTransform(x3, y3);
+                const float minX = std::min({x0, x1, x2, x3});
+                const float maxX = std::max({x0, x1, x2, x3});
+                const float minY = std::min({y0, y1, y2, y3});
+                const float maxY = std::max({y0, y1, y2, y3});
+                ScissorState newClip{true, minX, minY, maxX - minX, maxY - minY};
                 ScissorState merged = intersectScissor(current_.scissor, newClip);
                 if (merged != current_.scissor) {
                     current_.scissor = merged;
@@ -131,8 +154,41 @@ void CommandCompiler::compile(const RenderCommandBuffer& buffer,
 }
 
 void CommandCompiler::applyTransform(float& x, float& y) const {
-    x = x * current_.scaleX + current_.translateX;
-    y = y * current_.scaleY + current_.translateY;
+    const float ox = current_.m00 * x + current_.m01 * y + current_.m02;
+    const float oy = current_.m10 * x + current_.m11 * y + current_.m12;
+    x = ox;
+    y = oy;
+}
+
+float CommandCompiler::linearScale() const {
+    const float det = current_.m00 * current_.m11 - current_.m01 * current_.m10;
+    return std::sqrt(std::max(0.f, std::abs(det)));
+}
+
+float CommandCompiler::horizontalScale() const {
+    return std::hypot(current_.m00, current_.m10);
+}
+
+bool CommandCompiler::isAxisAligned() const {
+    constexpr float eps = 1e-5f;
+    return std::abs(current_.m01) < eps && std::abs(current_.m10) < eps;
+}
+
+void CommandCompiler::transformGlyphInstance(GlyphInstance& gi) const {
+    // Layout/measure already use fontSize = userSize * horizontalScale() (atlas pixels).
+    // Only map the quad center through M and apply rotation; do not rescale w/h or we
+    // double-apply DPI/scale vs the old translate+scaleX path.
+    const float w = gi.screenRect[2];
+    const float h = gi.screenRect[3];
+    float cx = gi.screenRect[0] + w * 0.5f;
+    float cy = gi.screenRect[1] + h * 0.5f;
+    applyTransform(cx, cy);
+    gi.screenRect[0] = cx - w * 0.5f;
+    gi.screenRect[1] = cy - h * 0.5f;
+    gi.screenRect[2] = w;
+    gi.screenRect[3] = h;
+    gi.rotation = std::atan2(current_.m10, current_.m00);
+    gi._pad = 0.f;
 }
 
 void CommandCompiler::fillInstanceColors(SDFQuadInstance& inst) const {
@@ -155,7 +211,7 @@ void CommandCompiler::fillInstanceColors(SDFQuadInstance& inst) const {
         inst.strokeColor[1] = sc.color.g;
         inst.strokeColor[2] = sc.color.b;
         inst.strokeColor[3] = sc.color.a;
-        inst.strokeWidth = sc.width * current_.scaleX;
+        inst.strokeWidth = sc.width * linearScale();
     } else {
         std::memset(inst.strokeColor, 0, sizeof(inst.strokeColor));
         inst.strokeWidth = 0;
@@ -166,15 +222,25 @@ void CommandCompiler::fillInstanceColors(SDFQuadInstance& inst) const {
 
 void CommandCompiler::pushRect(CompiledBatches& out, const CmdDrawRect& cmd) {
     SDFQuadInstance inst{};
-    float x = cmd.bounds.x, y = cmd.bounds.y;
-    applyTransform(x, y);
+    const float cx = cmd.bounds.x + cmd.bounds.width * 0.5f;
+    const float cy = cmd.bounds.y + cmd.bounds.height * 0.5f;
+    float ox = cx, oy = cy;
+    applyTransform(ox, oy);
 
-    inst.rect[0] = x;
-    inst.rect[1] = y;
-    inst.rect[2] = cmd.bounds.width * current_.scaleX;
-    inst.rect[3] = cmd.bounds.height * current_.scaleY;
+    const float hw = cmd.bounds.width * 0.5f;
+    const float hh = cmd.bounds.height * 0.5f;
+    const float hwScr = std::hypot(current_.m00 * hw, current_.m10 * hw);
+    const float hhScr = std::hypot(current_.m01 * hh, current_.m11 * hh);
+    inst.rect[0] = ox - hwScr;
+    inst.rect[1] = oy - hhScr;
+    inst.rect[2] = 2.f * hwScr;
+    inst.rect[3] = 2.f * hhScr;
+    inst.rotation = std::atan2(current_.m10, current_.m00);
+    inst._pad[0] = inst._pad[1] = inst._pad[2] = 0.f;
 
-    float s = current_.scaleX;
+    const float col0 = std::hypot(current_.m00, current_.m10);
+    const float col1 = std::hypot(current_.m01, current_.m11);
+    const float s = 0.5f * (col0 + col1);
     inst.corners[0] = cmd.cornerRadius.topLeft * s;
     inst.corners[1] = cmd.cornerRadius.topRight * s;
     inst.corners[2] = cmd.cornerRadius.bottomRight * s;
@@ -193,13 +259,15 @@ void CommandCompiler::pushCircle(CompiledBatches& out, const CmdDrawCircle& cmd)
     SDFQuadInstance inst{};
     float cx = cmd.center.x, cy = cmd.center.y;
     applyTransform(cx, cy);
-    float r = cmd.radius * current_.scaleX;
-    float diam = r * 2.0f;
+    const float rScr = cmd.radius * linearScale();
+    const float diam = rScr * 2.0f;
 
-    inst.rect[0] = cx - r;
-    inst.rect[1] = cy - r;
+    inst.rect[0] = cx - rScr;
+    inst.rect[1] = cy - rScr;
     inst.rect[2] = diam;
     inst.rect[3] = diam;
+    inst.rotation = 0.f;
+    inst._pad[0] = inst._pad[1] = inst._pad[2] = 0.f;
 
     inst.viewport[0] = out.viewportWidth;
     inst.viewport[1] = out.viewportHeight;
@@ -221,7 +289,7 @@ void CommandCompiler::pushLine(CompiledBatches& out, const CmdDrawLine& cmd) {
     float len = std::sqrt(dx * dx + dy * dy);
     float midX = (x0 + x1) * 0.5f, midY = (y0 + y1) * 0.5f;
 
-    float strokeW = current_.stroke.width * current_.scaleX;
+    float strokeW = current_.stroke.width * linearScale();
     float halfW = strokeW * 0.5f + 1.0f;
 
     inst.rect[0] = midX - len * 0.5f - halfW;
@@ -244,6 +312,8 @@ void CommandCompiler::pushLine(CompiledBatches& out, const CmdDrawLine& cmd) {
     inst.opacity = current_.opacity;
     inst.viewport[0] = out.viewportWidth;
     inst.viewport[1] = out.viewportHeight;
+    inst.rotation = 0.f;
+    inst._pad[0] = inst._pad[1] = inst._pad[2] = 0.f;
 
     out.lines.push_back(inst);
     auto& g = out.groups.back();
@@ -259,29 +329,50 @@ void CommandCompiler::pushText(CompiledBatches& out, const CmdDrawText& cmd) {
         return;
     }
 
-    float x = cmd.position.x, y = cmd.position.y;
-    applyTransform(x, y);
-
-    float fontSize = current_.textStyle.size * current_.scaleX;
+    const float fontSize = current_.textStyle.size * horizontalScale();
     Color textColor = current_.fill.color;
     textColor.a *= current_.opacity;
 
     auto sz = atlas_->measureText(cmd.text, fontSize, *fontIndex);
 
-    float drawX = x;
-    if (cmd.hAlign == HorizontalAlignment::center) drawX -= sz.width * 0.5f;
-    else if (cmd.hAlign == HorizontalAlignment::trailing) drawX -= sz.width;
+    std::vector<GlyphInstance> glyphs;
 
-    float drawY = y;
-    if (cmd.vAlign == VerticalAlignment::center) drawY += fontSize * 0.35f;
-    else if (cmd.vAlign == VerticalAlignment::top) drawY += fontSize;
+    if (isAxisAligned()) {
+        // Match legacy behavior: transform anchor first, then align in screen space (avoids wrong
+        // centering when scale is applied).
+        float x = cmd.position.x, y = cmd.position.y;
+        applyTransform(x, y);
 
-    auto glyphs = atlas_->layoutText(cmd.text, drawX, drawY, fontSize, textColor,
-                                      out.viewportWidth, out.viewportHeight, *fontIndex);
-    auto& g = out.groups.back();
-    g.drawOps.push_back({DrawOpType::Glyph, g.glyphCount, static_cast<uint32_t>(glyphs.size())});
+        float drawX = x;
+        if (cmd.hAlign == HorizontalAlignment::center) drawX -= sz.width * 0.5f;
+        else if (cmd.hAlign == HorizontalAlignment::trailing) drawX -= sz.width;
+
+        float drawY = y;
+        if (cmd.vAlign == VerticalAlignment::center) drawY += fontSize * 0.35f;
+        else if (cmd.vAlign == VerticalAlignment::top) drawY += fontSize;
+
+        glyphs = atlas_->layoutText(cmd.text, drawX, drawY, fontSize, textColor,
+                                    out.viewportWidth, out.viewportHeight, *fontIndex);
+    } else {
+        float drawX = cmd.position.x;
+        if (cmd.hAlign == HorizontalAlignment::center) drawX -= sz.width * 0.5f;
+        else if (cmd.hAlign == HorizontalAlignment::trailing) drawX -= sz.width;
+
+        float drawY = cmd.position.y;
+        if (cmd.vAlign == VerticalAlignment::center) drawY += fontSize * 0.35f;
+        else if (cmd.vAlign == VerticalAlignment::top) drawY += fontSize;
+
+        glyphs = atlas_->layoutText(cmd.text, drawX, drawY, fontSize, textColor,
+                                    out.viewportWidth, out.viewportHeight, *fontIndex);
+        for (auto& g : glyphs) {
+            transformGlyphInstance(g);
+        }
+    }
+
+    auto& gr = out.groups.back();
+    gr.drawOps.push_back({DrawOpType::Glyph, gr.glyphCount, static_cast<uint32_t>(glyphs.size())});
     out.glyphs.insert(out.glyphs.end(), glyphs.begin(), glyphs.end());
-    g.glyphCount += static_cast<uint32_t>(glyphs.size());
+    gr.glyphCount += static_cast<uint32_t>(glyphs.size());
 }
 
 void CommandCompiler::pushPath(CompiledBatches& out, const CmdDrawPath& cmd) {
@@ -312,7 +403,7 @@ void CommandCompiler::pushPath(CompiledBatches& out, const CmdDrawPath& cmd) {
     if (current_.stroke.type != StrokeStyle::Type::None && current_.stroke.width > 0) {
         Color sc = current_.stroke.color;
         sc.a *= current_.opacity;
-        const float sw = current_.stroke.width * current_.scaleX;
+        const float sw = current_.stroke.width * linearScale();
         for (const auto& sub : subpaths) {
             if (sub.size() < 2) continue;
             appendPathVerts(PathFlattener::tessellateStroke(sub, sw, sc, out.viewportWidth, out.viewportHeight));
@@ -334,29 +425,37 @@ void CommandCompiler::pushTextBox(CompiledBatches& out, const CmdDrawTextBox& cm
         return;
     }
 
-    float x = cmd.position.x, y = cmd.position.y;
-    applyTransform(x, y);
-
-    float fontSize = current_.textStyle.size * current_.scaleX;
-    float maxWidth = cmd.maxWidth * current_.scaleX;
+    const float fontSize = current_.textStyle.size * horizontalScale();
+    const float maxWidth = cmd.maxWidth * horizontalScale();
     Color textColor = current_.fill.color;
     textColor.a *= current_.opacity;
 
-    auto glyphs = atlas_->layoutTextBox(cmd.text, x, y + fontSize, fontSize, maxWidth,
-                                         textColor, out.viewportWidth, out.viewportHeight,
-                                         cmd.hAlign, *fontIndex);
-    auto& g = out.groups.back();
-    g.drawOps.push_back({DrawOpType::Glyph, g.glyphCount, static_cast<uint32_t>(glyphs.size())});
+    std::vector<GlyphInstance> glyphs;
+
+    if (isAxisAligned()) {
+        float x = cmd.position.x, y = cmd.position.y;
+        applyTransform(x, y);
+        glyphs = atlas_->layoutTextBox(cmd.text, x, y + fontSize, fontSize, maxWidth, textColor,
+                                        out.viewportWidth, out.viewportHeight, cmd.hAlign, *fontIndex);
+    } else {
+        glyphs = atlas_->layoutTextBox(cmd.text, cmd.position.x, cmd.position.y + fontSize, fontSize,
+                                        maxWidth, textColor, out.viewportWidth, out.viewportHeight,
+                                        cmd.hAlign, *fontIndex);
+        for (auto& g : glyphs) {
+            transformGlyphInstance(g);
+        }
+    }
+
+    auto& gr = out.groups.back();
+    gr.drawOps.push_back({DrawOpType::Glyph, gr.glyphCount, static_cast<uint32_t>(glyphs.size())});
     out.glyphs.insert(out.glyphs.end(), glyphs.begin(), glyphs.end());
-    g.glyphCount += static_cast<uint32_t>(glyphs.size());
+    gr.glyphCount += static_cast<uint32_t>(glyphs.size());
 }
 
 ImageInstance CommandCompiler::makeImageInstance(const Rect& rect, float alpha) const {
     ImageInstance inst{};
-    float x = rect.x, y = rect.y;
-    // Note: don't applyTransform here — caller already did it
-    inst.screenRect[0] = x;
-    inst.screenRect[1] = y;
+    inst.screenRect[0] = rect.x;
+    inst.screenRect[1] = rect.y;
     inst.screenRect[2] = rect.width;
     inst.screenRect[3] = rect.height;
     inst.uvRect[0] = 0;
@@ -367,17 +466,27 @@ ImageInstance CommandCompiler::makeImageInstance(const Rect& rect, float alpha) 
     inst.tint[1] = 1;
     inst.tint[2] = 1;
     inst.tint[3] = alpha * current_.opacity;
+    inst.rotation = 0.f;
+    inst._pad = 0.f;
     return inst;
 }
 
 void CommandCompiler::pushImage(CompiledBatches& out, const CmdDrawImage& cmd) {
-    float x = cmd.rect.x, y = cmd.rect.y;
-    applyTransform(x, y);
-    Rect transformed{x, y, cmd.rect.width * current_.scaleX, cmd.rect.height * current_.scaleY};
+    const float cx = cmd.rect.x + cmd.rect.width * 0.5f;
+    const float cy = cmd.rect.y + cmd.rect.height * 0.5f;
+    float ox = cx, oy = cy;
+    applyTransform(ox, oy);
+    const float hw = cmd.rect.width * 0.5f;
+    const float hh = cmd.rect.height * 0.5f;
+    const float hwScr = std::hypot(current_.m00 * hw, current_.m10 * hw);
+    const float hhScr = std::hypot(current_.m01 * hh, current_.m11 * hh);
+    const float rot = std::atan2(current_.m10, current_.m00);
+    Rect transformed{ox - hwScr, oy - hhScr, 2.f * hwScr, 2.f * hhScr};
 
     ImageDrawCmd draw;
     draw.imageId = cmd.imageId;
     draw.instance = makeImageInstance(transformed, cmd.alpha);
+    draw.instance.rotation = rot;
     draw.instance.viewport[0] = out.viewportWidth;
     draw.instance.viewport[1] = out.viewportHeight;
     auto& g = out.groups.back();
@@ -386,13 +495,21 @@ void CommandCompiler::pushImage(CompiledBatches& out, const CmdDrawImage& cmd) {
 }
 
 void CommandCompiler::pushImagePath(CompiledBatches& out, const CmdDrawImagePath& cmd) {
-    float x = cmd.rect.x, y = cmd.rect.y;
-    applyTransform(x, y);
-    Rect transformed{x, y, cmd.rect.width * current_.scaleX, cmd.rect.height * current_.scaleY};
+    const float cx = cmd.rect.x + cmd.rect.width * 0.5f;
+    const float cy = cmd.rect.y + cmd.rect.height * 0.5f;
+    float ox = cx, oy = cy;
+    applyTransform(ox, oy);
+    const float hw = cmd.rect.width * 0.5f;
+    const float hh = cmd.rect.height * 0.5f;
+    const float hwScr = std::hypot(current_.m00 * hw, current_.m10 * hw);
+    const float hhScr = std::hypot(current_.m01 * hh, current_.m11 * hh);
+    const float rot = std::atan2(current_.m10, current_.m00);
+    Rect transformed{ox - hwScr, oy - hhScr, 2.f * hwScr, 2.f * hhScr};
 
     ImageDrawCmd draw;
     draw.path = cmd.path;
     draw.instance = makeImageInstance(transformed, cmd.alpha);
+    draw.instance.rotation = rot;
     draw.instance.viewport[0] = out.viewportWidth;
     draw.instance.viewport[1] = out.viewportHeight;
     auto& g = out.groups.back();

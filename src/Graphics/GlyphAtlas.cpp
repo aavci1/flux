@@ -441,6 +441,8 @@ std::vector<GlyphInstance> GlyphAtlas::layoutText(const std::string& text, float
         inst.color[3] = color.a;
         inst.viewport[0] = vpW;
         inst.viewport[1] = vpH;
+        inst.rotation = 0.0f;
+        inst._pad = 0.0f;
 
         out.push_back(inst);
         penX += g->advance;
