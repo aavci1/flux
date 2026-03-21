@@ -10,13 +10,14 @@
 
 namespace flux {
 
-// Forward declarations
+    // Forward declarations
 class WindowEventObserver;
 class KeyboardInputHandler;
 class MouseInputHandler;
 class FocusState;
 class ShortcutManager;
 class PlatformWindowFactory;
+class OverlayManager;
 struct LayoutNode;
 
 /**
@@ -193,6 +194,11 @@ public:
      * @brief Whether a text cursor is blinking (needs periodic redraws)
      */
     bool isCursorBlinkActive() const;
+
+    /**
+     * @brief Access the overlay manager for showing/hiding overlays
+     */
+    OverlayManager* overlayManager();
 
     // Hooks
     

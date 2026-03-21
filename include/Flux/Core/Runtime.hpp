@@ -9,6 +9,7 @@
 namespace flux {
 
 class Window;
+class OverlayManager;
 struct WindowConfig;
 
 class Runtime : public WindowEventObserver {
@@ -63,6 +64,11 @@ private:
     static Runtime* current_;
     friend void requestApplicationRedraw();
     friend void requestRedrawOnly();
+
+public:
+    OverlayManager* findOverlayManager();
+
+    static bool hasInstance() { return current_ != nullptr; }
 };
 
 using Application = Runtime;

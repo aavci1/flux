@@ -567,6 +567,9 @@ public:
         return out;
     }
 
+    static std::string serializeUITree(const LayoutNode& root, const class OverlayManager& overlays);
+
+
 private:
     static void serializeNode(const LayoutNode& node, const std::string& id, std::string& out) {
         out += '{';

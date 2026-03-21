@@ -154,14 +154,15 @@ inline View ViewAdapter<T>::body() const {
 
 template<ViewComponent T>
 inline void ViewAdapter<T>::render(RenderContext& ctx, const Rect& bounds) const {
+    if constexpr (has_render<T>::value) {
+        component.render(ctx, bounds);
+    }
     if constexpr (has_body<T>::value) {
         const View& bodyView = getCachedBody();
         if (bodyView.isValid()) {
             bodyView.render(ctx, bounds);
         }
-    } else if constexpr (has_render<T>::value) {
-        component.render(ctx, bounds);
-    } else {
+    } else if constexpr (!has_render<T>::value) {
         ViewHelpers::renderView(component, ctx, bounds);
     }
 }
