@@ -276,6 +276,8 @@ void Renderer::renderTree(LayoutNode& node, Element* element, Point parentOrigin
 
     Rect localBounds = {0, 0, visBounds.width, visBounds.height};
 
+    auto vs = node.view.getVisualStyle();
+
     if (node.view.shouldClip()) {
         Path clipPath;
         clipPath.rect(localBounds);
@@ -287,27 +289,27 @@ void Renderer::renderTree(LayoutNode& node, Element* element, Point parentOrigin
     renderContext_->setCurrentElement(element);
 
     Point offsetPt = animated
-        ? element->getAnimatedValue<Point>("offset", node.view.getOffset())
-        : node.view.getOffset();
+        ? element->getAnimatedValue<Point>("offset", vs.offset)
+        : vs.offset;
     if (offsetPt.x != 0 || offsetPt.y != 0)
         renderContext_->translate(offsetPt.x, offsetPt.y);
 
     float rot = animated
-        ? element->getAnimatedValue<float>("rotation", node.view.getRotation())
-        : node.view.getRotation();
+        ? element->getAnimatedValue<float>("rotation", vs.rotation)
+        : vs.rotation;
     if (rot != 0) renderContext_->rotate(rot);
 
     float sx = animated
-        ? element->getAnimatedValue<float>("scaleX", node.view.getScaleX())
-        : node.view.getScaleX();
+        ? element->getAnimatedValue<float>("scaleX", vs.scaleX)
+        : vs.scaleX;
     float sy = animated
-        ? element->getAnimatedValue<float>("scaleY", node.view.getScaleY())
-        : node.view.getScaleY();
+        ? element->getAnimatedValue<float>("scaleY", vs.scaleY)
+        : vs.scaleY;
     if (sx != 1.0f || sy != 1.0f) renderContext_->scale(sx, sy);
 
     float opacityVal = animated
-        ? element->getAnimatedValue<float>("opacity", node.view.getOpacity())
-        : node.view.getOpacity();
+        ? element->getAnimatedValue<float>("opacity", vs.opacity)
+        : vs.opacity;
     if (opacityVal < 1.0f)
         renderContext_->setOpacity(opacityVal);
 

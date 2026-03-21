@@ -28,23 +28,22 @@ struct VStack {
         std::vector<StackChildInput> inputs;
         inputs.reserve(childrenVec.size());
         for (const auto& child : childrenVec) {
-            bool vis = child->isVisible();
-            Size intrinsic = vis ? child.preferredSize(static_cast<TextMeasurement&>(ctx)) : Size{};
-            if (vis) {
-                auto childMaxW = child.getMaxWidth();
-                float effectiveW = childMaxW.has_value()
-                    ? std::min(contentWidth, childMaxW.value()) : contentWidth;
+            auto lc = child.getLayoutConstraints();
+            Size intrinsic = lc.visible ? child.preferredSize(static_cast<TextMeasurement&>(ctx)) : Size{};
+            if (lc.visible) {
+                float effectiveW = lc.maxWidth.has_value()
+                    ? std::min(contentWidth, lc.maxWidth.value()) : contentWidth;
                 intrinsic.height = child.heightForWidth(effectiveW, static_cast<TextMeasurement&>(ctx));
             }
             inputs.push_back({
                 intrinsic,
-                child.getExpansionBias(),
-                child.getCompressionBias(),
-                child.getMinWidth(),
-                child.getMaxWidth(),
-                child.getMinHeight(),
-                child.getMaxHeight(),
-                vis
+                lc.expansionBias,
+                lc.compressionBias,
+                lc.minWidth,
+                lc.maxWidth,
+                lc.minHeight,
+                lc.maxHeight,
+                lc.visible
             });
         }
 
@@ -93,11 +92,11 @@ struct VStack {
         std::vector<View> childrenVec = children;
         bool hasVisibleChild = false;
         for (const auto& child : childrenVec) {
-            if (!child->isVisible()) continue;
+            auto lc = child.getLayoutConstraints();
+            if (!lc.visible) continue;
 
-            auto childMaxW = child.getMaxWidth();
-            float effectiveWidth = childMaxW.has_value()
-                ? std::min(childWidth, childMaxW.value()) : childWidth;
+            float effectiveWidth = lc.maxWidth.has_value()
+                ? std::min(childWidth, lc.maxWidth.value()) : childWidth;
 
             float childH = child.heightForWidth(effectiveWidth, textMeasurer);
             height += childH;

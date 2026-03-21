@@ -141,17 +141,18 @@ void Element::mountSubtree() {
             description->setPropertyOwner(this);
             description->onMounted();
 
-            reconcileProperty<float>("opacity",          description->getOpacity(),         nullptr);
-            reconcileProperty<Color>("backgroundColor",  description->getBackgroundColor(), nullptr);
-            reconcileProperty<Color>("borderColor",      description->getBorderColor(),     nullptr);
-            reconcileProperty<float>("borderWidth",      description->getBorderWidth(),     nullptr);
-            reconcileProperty<CornerRadius>("cornerRadius", description->getCornerRadius(), nullptr);
-            reconcileProperty<float>("rotation",         description->getRotation(),        nullptr);
-            reconcileProperty<float>("scaleX",           description->getScaleX(),          nullptr);
-            reconcileProperty<float>("scaleY",           description->getScaleY(),          nullptr);
-            reconcileProperty<Point>("offset",           description->getOffset(),          nullptr);
-            reconcileProperty<EdgeInsets>("padding",      description->getPadding(),         nullptr);
-            reconcileProperty<Rect>("bounds",            cachedBounds,                      nullptr);
+            auto vs = description->getVisualStyle();
+            reconcileProperty<float>("opacity",          vs.opacity,         nullptr);
+            reconcileProperty<Color>("backgroundColor",  vs.backgroundColor, nullptr);
+            reconcileProperty<Color>("borderColor",      vs.borderColor,     nullptr);
+            reconcileProperty<float>("borderWidth",      vs.borderWidth,     nullptr);
+            reconcileProperty<CornerRadius>("cornerRadius", vs.cornerRadius, nullptr);
+            reconcileProperty<float>("rotation",         vs.rotation,        nullptr);
+            reconcileProperty<float>("scaleX",           vs.scaleX,          nullptr);
+            reconcileProperty<float>("scaleY",           vs.scaleY,          nullptr);
+            reconcileProperty<Point>("offset",           vs.offset,          nullptr);
+            reconcileProperty<EdgeInsets>("padding",      vs.padding,         nullptr);
+            reconcileProperty<Rect>("bounds",            cachedBounds,       nullptr);
         }
         FLUX_LOG_TRACE("[ELEMENT] Mounted %s", typeName.c_str());
     }
@@ -180,10 +181,10 @@ void Element::unmountSubtree() {
 void Element::reconcileAnimations(const View& newView, const Rect& newBounds) {
     if (!description || !description->isValid()) return;
 
-    auto anim = newView.getAnimation();
+    auto vs = newView.getVisualStyle();
     auto ctx = currentAnimationContext();
     auto pending = consumePendingAnimationConfig();
-    std::optional<Animation> effectiveAnim = anim ? anim : (ctx ? ctx : pending);
+    std::optional<Animation> effectiveAnim = vs.animation ? vs.animation : (ctx ? ctx : pending);
 
     const Animation* config = nullptr;
     Animation resolved;
@@ -194,17 +195,17 @@ void Element::reconcileAnimations(const View& newView, const Rect& newBounds) {
 
     bool hadAnimations = !activeAnimations.empty();
 
-    reconcileProperty<float>("opacity",            newView.getOpacity(),         config);
-    reconcileProperty<Color>("backgroundColor",    newView.getBackgroundColor(), config);
-    reconcileProperty<Color>("borderColor",        newView.getBorderColor(),     config);
-    reconcileProperty<float>("borderWidth",        newView.getBorderWidth(),     config);
-    reconcileProperty<CornerRadius>("cornerRadius", newView.getCornerRadius(),   config);
-    reconcileProperty<float>("rotation",           newView.getRotation(),        config);
-    reconcileProperty<float>("scaleX",             newView.getScaleX(),          config);
-    reconcileProperty<float>("scaleY",             newView.getScaleY(),          config);
-    reconcileProperty<Point>("offset",             newView.getOffset(),          config);
-    reconcileProperty<EdgeInsets>("padding",        newView.getPadding(),         config);
-    reconcileProperty<Rect>("bounds",              newBounds,                    config);
+    reconcileProperty<float>("opacity",            vs.opacity,         config);
+    reconcileProperty<Color>("backgroundColor",    vs.backgroundColor, config);
+    reconcileProperty<Color>("borderColor",        vs.borderColor,     config);
+    reconcileProperty<float>("borderWidth",        vs.borderWidth,     config);
+    reconcileProperty<CornerRadius>("cornerRadius", vs.cornerRadius,   config);
+    reconcileProperty<float>("rotation",           vs.rotation,        config);
+    reconcileProperty<float>("scaleX",             vs.scaleX,          config);
+    reconcileProperty<float>("scaleY",             vs.scaleY,          config);
+    reconcileProperty<Point>("offset",             vs.offset,          config);
+    reconcileProperty<EdgeInsets>("padding",        vs.padding,         config);
+    reconcileProperty<Rect>("bounds",              newBounds,          config);
 
     if (!hadAnimations && !activeAnimations.empty()) {
         AnimationEngine::instance().registerElement(this);
