@@ -49,6 +49,11 @@ struct Dialog {
     mutable std::string overlayId_;
     mutable bool overlayShown_ = false;
 
+    void transferState(const Dialog& old) {
+        overlayId_ = old.overlayId_;
+        overlayShown_ = old.overlayShown_;
+    }
+
     void init() {
         focusable = true;
         onMouseDown = [](float, float, int) {};

@@ -36,13 +36,20 @@ struct TextInput {
     Property<float> inputWidth = 200.0f;
     Property<float> inputHeight = 36.0f;
 
-    std::function<void(const std::string&)> onValueChange;
-    std::function<void()> onReturn;
-
     mutable size_t caretPos = std::string::npos;
     mutable size_t selStart = std::string::npos;
     mutable size_t selEnd = std::string::npos;
     mutable float scrollOffset = 0.0f;
+
+    std::function<void(const std::string&)> onValueChange;
+    std::function<void()> onReturn;
+
+    void transferState(const TextInput& old) {
+        caretPos = old.caretPos;
+        selStart = old.selStart;
+        selEnd = old.selEnd;
+        scrollOffset = old.scrollOffset;
+    }
 
     void init() {
         focusable = true;

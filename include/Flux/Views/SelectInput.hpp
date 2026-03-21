@@ -37,6 +37,12 @@ struct SelectInput {
     mutable Rect lastBounds_{};
     mutable std::string overlayId_;
 
+    void transferState(const SelectInput& old) {
+        isOpen = old.isOpen;
+        lastBounds_ = old.lastBounds_;
+        overlayId_ = old.overlayId_;
+    }
+
     void init() {
         focusable = true;
         cursor = CursorType::Pointer;

@@ -50,6 +50,19 @@ void Element::reconcile(const LayoutNode& newNode) {
                           cachedBounds.width != newNode.bounds.width ||
                           cachedBounds.height != newNode.bounds.height);
 
+    if (!bodyDirty && !boundsChanged && !subtreeDirty) {
+        return;
+    }
+
+    if (bodyDirty || boundsChanged) {
+        View oldView = *description;
+        *description = newNode.view;
+        (**description).transferStateFrom(*oldView);
+        description->setPropertyOwner(this);
+        typeName = newNode.view.getTypeName();
+        key = newNode.view.getKey();
+    }
+
     cachedBounds = newNode.bounds;
     lastConstraints = newNode.bounds;
     bodyDirty = false;

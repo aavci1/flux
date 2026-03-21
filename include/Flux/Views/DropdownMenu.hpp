@@ -43,6 +43,12 @@ struct DropdownMenu {
     mutable Rect lastBounds_{};
     mutable std::string overlayId_;
 
+    void transferState(const DropdownMenu& old) {
+        open = static_cast<bool>(old.open);
+        lastBounds_ = old.lastBounds_;
+        overlayId_ = old.overlayId_;
+    }
+
     void init() {
         focusable = true;
         cursor = CursorType::Pointer;
