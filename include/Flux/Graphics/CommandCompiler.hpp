@@ -83,8 +83,9 @@ struct CompiledBatches {
 class CommandCompiler {
 public:
     void setGlyphAtlas(GlyphAtlas* atlas) { atlas_ = atlas; }
-    CompiledBatches compile(const RenderCommandBuffer& buffer, float vpWidth, float vpHeight,
-                            float dpiScaleX = 1.0f, float dpiScaleY = 1.0f);
+    /// Clears and fills \p out while retaining vector capacity across frames for fewer allocations.
+    void compile(const RenderCommandBuffer& buffer, float vpWidth, float vpHeight,
+                 float dpiScaleX, float dpiScaleY, CompiledBatches& out);
 
 private:
     struct State {

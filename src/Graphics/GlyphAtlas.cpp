@@ -69,7 +69,7 @@ bool GlyphAtlas::loadFont(const std::string& path, uint16_t fontIndex) {
         }
     }
     faces_[fontIndex] = face;
-    dirty_ = true;
+    markFullAtlasDirty();
     return true;
 }
 
@@ -234,6 +234,8 @@ bool GlyphAtlas::rasterizeGlyph(const GlyphKey& key, GlyphInfo& out) {
                      &g->bitmap.buffer[row * g->bitmap.pitch], gw);
         }
 
+        expandDirtyRect(cursorX_, cursorY_, gw, gh);
+
         float inv = 1.0f / static_cast<float>(atlasSize_);
         out.u0 = static_cast<float>(cursorX_) * inv;
         out.v0 = static_cast<float>(cursorY_) * inv;
@@ -247,7 +249,6 @@ bool GlyphAtlas::rasterizeGlyph(const GlyphKey& key, GlyphInfo& out) {
 
         cursorX_ += gw + pad;
         rowHeight_ = std::max(rowHeight_, gh);
-        dirty_ = true;
         return true;
     };
 
@@ -274,8 +275,57 @@ const GlyphInfo* GlyphAtlas::getGlyph(uint32_t codepoint, uint16_t fontSize, uin
 
 void GlyphAtlas::uploadIfDirty() {
     if (!dirty_) return;
-    texture_->write(atlasData_.data(), 0, 0, atlasSize_, atlasSize_);
+    if (!texture_) return;
+
+    if (!dirtyRectValid_) {
+        texture_->write(atlasData_.data(), 0, 0, atlasSize_, atlasSize_, atlasSize_);
+        lastGpuUploadBytes_ = static_cast<uint64_t>(atlasSize_) * atlasSize_;
+        dirty_ = false;
+        return;
+    }
+
+    const uint32_t w = dirtyX1_ - dirtyX0_;
+    const uint32_t h = dirtyY1_ - dirtyY0_;
+    if (w == 0 || h == 0) {
+        dirty_ = false;
+        dirtyRectValid_ = false;
+        lastGpuUploadBytes_ = 0;
+        return;
+    }
+
+    const uint8_t* src = &atlasData_[dirtyY0_ * atlasSize_ + dirtyX0_];
+    texture_->write(src, dirtyX0_, dirtyY0_, w, h, atlasSize_);
+    lastGpuUploadBytes_ = static_cast<uint64_t>(w) * h;
     dirty_ = false;
+    dirtyRectValid_ = false;
+}
+
+void GlyphAtlas::expandDirtyRect(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
+    if (w == 0 || h == 0) return;
+    const uint32_t x1 = x + w;
+    const uint32_t y1 = y + h;
+    if (!dirtyRectValid_) {
+        dirtyX0_ = x;
+        dirtyY0_ = y;
+        dirtyX1_ = x1;
+        dirtyY1_ = y1;
+        dirtyRectValid_ = true;
+    } else {
+        dirtyX0_ = std::min(dirtyX0_, x);
+        dirtyY0_ = std::min(dirtyY0_, y);
+        dirtyX1_ = std::max(dirtyX1_, x1);
+        dirtyY1_ = std::max(dirtyY1_, y1);
+    }
+    dirty_ = true;
+}
+
+void GlyphAtlas::markFullAtlasDirty() {
+    dirty_ = true;
+    dirtyRectValid_ = true;
+    dirtyX0_ = 0;
+    dirtyY0_ = 0;
+    dirtyX1_ = atlasSize_;
+    dirtyY1_ = atlasSize_;
 }
 
 Size GlyphAtlas::measureText(const std::string& text, float fontSize, uint16_t fontIndex) {

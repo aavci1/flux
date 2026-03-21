@@ -26,7 +26,11 @@ public:
 class Texture {
 public:
     virtual ~Texture() = default;
-    virtual void write(const void* data, uint32_t x, uint32_t y, uint32_t w, uint32_t h) = 0;
+    /// Upload a sub-rectangle. Pixels are R8/RGBA/etc. per format().
+    /// When \p srcBytesPerRow is 0, source rows are tightly packed (\p w * bytesPerPixel).
+    /// When non-zero, \p data points into a larger buffer with that row pitch (e.g. CPU atlas).
+    virtual void write(const void* data, uint32_t x, uint32_t y, uint32_t w, uint32_t h,
+                       uint32_t srcBytesPerRow = 0) = 0;
     virtual uint32_t width() const = 0;
     virtual uint32_t height() const = 0;
 };

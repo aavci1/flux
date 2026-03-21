@@ -48,6 +48,8 @@ private:
     std::unique_ptr<gpu::Buffer> pathVertexBuffer_;
     std::unique_ptr<gpu::Buffer> imageInstanceBuffer_;
 
+    CompiledBatches compiledBatches_;
+
     size_t rectBufferCapacity_ = 0;
     size_t circleBufferCapacity_ = 0;
     size_t lineBufferCapacity_ = 0;

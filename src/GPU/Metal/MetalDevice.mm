@@ -58,9 +58,12 @@ MetalTexture::MetalTexture(id<MTLTexture> texture, uint32_t w, uint32_t h)
 {
 }
 
-void MetalTexture::write(const void* data, uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
+void MetalTexture::write(const void* data, uint32_t x, uint32_t y, uint32_t w, uint32_t h,
+                         uint32_t srcBytesPerRow) {
     MTLRegion region = MTLRegionMake2D(x, y, w, h);
-    NSUInteger bpr = w * bytesPerPixel(format_);
+    const uint32_t bpp = bytesPerPixel(format_);
+    NSUInteger bpr = srcBytesPerRow ? static_cast<NSUInteger>(srcBytesPerRow)
+                                  : static_cast<NSUInteger>(w) * bpp;
     [texture_ replaceRegion:region mipmapLevel:0 withBytes:data bytesPerRow:bpr];
 }
 
