@@ -16,41 +16,6 @@ namespace flux {
 // Forward declarations
 class Window;
 
-struct Event {
-    enum Type {
-        MouseMove,
-        MouseDown,
-        MouseUp,
-        MouseScroll,
-        KeyPress,
-        KeyRelease,
-        TextInput
-    };
-
-    Type type;
-    union {
-        struct { 
-            float x, y; 
-        } mouseMove;
-        
-        struct { 
-            float x, y;
-            int button;
-        } mouseButton;
-        
-        struct {
-            float x, y;
-            float deltaX, deltaY;
-        } mouseScroll;
-        
-        struct { 
-            int key;
-            uint32_t modifiers;
-        } keyboard;
-    };
-    std::string text; // For TextInput events
-};
-
 class Renderer {
 private:
     RenderContext* renderContext_;
@@ -108,7 +73,7 @@ public:
         layoutCacheValid_ = false;
     }
 
-    void handleEvent(const struct Event& event, const Rect& windowBounds);
+    void handleEvent(const PointerEvent& event, const Rect& windowBounds);
 
     void setRootView(View component) {
         rootView_ = std::move(component);
@@ -125,8 +90,6 @@ public:
 
 private:
     void renderTree(LayoutNode& node, Element* element, Point parentOrigin = {0, 0});
-
-    bool findAndDispatchEvent(LayoutNode& node, const Event& event, const Point& point);
 
     // Unified event pipeline: hit test → capture → target → bubble
     bool dispatchPointerEvent(LayoutNode& root, PointerEvent& event);
@@ -145,56 +108,6 @@ private:
     void collectHoverPath(const LayoutNode& node, const Point& point, std::vector<View>& path);
     bool updateHoverState(const Point& point);
 
-    // Dispatch event to a specific view
-    bool dispatchEventToView(const View& view, const Event& event, const Point& localPoint) {
-        bool handled = false;
-        
-        switch (event.type) {
-            case Event::MouseDown:
-                {
-                    View mutableView = view;
-                    handled = mutableView.handleMouseDown(localPoint.x, localPoint.y, event.mouseButton.button);
-                    if (handled) {
-                        FLUX_LOG_DEBUG("[Renderer] MouseDown handled by %s at (%f, %f)", view.getTypeName().c_str(), localPoint.x, localPoint.y);
-                    }
-                }
-                break;
-                
-            case Event::MouseUp:
-                {
-                    View mutableView = view;
-                    handled = mutableView.handleMouseUp(localPoint.x, localPoint.y, event.mouseButton.button);
-                }
-                break;
-                
-            case Event::MouseMove:
-                {
-                    View mutableView = view;
-                    handled = mutableView.handleMouseMove(localPoint.x, localPoint.y);
-                }
-                break;
-                
-            case Event::MouseScroll:
-                {
-                    View mutableView = view;
-                    handled = mutableView.handleMouseScroll(
-                        localPoint.x, 
-                        localPoint.y, 
-                        event.mouseScroll.deltaX,
-                        event.mouseScroll.deltaY
-                    );
-                    if (handled) {
-                        FLUX_LOG_DEBUG("[Renderer] MouseScroll handled by %s deltaX=%f deltaY=%f", view.getTypeName().c_str(), event.mouseScroll.deltaX, event.mouseScroll.deltaY);
-                    }
-                }
-                break;
-                
-            default:
-                break;
-        }
-        
-        return handled;
-    }
 };
 
 // Alias for clarity

@@ -125,32 +125,6 @@ std::optional<CursorType> Renderer::collectCursor(const LayoutNode& node, const 
     return std::nullopt;  // Point not in this node
 }
 
-bool Renderer::findAndDispatchEvent(LayoutNode& node, const Event& event, const Point& point) {
-    for (size_t i = node.children.size(); i > 0; --i) {
-        size_t idx = i - 1;
-        if (node.children[idx].bounds.contains(point)) {
-            mouseCapture_.treePath.push_back(idx);
-            if (findAndDispatchEvent(node.children[idx], event, point)) {
-                return true;
-            }
-            mouseCapture_.treePath.pop_back();
-        }
-    }
-
-    if (node.bounds.contains(point) && node.view.isInteractive()) {
-        Point localPoint = {point.x - node.bounds.x, point.y - node.bounds.y};
-        bool handled = dispatchEventToView(node.view, event, localPoint);
-        if (handled && event.type == Event::MouseDown) {
-            mouseCapture_.active = true;
-            pressedBounds_ = node.bounds;
-            hasPressedView_ = true;
-        }
-        return handled;
-    }
-
-    return false;
-}
-
 LayoutNode* Renderer::findNodeByPath(LayoutNode& root, const std::vector<size_t>& path) {
     LayoutNode* current = &root;
     for (size_t idx : path) {
@@ -311,33 +285,18 @@ void Renderer::renderTree(LayoutNode& node, Element* element, Point parentOrigin
     renderContext_->popEnvironment();
 }
 
-void Renderer::handleEvent(const struct Event& event, const Rect& windowBounds) {
+void Renderer::handleEvent(const PointerEvent& event, const Rect& windowBounds) {
     if (!rootView_.isValid()) {
         return;
     }
 
-    Point eventPoint;
-    
-    switch (event.type) {
-        case Event::MouseMove:
-            eventPoint = {event.mouseMove.x, event.mouseMove.y};
-            break;
-        case Event::MouseDown:
-        case Event::MouseUp:
-            eventPoint = {event.mouseButton.x, event.mouseButton.y};
-            break;
-        case Event::MouseScroll:
-            eventPoint = {event.mouseScroll.x, event.mouseScroll.y};
-            break;
-        default:
-            return;
-    }
+    Point eventPoint = event.windowPosition;
 
     if (!windowBounds.contains(eventPoint)) {
         return;
     }
 
-    if (!layoutCacheValid_ || 
+    if (!layoutCacheValid_ ||
         cachedBounds_.x != windowBounds.x || cachedBounds_.y != windowBounds.y ||
         cachedBounds_.width != windowBounds.width || cachedBounds_.height != windowBounds.height) {
         suppressRedrawRequests();
@@ -349,8 +308,11 @@ void Renderer::handleEvent(const struct Event& event, const Rect& windowBounds) 
     }
 
     bool needsRedraw = false;
+    const bool isMove  = event.kind == PointerEvent::Kind::Move;
+    const bool isDown  = event.kind == PointerEvent::Kind::Down;
+    const bool isUp    = event.kind == PointerEvent::Kind::Up;
 
-    if (event.type == Event::MouseMove) {
+    if (isMove) {
         bool hoverChanged = updateHoverState(eventPoint);
         if (window_) {
             std::optional<CursorType> cursor = collectCursor(cachedLayoutTree_, eventPoint, CursorType::Default);
@@ -358,49 +320,24 @@ void Renderer::handleEvent(const struct Event& event, const Rect& windowBounds) 
         }
         needsRedraw = hoverChanged;
     }
-    
-    if (event.type == Event::MouseDown && window_) {
+
+    if (isDown && window_) {
         window_->focus().focusViewAtPoint(eventPoint);
         needsRedraw = true;
     }
 
-    if (event.type == Event::MouseUp) {
+    if (isUp) {
         hasPressedView_ = false;
         needsRedraw = true;
     }
 
-    // Build a PointerEvent for the unified pipeline
-    PointerEvent ptrEvent;
-    ptrEvent.windowPosition = eventPoint;
-    ptrEvent.localPosition = eventPoint;
-    switch (event.type) {
-        case Event::MouseDown:
-            ptrEvent.kind = PointerEvent::Kind::Down;
-            ptrEvent.button = event.mouseButton.button;
-            break;
-        case Event::MouseUp:
-            ptrEvent.kind = PointerEvent::Kind::Up;
-            ptrEvent.button = event.mouseButton.button;
-            break;
-        case Event::MouseMove:
-            ptrEvent.kind = PointerEvent::Kind::Move;
-            break;
-        case Event::MouseScroll:
-            ptrEvent.kind = PointerEvent::Kind::Scroll;
-            ptrEvent.scrollDeltaX = event.mouseScroll.deltaX;
-            ptrEvent.scrollDeltaY = event.mouseScroll.deltaY;
-            break;
-        default:
-            break;
-    }
+    PointerEvent ptrEvent = event;
 
-    // Dispatch to overlays first (they render on top)
     if (!overlayManager_.empty() && (!mouseCapture_.active || mouseCapture_.fromOverlay)) {
-        if (mouseCapture_.active && mouseCapture_.fromOverlay &&
-            (event.type == Event::MouseMove || event.type == Event::MouseUp)) {
+        if (mouseCapture_.active && mouseCapture_.fromOverlay && (isMove || isUp)) {
             dispatchPointerEventToOverlays(ptrEvent);
             needsRedraw = true;
-            if (event.type == Event::MouseUp) {
+            if (isUp) {
                 mouseCapture_.active = false;
                 mouseCapture_.fromOverlay = false;
             }
@@ -415,21 +352,21 @@ void Renderer::handleEvent(const struct Event& event, const Rect& windowBounds) 
         }
     }
 
-    if (mouseCapture_.active && (event.type == Event::MouseMove || event.type == Event::MouseUp)) {
+    if (mouseCapture_.active && (isMove || isUp)) {
         LayoutNode* captured = findNodeByPath(cachedLayoutTree_, mouseCapture_.treePath);
         if (captured && captured->view.isInteractive()) {
-            if (event.type == Event::MouseMove) {
+            if (isMove) {
                 pressedBounds_ = captured->bounds;
                 hasPressedView_ = true;
             }
             dispatchPointerToView(captured->view, ptrEvent, captured->bounds);
             needsRedraw = true;
         }
-        if (event.type == Event::MouseUp) {
+        if (isUp) {
             mouseCapture_.active = false;
             mouseCapture_.fromOverlay = false;
         }
-    } else if (event.type != Event::MouseMove) {
+    } else if (!isMove) {
         mouseCapture_.treePath.clear();
         if (dispatchPointerEvent(cachedLayoutTree_, ptrEvent)) {
             needsRedraw = true;
