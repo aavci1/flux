@@ -15,8 +15,6 @@ GPURenderContext::GPURenderContext(FontProvider* fontProvider, ImageCache* image
       currentFill_(FillStyle::none()), currentStroke_(StrokeStyle::none()) {}
 
 void GPURenderContext::beginFrame() {
-    frameCount_++;
-    if (frameCount_ % 300 == 0) measureCache_.clear();
     commandBufferPeak_ = std::max(commandBufferPeak_, ownedBuffer_.size());
     ownedBuffer_.clear();
     ownedBuffer_.reserve(commandBufferPeak_);
@@ -63,6 +61,8 @@ void GPURenderContext::restore() {
 void GPURenderContext::reset() {
     transform_ = TransformState{};
     transformStack_.clear();
+    measureFifo_.clear();
+    measureCacheIt_.clear();
 }
 
 void GPURenderContext::translate(float x, float y) {
@@ -234,8 +234,10 @@ void GPURenderContext::drawTextBox(const std::string& text, const Point& positio
 
 Size GPURenderContext::measureText(const std::string& text, const TextStyle& style) {
     TextMeasureKey key{text, style.fontName, style.size};
-    auto it = measureCache_.find(key);
-    if (it != measureCache_.end()) return it->second;
+    auto it = measureCacheIt_.find(key);
+    if (it != measureCacheIt_.end()) {
+        return it->second->second;
+    }
 
     if (!fontProvider_) return {0, 0};
 
@@ -244,7 +246,15 @@ Size GPURenderContext::measureText(const std::string& text, const TextStyle& sty
         return {0, 0};
     }
     Size sz = fontProvider_->measureText(text, style.size, *fontIndex);
-    measureCache_[key] = sz;
+
+    if (measureFifo_.size() >= kMeasureCacheMaxEntries) {
+        auto oldest = measureFifo_.begin();
+        measureCacheIt_.erase(oldest->first);
+        measureFifo_.pop_front();
+    }
+    measureFifo_.push_back({std::move(key), sz});
+    auto lit = std::prev(measureFifo_.end());
+    measureCacheIt_[lit->first] = lit;
     return sz;
 }
 
