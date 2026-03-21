@@ -3,9 +3,10 @@
 #include <Flux/Graphics/RenderContext.hpp>
 #include <Flux/Graphics/RenderCommandBuffer.hpp>
 #include <Flux/Graphics/ImageCache.hpp>
+#include <list>
+#include <memory>
 #include <string>
 #include <unordered_map>
-#include <memory>
 
 namespace flux {
 
@@ -145,8 +146,15 @@ private:
             return h;
         }
     };
-    std::unordered_map<TextMeasureKey, Size, TextMeasureKeyHash> measureCache_;
-    uint32_t frameCount_ = 0;
+    /// Max entries; FIFO eviction (oldest insertion) keeps memory bounded without
+    /// per-hit work (replaces periodic full clears of an unbounded map).
+    /// List holds the only copy of each key; the map stores iterators into that list.
+    static constexpr std::size_t kMeasureCacheMaxEntries = 8192;
+    using MeasureFifoEntry = std::pair<TextMeasureKey, Size>;
+    std::list<MeasureFifoEntry> measureFifo_;
+    std::unordered_map<TextMeasureKey, std::list<MeasureFifoEntry>::iterator,
+                        TextMeasureKeyHash>
+        measureCacheIt_;
     /// High-water mark of command count in \ref ownedBuffer_ for allocation-free steady state.
     size_t commandBufferPeak_ = 512;
 };
