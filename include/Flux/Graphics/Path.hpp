@@ -7,10 +7,6 @@
 
 namespace flux {
 
-// Forward declarations
-class NanoVGRenderContext;
-
-
 enum class PathWinding {
     CounterClockwise,  // Solid shapes
     Clockwise          // Holes
@@ -21,13 +17,15 @@ enum class PathWinding {
  * 
  * Builds vector paths that can be drawn or used for clipping.
  * Similar to Skia's SkPath and QPainter's QPainterPath.
+ *
+ * All parameter data is stored in a single contiguous flat buffer
+ * (data_) to eliminate per-command heap allocations.
  */
 class Path {
 public:
     Path();
     ~Path();
     
-    // Copy and move
     Path(const Path& other);
     Path& operator=(const Path& other);
     Path(Path&& other) noexcept;
@@ -37,86 +35,32 @@ public:
     // PATH CONSTRUCTION
     // ============================================================================
 
-    /**
-     * Set the winding direction of the path
-     */
     void setWinding(PathWinding winding);
-    
-    /**
-     * Move the current point to a new position without drawing
-     */
     void moveTo(const Point& point);
-    
-    /**
-     * Draw a line from current point to the specified point
-     */
     void lineTo(const Point& point);
-    
-    /**
-     * Draw a quadratic Bezier curve
-     */
     void quadTo(const Point& control, const Point& end);
-    
-    /**
-     * Draw a cubic Bezier curve
-     */
     void bezierTo(const Point& c1, const Point& c2, const Point& end);
-    
-    /**
-     * Draw an arc between two points with a given radius
-     */
     void arcTo(const Point& p1, const Point& p2, float radius);
-    
-    /**
-     * Draw an arc centered at a point
-     */
     void arc(const Point& center, float radius, float startAngle, float endAngle, bool clockwise = false);
-    
-    /**
-     * Add a rectangle to the path
-     */
     void rect(const Rect& rect, const CornerRadius& cornerRadius = CornerRadius());
-    
-    /**
-     * Add a circle to the path
-     */
     void circle(const Point& center, float radius);
-    
-    /**
-     * Add an ellipse to the path
-     */
     void ellipse(const Point& center, float radiusX, float radiusY);
-    
-    /**
-     * Close the current path by drawing a line to the starting point
-     */
     void close();
-    
-    /**
-     * Clear all path data
-     */
     void reset();
     
     // ============================================================================
     // QUERIES
     // ============================================================================
     
-    /**
-     * Check if the path has no elements
-     */
     bool isEmpty() const;
-    
-    /**
-     * Get the bounding box of the path
-     */
     Rect getBounds() const;
-
-    /// Stable hash of path commands (for tessellation caches).
     uint64_t contentHash() const;
 
-private:
-    // Path command types
-    enum class CommandType {
+    // ============================================================================
+    // INTERNAL TYPES (public for friend access; prefer the iteration API below)
+    // ============================================================================
+
+    enum class CommandType : uint8_t {
         SetWinding,
         MoveTo,
         LineTo,
@@ -130,26 +74,40 @@ private:
         Close
     };
     
-    // Generic path command
     struct Command {
         CommandType type;
         PathWinding winding = PathWinding::CounterClockwise;
-        std::vector<float> data;  // Points and parameters flattened
-        
-        Command(CommandType t) : type(t) {}
+        uint32_t dataOffset = 0;
+        uint8_t  dataCount  = 0;
     };
-    
+
+    // ============================================================================
+    // ITERATION API — used by NanoVG*, PathFlattener, etc.
+    // ============================================================================
+
+    struct CommandView {
+        CommandType type;
+        PathWinding winding;
+        const float* data;
+        uint8_t dataCount;
+    };
+
+    size_t commandCount() const { return commands_.size(); }
+
+    CommandView command(size_t idx) const {
+        const auto& c = commands_[idx];
+        return {c.type, c.winding, data_.data() + c.dataOffset, c.dataCount};
+    }
+
+private:
     std::vector<Command> commands_;
+    std::vector<float>   data_;
     mutable Rect cachedBounds_;
     mutable bool boundsDirty_ = true;
-    
+
+    void pushCommand(CommandType type, PathWinding w, std::initializer_list<float> params);
     void invalidateBounds();
     void updateBounds() const;
-    
-    friend class NanoVGRenderContext;
-    friend class NanoVGBackend;
-    friend class PathFlattener;
 };
 
 } // namespace flux
-
