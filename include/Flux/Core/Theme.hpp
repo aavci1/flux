@@ -28,6 +28,14 @@ struct Theme {
     Color codeBackground{};      // textCodeBlock.background
     Color badgeBackground{};     // badge.background
     Color badgeForeground{};     // badge.foreground
+    Color overlay{};             // Modal/dialog backdrop
+    Color trackInactive{};       // Slider/ProgressBar inactive track
+    Color success{};             // Toggle-on, success states
+    Color destructive{};         // Destructive actions (delete buttons)
+    Color focusRing{};           // Focus ring outline
+    Color selection{};           // Text selection highlight
+    Color controlBackground{};   // Dropdown/select trigger surface
+    Color shadow{};              // Drop shadows
 
     static Theme light();
     /** Cursor / VS Code Dark Modern palette */
@@ -55,6 +63,14 @@ inline Theme Theme::light() {
     t.codeBackground = Color::hex(0xF5F5F5);
     t.badgeBackground = Color::hex(0x616161);
     t.badgeForeground = Color::hex(0xF8F8F8);
+    t.overlay = Color(0, 0, 0, 0.4f);
+    t.trackInactive = Color::hex(0xD4D4D4);
+    t.success = Color::hex(0x4CAF50);
+    t.destructive = Color::hex(0xF44336);
+    t.focusRing = t.accent;
+    t.selection = Color(0.0f, 0.47f, 0.83f, 0.3f);
+    t.controlBackground = Color::hex(0xF0F0F0);
+    t.shadow = Color(0, 0, 0, 0.15f);
     return t;
 }
 
@@ -80,6 +96,14 @@ inline Theme Theme::dark() {
     t.codeBackground = Color::hex(0x2B2B2B);  // textCodeBlock.background
     t.badgeBackground = Color::hex(0x616161); // badge.background
     t.badgeForeground = Color::hex(0xF8F8F8);  // badge.foreground
+    t.overlay = Color(0, 0, 0, 0.6f);
+    t.trackInactive = Color::hex(0x4A4A4A);
+    t.success = Color::hex(0x4CAF50);
+    t.destructive = Color::hex(0xF44336);
+    t.focusRing = t.accent;
+    t.selection = Color(0.0f, 0.47f, 0.83f, 0.3f);
+    t.controlBackground = Color::hex(0x2D2D2D);
+    t.shadow = Color(0, 0, 0, 0.35f);
     return t;
 }
 
@@ -93,7 +117,11 @@ inline bool operator==(const Theme& a, const Theme& b) {
            a.inputBackground == b.inputBackground && a.inputForeground == b.inputForeground &&
            a.placeholder == b.placeholder && a.link == b.link &&
            a.codeBackground == b.codeBackground && a.badgeBackground == b.badgeBackground &&
-           a.badgeForeground == b.badgeForeground;
+           a.badgeForeground == b.badgeForeground && a.overlay == b.overlay &&
+           a.trackInactive == b.trackInactive && a.success == b.success &&
+           a.destructive == b.destructive && a.focusRing == b.focusRing &&
+           a.selection == b.selection && a.controlBackground == b.controlBackground &&
+           a.shadow == b.shadow;
 }
 
 } // namespace flux

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Flux/Core/View.hpp>
+#include <Flux/Core/ViewHelpers.hpp>
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/Property.hpp>
 #include <Flux/Core/KeyEvent.hpp>
@@ -15,7 +16,7 @@ struct Button {
     FLUX_INTERACTIVE_PROPERTIES;
 
     Property<std::string> text;
-    Property<Color> textColor = Colors::white;
+    Property<Color> textColor = Colors::inherit;
 
     void init() {
         focusable = true;
@@ -53,14 +54,14 @@ struct Button {
             Rect focusRect = {bounds.x - 1, bounds.y - 1, bounds.width + 2, bounds.height + 2};
             focusRing.rect(focusRect, cornerRadius);
             ctx.setFillStyle(FillStyle::none());
-            ctx.setStrokeStyle(StrokeStyle::solid(Colors::blue, 2.0f));
+            ctx.setStrokeStyle(StrokeStyle::solid(ctx.theme().focusRing, 2.0f));
             ctx.drawPath(focusRing);
         }
 
         float labelSize = Typography::callout;
         ctx.setTextStyle(makeTextStyle("default", FontWeight::regular, labelSize, Typography::lineHeightTight,
             Typography::trackingFor(labelSize, FontWeight::regular)));
-        ctx.setFillStyle(FillStyle::solid(textColor));
+        ctx.setFillStyle(FillStyle::solid(resolveColor(textColor, ctx.theme().onAccent)));
         ctx.drawText(static_cast<std::string>(text), bounds.center(), HorizontalAlignment::center, VerticalAlignment::center);
     }
 
