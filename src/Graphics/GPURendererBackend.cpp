@@ -298,19 +298,36 @@ void GPURendererBackend::ensurePipelines() {
     pipelinesReady_ = true;
 }
 
-static std::unique_ptr<gpu::Buffer> ensureBuffer(gpu::Device* device,
-                                                  std::unique_ptr<gpu::Buffer>& buf,
-                                                  size_t& capacity, size_t needed) {
-    if (needed == 0) return nullptr;
-    size_t bytes = needed * sizeof(SDFQuadInstance);
+/// Grow GPU vertex buffer for instance data: high-water with slack to reduce realloc spikes.
+template<typename T>
+static void ensureInstanceBuffer(gpu::Device* device, std::unique_ptr<gpu::Buffer>& buf,
+                                 size_t& capacity, size_t needed, size_t minCapacity = 64) {
+    if (needed == 0) return;
     if (!buf || capacity < needed) {
-        capacity = std::max(needed, size_t(64));
+        const size_t oldCap = capacity;
+        size_t newCap = std::max(needed, minCapacity);
+        if (oldCap > 0) {
+            newCap = std::max(needed, oldCap + (oldCap >> 1));
+        }
+        capacity = newCap;
         gpu::BufferDesc desc;
-        desc.size = capacity * sizeof(SDFQuadInstance);
+        desc.size = capacity * sizeof(T);
         desc.usage = gpu::BufferUsage::Vertex;
         buf = device->createBuffer(desc);
     }
+}
+
+static gpu::Texture* resolveImageTexture(ImageCache* cache, const ImageDrawCmd& d) {
+    if (!cache) return nullptr;
+    if (!d.path.empty()) return cache->getOrLoad(d.path);
+    if (d.imageId > 0) return cache->getById(d.imageId);
     return nullptr;
+}
+
+static void ensureImageInstanceBuffer(gpu::Device* device,
+                                      std::unique_ptr<gpu::Buffer>& buf,
+                                      size_t& capacity, size_t needed) {
+    ensureInstanceBuffer<ImageInstance>(device, buf, capacity, needed, 16);
 }
 
 void GPURendererBackend::execute(const RenderCommandBuffer& buffer) {
@@ -325,9 +342,12 @@ void GPURendererBackend::execute(const RenderCommandBuffer& buffer) {
 
 void GPURendererBackend::uploadAndDraw(const CompiledBatches& batches) {
     // Ensure and upload all instance buffers (shared across draw groups)
-    ensureBuffer(device_, rectInstanceBuffer_, rectBufferCapacity_, batches.rects.size());
-    ensureBuffer(device_, circleInstanceBuffer_, circleBufferCapacity_, batches.circles.size());
-    ensureBuffer(device_, lineInstanceBuffer_, lineBufferCapacity_, batches.lines.size());
+    ensureInstanceBuffer<SDFQuadInstance>(device_, rectInstanceBuffer_, rectBufferCapacity_,
+                                          batches.rects.size());
+    ensureInstanceBuffer<SDFQuadInstance>(device_, circleInstanceBuffer_, circleBufferCapacity_,
+                                          batches.circles.size());
+    ensureInstanceBuffer<SDFQuadInstance>(device_, lineInstanceBuffer_, lineBufferCapacity_,
+                                          batches.lines.size());
 
     if (!batches.rects.empty())
         rectInstanceBuffer_->write(batches.rects.data(),
@@ -341,20 +361,16 @@ void GPURendererBackend::uploadAndDraw(const CompiledBatches& batches) {
 
     if (!batches.glyphs.empty() && glyphAtlas_) {
         glyphAtlas_->uploadIfDirty();
-        ensureBuffer(device_, glyphInstanceBuffer_, glyphBufferCapacity_, batches.glyphs.size());
+        ensureInstanceBuffer<GlyphInstance>(device_, glyphInstanceBuffer_, glyphBufferCapacity_,
+                                            batches.glyphs.size());
         glyphInstanceBuffer_->write(batches.glyphs.data(),
                                      batches.glyphs.size() * sizeof(GlyphInstance));
     }
 
     if (!batches.pathVertices.empty()) {
-        size_t pathCount = batches.pathVertices.size();
-        if (!pathVertexBuffer_ || pathBufferCapacity_ < pathCount) {
-            pathBufferCapacity_ = std::max(pathCount, size_t(256));
-            gpu::BufferDesc desc;
-            desc.size = pathBufferCapacity_ * sizeof(PathVertex);
-            desc.usage = gpu::BufferUsage::Vertex;
-            pathVertexBuffer_ = device_->createBuffer(desc);
-        }
+        const size_t pathCount = batches.pathVertices.size();
+        ensureInstanceBuffer<PathVertex>(device_, pathVertexBuffer_, pathBufferCapacity_, pathCount,
+                                         256);
         pathVertexBuffer_->write(batches.pathVertices.data(), pathCount * sizeof(PathVertex));
     }
 
@@ -380,26 +396,30 @@ void GPURendererBackend::uploadAndDraw(const CompiledBatches& batches) {
             enc->setScissorRect(0, 0, vpW, vpH);
         }
 
-        // Draw in command order (each op = one or more instances of the same type)
-        for (const auto& op : group.drawOps) {
+        // Draw in command order (batch consecutive image ops that share the same texture)
+        for (size_t i = 0; i < group.drawOps.size();) {
+            const auto& op = group.drawOps[i];
             switch (op.type) {
                 case DrawOpType::Rect:
                     enc->setPipeline(rectPipeline_.get());
                     enc->setVertexBuffer(0, quadVB_.get());
                     enc->setVertexBuffer(1, rectInstanceBuffer_.get());
                     enc->draw(6, op.count, 0, group.rectOffset + op.offset);
+                    ++i;
                     break;
                 case DrawOpType::Circle:
                     enc->setPipeline(circlePipeline_.get());
                     enc->setVertexBuffer(0, quadVB_.get());
                     enc->setVertexBuffer(1, circleInstanceBuffer_.get());
                     enc->draw(6, op.count, 0, group.circleOffset + op.offset);
+                    ++i;
                     break;
                 case DrawOpType::Line:
                     enc->setPipeline(linePipeline_.get());
                     enc->setVertexBuffer(0, quadVB_.get());
                     enc->setVertexBuffer(1, lineInstanceBuffer_.get());
                     enc->draw(6, op.count, 0, group.lineOffset + op.offset);
+                    ++i;
                     break;
                 case DrawOpType::Glyph:
                     if (glyphAtlas_ && glyphAtlas_->texture() && op.count > 0) {
@@ -409,6 +429,7 @@ void GPURendererBackend::uploadAndDraw(const CompiledBatches& batches) {
                         enc->setFragmentTexture(0, glyphAtlas_->texture());
                         enc->draw(6, op.count, 0, group.glyphOffset + op.offset);
                     }
+                    ++i;
                     break;
                 case DrawOpType::Path:
                     if (op.count > 0) {
@@ -416,32 +437,45 @@ void GPURendererBackend::uploadAndDraw(const CompiledBatches& batches) {
                         enc->setVertexBuffer(0, pathVertexBuffer_.get());
                         enc->draw(op.count, 1, group.pathOffset + op.offset, 0);
                     }
+                    ++i;
                     break;
-                case DrawOpType::Image:
-                    if (op.offset < group.imageDraws.size()) {
-                        const auto& draw = group.imageDraws[op.offset];
-                        gpu::Texture* tex = nullptr;
-                        if (!draw.path.empty())
-                            tex = imageCache_->getOrLoad(draw.path);
-                        else if (draw.imageId > 0)
-                            tex = imageCache_->getById(draw.imageId);
-                        if (tex) {
-                            if (!imageInstanceBuffer_ || imageBufferCapacity_ < 1) {
-                                imageBufferCapacity_ = 16;
-                                gpu::BufferDesc desc;
-                                desc.size = imageBufferCapacity_ * sizeof(ImageInstance);
-                                desc.usage = gpu::BufferUsage::Vertex;
-                                imageInstanceBuffer_ = device_->createBuffer(desc);
-                            }
-                            imageInstanceBuffer_->write(&draw.instance, sizeof(ImageInstance));
-                            enc->setPipeline(imagePipeline_.get());
-                            enc->setVertexBuffer(0, quadVB_.get());
-                            enc->setVertexBuffer(1, imageInstanceBuffer_.get());
-                            enc->setFragmentTexture(0, tex);
-                            enc->draw(6, 1);
-                        }
+                case DrawOpType::Image: {
+                    if (op.offset >= group.imageDraws.size()) {
+                        ++i;
+                        break;
                     }
+                    const auto& draw0 = group.imageDraws[op.offset];
+                    gpu::Texture* tex = resolveImageTexture(imageCache_.get(), draw0);
+                    if (!tex) {
+                        ++i;
+                        break;
+                    }
+                    imageBatchScratch_.clear();
+                    imageBatchScratch_.push_back(draw0.instance);
+                    size_t j = i + 1;
+                    while (j < group.drawOps.size() &&
+                           group.drawOps[j].type == DrawOpType::Image) {
+                        const auto& oj = group.drawOps[j];
+                        if (oj.offset >= group.imageDraws.size()) break;
+                        const auto& dj = group.imageDraws[oj.offset];
+                        gpu::Texture* tj = resolveImageTexture(imageCache_.get(), dj);
+                        if (tj != tex) break;
+                        imageBatchScratch_.push_back(dj.instance);
+                        ++j;
+                    }
+                    const uint32_t instCount = static_cast<uint32_t>(imageBatchScratch_.size());
+                    ensureImageInstanceBuffer(device_, imageInstanceBuffer_, imageBufferCapacity_,
+                                              imageBatchScratch_.size());
+                    imageInstanceBuffer_->write(imageBatchScratch_.data(),
+                                                imageBatchScratch_.size() * sizeof(ImageInstance));
+                    enc->setPipeline(imagePipeline_.get());
+                    enc->setVertexBuffer(0, quadVB_.get());
+                    enc->setVertexBuffer(1, imageInstanceBuffer_.get());
+                    enc->setFragmentTexture(0, tex);
+                    enc->draw(6, instCount);
+                    i = j;
                     break;
+                }
             }
         }
     }

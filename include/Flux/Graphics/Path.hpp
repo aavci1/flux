@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Flux/Core/Types.hpp>
+#include <cstdint>
 #include <vector>
 #include <memory>
 
@@ -109,7 +110,10 @@ public:
      * Get the bounding box of the path
      */
     Rect getBounds() const;
-    
+
+    /// Stable hash of path commands (for tessellation caches).
+    uint64_t contentHash() const;
+
 private:
     // Path command types
     enum class CommandType {

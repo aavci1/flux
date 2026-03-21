@@ -7,9 +7,11 @@
 namespace flux {
 
 void NanoVGBackend::execute(const RenderCommandBuffer& buffer) {
+    cmdBuffer_ = &buffer;
     for (const auto& cmd : buffer.commands()) {
         std::visit([this](const auto& c) { dispatch(c); }, cmd);
     }
+    cmdBuffer_ = nullptr;
 }
 
 // State
@@ -190,6 +192,8 @@ void NanoVGBackend::dispatch(const CmdDrawPath& c) {
 
 // Text
 void NanoVGBackend::dispatch(const CmdDrawText& c) {
+    if (!cmdBuffer_) return;
+    const std::string& text = cmdBuffer_->str(c.textStrId);
     int align = 0;
     switch (c.hAlign) {
         case HorizontalAlignment::leading: align |= NVG_ALIGN_LEFT; break;
@@ -203,10 +207,12 @@ void NanoVGBackend::dispatch(const CmdDrawText& c) {
         case VerticalAlignment::bottom: align |= NVG_ALIGN_BOTTOM; break;
     }
     nvgTextAlign(nvg_, align);
-    nvgText(nvg_, c.position.x, c.position.y, c.text.c_str(), nullptr);
+    nvgText(nvg_, c.position.x, c.position.y, text.c_str(), nullptr);
 }
 
 void NanoVGBackend::dispatch(const CmdDrawTextBox& c) {
+    if (!cmdBuffer_) return;
+    const std::string& text = cmdBuffer_->str(c.textStrId);
     int align = NVG_ALIGN_TOP;
     switch (c.hAlign) {
         case HorizontalAlignment::leading: align |= NVG_ALIGN_LEFT; break;
@@ -215,7 +221,7 @@ void NanoVGBackend::dispatch(const CmdDrawTextBox& c) {
         case HorizontalAlignment::justify: align |= NVG_ALIGN_LEFT; break;
     }
     nvgTextAlign(nvg_, align);
-    nvgTextBox(nvg_, c.position.x, c.position.y, c.maxWidth, c.text.c_str(), nullptr);
+    nvgTextBox(nvg_, c.position.x, c.position.y, c.maxWidth, text.c_str(), nullptr);
 }
 
 // Images
@@ -261,13 +267,15 @@ void NanoVGBackend::dispatch(const CmdDrawImage& c) {
 }
 
 void NanoVGBackend::dispatch(const CmdDrawImagePath& c) {
-    auto it = imageCache_.find(c.path);
+    if (!cmdBuffer_) return;
+    const std::string& path = cmdBuffer_->str(c.pathStrId);
+    auto it = imageCache_.find(path);
     int imageId = -1;
     if (it != imageCache_.end()) {
         imageId = it->second;
     } else {
-        imageId = nvgCreateImage(nvg_, c.path.c_str(), 0);
-        if (imageId >= 0) imageCache_[c.path] = imageId;
+        imageId = nvgCreateImage(nvg_, path.c_str(), 0);
+        if (imageId >= 0) imageCache_[path] = imageId;
     }
     if (imageId >= 0) {
         dispatch(CmdDrawImage{imageId, c.rect, c.fit, c.cornerRadius, c.alpha});

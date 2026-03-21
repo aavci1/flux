@@ -1,6 +1,7 @@
 #include <Flux/Graphics/Path.hpp>
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <limits>
 
 namespace flux {
@@ -316,6 +317,24 @@ void Path::updateBounds() const {
     
     cachedBounds_ = Rect{minX, minY, maxX - minX, maxY - minY};
     boundsDirty_ = false;
+}
+
+static void hashCombineU64(uint64_t& h, uint64_t v) {
+    h ^= v + 0x9e3779b97f4a7c15ULL + (h << 6) + (h >> 2);
+}
+
+uint64_t Path::contentHash() const {
+    uint64_t h = 14695981039346656037ULL;
+    for (const auto& cmd : commands_) {
+        hashCombineU64(h, static_cast<uint64_t>(static_cast<int>(cmd.type)));
+        hashCombineU64(h, static_cast<uint64_t>(static_cast<int>(cmd.winding)));
+        for (float f : cmd.data) {
+            uint32_t bits = 0;
+            std::memcpy(&bits, &f, sizeof(bits));
+            hashCombineU64(h, bits);
+        }
+    }
+    return h;
 }
 
 } // namespace flux

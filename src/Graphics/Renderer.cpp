@@ -64,7 +64,8 @@ void Renderer::renderFrame(const Rect& bounds) {
             renderContext_->clearPressedBounds();
         }
 
-        // Attach command buffer for recording, then render the tree
+        // Attach command buffer for recording, then render the tree (full buffer each frame;
+        // incremental dirty-subtree compile would require retained per-element command slices).
         commandBuffer_.clear();
         commandBuffer_.reserve(512);
         renderContext_->setRecordingBuffer(&commandBuffer_);
