@@ -18,7 +18,13 @@ Element& Element::operator=(Element&&) noexcept = default;
 
 void Element::markDirty() {
     bodyDirty = true;
-    requestApplicationRedraw();
+    if (description) {
+        description->markBodyDirty();
+    }
+    for (Element* p = this; p && !p->subtreeDirty; p = p->parent) {
+        p->subtreeDirty = true;
+    }
+    requestRedrawOnly();
 }
 
 std::unique_ptr<Element> Element::buildTree(const LayoutNode& node, size_t index) {
@@ -41,22 +47,28 @@ std::unique_ptr<Element> Element::buildTree(const LayoutNode& node, size_t index
 }
 
 void Element::reconcile(const LayoutNode& newNode) {
-    reconcileAnimations(newNode.view, newNode.bounds);
-
-    *description = newNode.view;
-    description->setPropertyOwner(this);
-    typeName = newNode.view.getTypeName();
-    key = newNode.view.getKey();
-
     bool boundsChanged = (cachedBounds.x != newNode.bounds.x ||
                           cachedBounds.y != newNode.bounds.y ||
                           cachedBounds.width != newNode.bounds.width ||
                           cachedBounds.height != newNode.bounds.height);
 
+    if (!bodyDirty && !boundsChanged && !subtreeDirty) {
+        return;
+    }
+
+    if (bodyDirty || boundsChanged) {
+        reconcileAnimations(newNode.view, newNode.bounds);
+        *description = newNode.view;
+        description->setPropertyOwner(this);
+        typeName = newNode.view.getTypeName();
+        key = newNode.view.getKey();
+    }
+
     cachedBounds = newNode.bounds;
     lastConstraints = newNode.bounds;
     bodyDirty = false;
     layoutDirty = boundsChanged;
+    subtreeDirty = false;
 
     reconcileChildren(newNode.children);
 }

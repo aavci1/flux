@@ -125,6 +125,9 @@ public:
 
     // Property ownership
     virtual void setPropertyOwner(Element* owner) { (void)owner; }
+
+    // Body cache invalidation (called by Element::markDirty on property change)
+    virtual void markBodyDirty() {}
     
     // Cursor
     virtual std::optional<CursorType> getCursor() const = 0;

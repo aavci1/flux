@@ -13,6 +13,7 @@ namespace flux {
 
 class Element;
 void requestApplicationRedraw();
+void requestRedrawOnly();
 void suppressRedrawRequests();
 void resumeRedrawRequests();
 uint64_t currentBodyGeneration();

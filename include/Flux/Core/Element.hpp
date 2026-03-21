@@ -28,6 +28,7 @@ public:
     bool isMounted = false;
     bool bodyDirty = true;
     bool layoutDirty = true;
+    bool subtreeDirty = true;
 
     Rect cachedBounds = {0, 0, 0, 0};
     Rect lastConstraints = {0, 0, 0, 0};
