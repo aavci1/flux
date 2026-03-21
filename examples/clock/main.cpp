@@ -28,9 +28,9 @@ int main(int argc, char* argv[]) {
         .title = "Clock"
     });
 
-    Property hours = 10;
-    Property minutes = 30;
-    Property seconds = 0;
+    auto hours = Property<int>::shared(10);
+    auto minutes = Property<int>::shared(30);
+    auto seconds = Property<int>::shared(0);
 
     window.setRootView(
         Clock {

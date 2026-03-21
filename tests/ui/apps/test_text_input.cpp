@@ -6,11 +6,11 @@ using namespace flux;
 int main(int argc, char* argv[]) {
     Runtime runtime(argc, argv);
 
-    Property<std::string> inputValue = std::string("");
-    Property<std::string> passwordValue = std::string("");
-    Property<std::string> limitedValue = std::string("");
-    Property<std::string> areaValue = std::string("");
-    Property<std::string> returnStatus = "no-return";
+    auto inputValue = Property<std::string>::shared(std::string(""));
+    auto passwordValue = Property<std::string>::shared(std::string(""));
+    auto limitedValue = Property<std::string>::shared(std::string(""));
+    auto areaValue = Property<std::string>::shared(std::string(""));
+    auto returnStatus = Property<std::string>::shared(std::string("no-return"));
 
     auto& window = runtime.createWindow({
         .size = {700, 600},

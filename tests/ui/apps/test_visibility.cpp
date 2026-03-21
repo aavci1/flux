@@ -6,9 +6,9 @@ using namespace flux;
 int main(int argc, char* argv[]) {
     Runtime runtime(argc, argv);
 
-    Property<bool> showBox = true;
-    Property<float> boxOpacity = 1.0f;
-    Property<int> toggleCount = 0;
+    auto showBox = Property<bool>::shared(true);
+    auto boxOpacity = Property<float>::shared(1.0f);
+    auto toggleCount = Property<int>::shared(0);
 
     auto& window = runtime.createWindow({
         .size = {600, 400},
