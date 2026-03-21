@@ -19,41 +19,82 @@ class Element;
 
 std::string demangleTypeName(const char* mangledName);
 
+// Grouped property structs — returned by a single virtual call each,
+// replacing ~21 individual virtual property accessors.
+
+struct VisualStyle {
+    float opacity = 1.0f;
+    Color backgroundColor = Colors::transparent;
+    Color borderColor = Colors::transparent;
+    float borderWidth = 0.0f;
+    CornerRadius cornerRadius = {0, 0, 0, 0};
+    float rotation = 0.0f;
+    float scaleX = 1.0f;
+    float scaleY = 1.0f;
+    Point offset = {0, 0};
+    EdgeInsets padding = {};
+};
+
+struct LayoutConstraints {
+    bool visible = true;
+    bool clip = false;
+    float expansionBias = 0.0f;
+    float compressionBias = 1.0f;
+    std::optional<float> minWidth;
+    std::optional<float> maxWidth;
+    std::optional<float> minHeight;
+    std::optional<float> maxHeight;
+    int colspan = 1;
+    int rowspan = 1;
+};
+
 class ViewInterface {
 public:
     virtual ~ViewInterface() = default;
 
-    // Core methods - now with default implementations
+    // Core rendering / layout
     virtual LayoutNode layout(RenderContext& ctx, const Rect& bounds) const = 0;
-
     virtual View body() const = 0;
-
     virtual void render(RenderContext& ctx, const Rect& bounds) const = 0;
-
     virtual Size preferredSize(TextMeasurement& textMeasurer) const = 0;
-
     virtual float heightForWidth(float width, TextMeasurement& textMeasurer) const = 0;
 
-    // Access to common properties (all components have these via FLUX_VIEW_PROPERTIES macro)
-    virtual bool isVisible() const = 0;
-    virtual bool shouldClip() const = 0;
-    virtual float getExpansionBias() const = 0;
-    virtual float getCompressionBias() const = 0;
-    virtual std::optional<float> getMinWidth() const = 0;
-    virtual std::optional<float> getMaxWidth() const = 0;
-    virtual std::optional<float> getMinHeight() const = 0;
-    virtual std::optional<float> getMaxHeight() const = 0;
-    virtual int getColspan() const = 0;
-    virtual int getRowspan() const = 0;
+    // Grouped property accessors (two virtual calls replace ~21)
+    virtual VisualStyle getVisualStyle() const { return {}; }
+    virtual LayoutConstraints getLayoutConstraints() const { return {}; }
 
-    // Get the type name of the underlying component (demangled)
+    // Non-virtual convenience — layout constraints
+    bool isVisible() const { return getLayoutConstraints().visible; }
+    bool shouldClip() const { return getLayoutConstraints().clip; }
+    float getExpansionBias() const { return getLayoutConstraints().expansionBias; }
+    float getCompressionBias() const { return getLayoutConstraints().compressionBias; }
+    std::optional<float> getMinWidth() const { return getLayoutConstraints().minWidth; }
+    std::optional<float> getMaxWidth() const { return getLayoutConstraints().maxWidth; }
+    std::optional<float> getMinHeight() const { return getLayoutConstraints().minHeight; }
+    std::optional<float> getMaxHeight() const { return getLayoutConstraints().maxHeight; }
+    int getColspan() const { return getLayoutConstraints().colspan; }
+    int getRowspan() const { return getLayoutConstraints().rowspan; }
+
+    // Non-virtual convenience — visual style
+    float getOpacity() const { return getVisualStyle().opacity; }
+    Color getBackgroundColor() const { return getVisualStyle().backgroundColor; }
+    Color getBorderColor() const { return getVisualStyle().borderColor; }
+    float getBorderWidth() const { return getVisualStyle().borderWidth; }
+    CornerRadius getCornerRadius() const { return getVisualStyle().cornerRadius; }
+    float getRotation() const { return getVisualStyle().rotation; }
+    float getScaleX() const { return getVisualStyle().scaleX; }
+    float getScaleY() const { return getVisualStyle().scaleY; }
+    Point getOffset() const { return getVisualStyle().offset; }
+    EdgeInsets getPadding() const { return getVisualStyle().padding; }
+
+    // Identity
     virtual std::string getTypeName() const = 0;
 
-    // New methods for children property handling
+    // Children
     virtual bool hasChildrenProperty() const = 0;
     virtual std::vector<View> getChildren() const = 0;
 
-    // Event handling methods (target + bubble phase)
+    // Mouse events
     virtual bool handleMouseDown(float x, float y, int button) { (void)x; (void)y; (void)button; return false; }
     virtual bool handleMouseUp(float x, float y, int button) { (void)x; (void)y; (void)button; return false; }
     virtual bool handleMouseMove(float x, float y) { (void)x; (void)y; return false; }
@@ -62,16 +103,15 @@ public:
     virtual bool handleMouseScroll(float x, float y, float deltaX, float deltaY) { (void)x; (void)y; (void)deltaX; (void)deltaY; return false; }
     virtual bool isInteractive() const { return false; }
 
-    // Capture phase — called root→target before the target handler.
-    // Return true to stop propagation before it reaches the target.
+    // Pointer capture
     virtual bool capturePointerEvent(PointerEvent&) { return false; }
 
-    // Keyboard event handling methods
+    // Keyboard events
     virtual bool handleKeyDown(const KeyEvent& event) { (void)event; return false; }
     virtual bool handleKeyUp(const KeyEvent& event) { (void)event; return false; }
     virtual bool handleTextInput(const TextInputEvent& event) { (void)event; return false; }
 
-    // Focus management
+    // Focus
     virtual bool canBeFocused() const { return false; }
     virtual std::string getFocusKey() const { return ""; }
     virtual void notifyFocusGained() {}
@@ -80,10 +120,10 @@ public:
     // Reconciliation identity
     virtual std::string getKey() const { return ""; }
 
-    // Property ownership for targeted dirty marking
+    // Property ownership
     virtual void setPropertyOwner(Element* owner) { (void)owner; }
 
-    // Cursor management
+    // Cursor
     virtual std::optional<CursorType> getCursor() const = 0;
 
     // Lifecycle
@@ -95,7 +135,7 @@ public:
     virtual std::string cutSelectedText() { return ""; }
     virtual void selectAll() {}
 
-    // Testing/accessibility introspection
+    // Accessibility
     virtual std::string getTextContent() const { return ""; }
     virtual std::string getAccessibleValue() const { return ""; }
 };

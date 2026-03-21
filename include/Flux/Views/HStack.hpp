@@ -61,11 +61,12 @@ struct HStack {
         int visibleCount = 0;
 
         for (const auto& child : childrenVec) {
-            if (!child->isVisible()) continue;
+            auto lc = child.getLayoutConstraints();
+            if (!lc.visible) continue;
             visibleChildren.push_back(&child);
             Size childSize = child.preferredSize(textMeasurer);
             totalPreferredWidth += childSize.width;
-            totalExpansion += child.getExpansionBias();
+            totalExpansion += lc.expansionBias;
             visibleCount++;
         }
 
@@ -75,13 +76,13 @@ struct HStack {
 
         float maxHeight = 0;
         for (const auto* child : visibleChildren) {
+            auto lc = child->getLayoutConstraints();
             Size childSize = child->preferredSize(textMeasurer);
             float childWidth = childSize.width;
             if (remainingSpace > 0 && totalExpansion > 0) {
-                childWidth += remainingSpace * child->getExpansionBias() / totalExpansion;
+                childWidth += remainingSpace * lc.expansionBias / totalExpansion;
             }
-            auto childMaxW = child->getMaxWidth();
-            if (childMaxW.has_value()) childWidth = std::min(childWidth, childMaxW.value());
+            if (lc.maxWidth.has_value()) childWidth = std::min(childWidth, lc.maxWidth.value());
 
             float childH = child->heightForWidth(childWidth, textMeasurer);
             maxHeight = std::max(maxHeight, childH);

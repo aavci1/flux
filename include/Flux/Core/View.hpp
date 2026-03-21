@@ -46,6 +46,14 @@ public:
         return component_ ? component_->heightForWidth(width, textMeasurer) : 0.0f;
     }
 
+    VisualStyle getVisualStyle() const {
+        return component_ ? component_->getVisualStyle() : VisualStyle{};
+    }
+
+    LayoutConstraints getLayoutConstraints() const {
+        return component_ ? component_->getLayoutConstraints() : LayoutConstraints{};
+    }
+
     bool shouldClip() const {
         return component_ ? component_->shouldClip() : false;
     }

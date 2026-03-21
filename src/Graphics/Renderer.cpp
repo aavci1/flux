@@ -270,6 +270,8 @@ void Renderer::renderTree(LayoutNode& node, Element* element, Point parentOrigin
 
     Rect localBounds = {0, 0, node.bounds.width, node.bounds.height};
 
+    auto vs = node.view.getVisualStyle();
+
     if (node.view.shouldClip()) {
         Path clipPath;
         clipPath.rect(localBounds);
@@ -278,6 +280,21 @@ void Renderer::renderTree(LayoutNode& node, Element* element, Point parentOrigin
 
     renderContext_->setCurrentFocusKey(assignedFocusKey.empty() ? node.view.getFocusKey() : assignedFocusKey);
     renderContext_->setCurrentViewGlobalBounds(node.bounds);
+
+    Point offsetPt = vs.offset;
+    if (offsetPt.x != 0 || offsetPt.y != 0)
+        renderContext_->translate(offsetPt.x, offsetPt.y);
+
+    float rot = vs.rotation;
+    if (rot != 0) renderContext_->rotate(rot);
+
+    float sx = vs.scaleX;
+    float sy = vs.scaleY;
+    if (sx != 1.0f || sy != 1.0f) renderContext_->scale(sx, sy);
+
+    float opacityVal = vs.opacity;
+    if (opacityVal < 1.0f)
+        renderContext_->setOpacity(opacityVal);
 
     node.view->render(*renderContext_, localBounds);
 

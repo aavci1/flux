@@ -31,10 +31,11 @@ struct Grid {
         std::vector<GridChildInput> inputs;
         inputs.reserve(childrenVec.size());
         for (const auto& childView : childrenVec) {
+            auto lc = childView.getLayoutConstraints();
             inputs.push_back({
-                childView->getColspan(),
-                childView->getRowspan(),
-                childView->isVisible()
+                lc.colspan,
+                lc.rowspan,
+                lc.visible
             });
         }
 

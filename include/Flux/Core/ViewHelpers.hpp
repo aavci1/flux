@@ -22,6 +22,8 @@ template<typename V> auto hasRotation(int) -> decltype(V::rotation, std::true_ty
 template<typename V> auto hasRotation(...) -> std::false_type;
 template<typename V> auto hasScaleX(int) -> decltype(V::scaleX, std::true_type{});
 template<typename V> auto hasScaleX(...) -> std::false_type;
+template<typename V> auto hasScaleY(int) -> decltype(V::scaleY, std::true_type{});
+template<typename V> auto hasScaleY(...) -> std::false_type;
 }
 
 template<typename ViewType>

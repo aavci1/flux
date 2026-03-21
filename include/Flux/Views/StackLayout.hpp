@@ -28,17 +28,17 @@ StackLayoutResult<Axis> layoutStack(
     std::vector<StackChildInput> inputs;
     inputs.reserve(children.size());
     for (const auto& child : children) {
-        bool vis = child->isVisible();
-        Size intrinsic = vis ? child.preferredSize(static_cast<TextMeasurement&>(ctx)) : Size{};
+        auto lc = child.getLayoutConstraints();
+        Size intrinsic = lc.visible ? child.preferredSize(static_cast<TextMeasurement&>(ctx)) : Size{};
         inputs.push_back({
             intrinsic,
-            child.getExpansionBias(),
-            child.getCompressionBias(),
-            child.getMinWidth(),
-            child.getMaxWidth(),
-            child.getMinHeight(),
-            child.getMaxHeight(),
-            vis
+            lc.expansionBias,
+            lc.compressionBias,
+            lc.minWidth,
+            lc.maxWidth,
+            lc.minHeight,
+            lc.maxHeight,
+            lc.visible
         });
     }
 
