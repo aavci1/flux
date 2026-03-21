@@ -15,6 +15,8 @@ constexpr bool verticalRangesOverlap(float a0, float a1, float b0, float b1) {
     return a1 >= b0 && a0 <= b1;
 }
 
+const Cell defaultCell_{};
+
 } // namespace
 
 void TerminalView::init() {
@@ -83,9 +85,7 @@ void TerminalView::render(RenderContext& ctx, const Rect& bounds) const {
         ? cachedLineHeight
         : (fs * Typography::lineHeightTight < fs * 1.1f ? fs * 1.2f : fs * Typography::lineHeightTight);
 
-    // Full buffer height: scrollback lines + screen rows (snapshot pads virtual empty screen rows).
-    auto snap = session->snapshot();
-    const std::size_t totalLines = snap.lines.size();
+    const std::size_t totalLines = session->totalLines();
     const float contentH = static_cast<float>(totalLines) * lineH;
     const float maxScroll = std::max(0.0f, contentH - content.height);
     if (!stickToBottom) {
@@ -98,47 +98,101 @@ void TerminalView::render(RenderContext& ctx, const Rect& bounds) const {
         scrollY = maxScroll;
     }
 
+    const float viewTop = content.y;
+    const float viewBottom = content.y + content.height;
+    const float originY = viewTop - scrollY;
+
+    // Only fetch lines that are actually visible — avoids copying the full scrollback.
+    std::size_t firstVisible = 0;
+    if (scrollY > 0.0f) {
+        firstVisible = static_cast<std::size_t>(scrollY / lineH);
+        if (firstVisible > 0) --firstVisible;
+    }
+    const std::size_t visibleCount =
+        static_cast<std::size_t>(content.height / lineH) + 3;
+    auto snap = session->snapshotRange(firstVisible,
+                                       std::min(visibleCount, totalLines - firstVisible));
+
     ctx.save();
     Path clipPath;
     clipPath.rect(content);
     ctx.clipPath(clipPath);
 
-    const Color defaultBg = Color::rgb(30, 30, 30);
-    const float viewTop = content.y;
-    const float viewBottom = content.y + content.height;
-    const float originY = viewTop - scrollY;
+    const Color defaultBg = globalPalette()[ColorPalette::kDefaultBg];
 
-    for (std::size_t li = 0; li < totalLines; ++li) {
+    for (std::size_t si = 0; si < snap.lines.size(); ++si) {
+        const std::size_t li = snap.lineOffset + si;
         const float lineTop = originY + static_cast<float>(li) * lineH;
         const float lineBottom = lineTop + lineH;
         if (!verticalRangesOverlap(lineTop, lineBottom, viewTop, viewBottom)) {
             continue;
         }
-        if (li >= snap.lines.size()) {
-            continue;
+        const std::vector<Cell>& line = snap.lines[si];
+        const int lineSz = static_cast<int>(line.size());
+
+        // --- Pass 1: batched background rects ---
+        int bgStart = -1;
+        Color bgColor{};
+        for (int col = 0; col <= snap.cols; ++col) {
+            Color thisBg = defaultBg;
+            if (col < snap.cols) {
+                const Cell& cell = col < lineSz ? line[static_cast<std::size_t>(col)] : defaultCell_;
+                thisBg = cell.bg();
+            }
+
+            if (col < snap.cols && thisBg != defaultBg) {
+                if (bgStart < 0 || thisBg != bgColor) {
+                    if (bgStart >= 0) {
+                        float bx = content.x + static_cast<float>(bgStart) * cellW;
+                        float bw = static_cast<float>(col - bgStart) * cellW;
+                        ctx.setFillStyle(FillStyle::solid(bgColor));
+                        ctx.setStrokeStyle(StrokeStyle::none());
+                        ctx.drawRect(Rect(bx, lineTop, bw, lineH));
+                    }
+                    bgStart = col;
+                    bgColor = thisBg;
+                }
+            } else {
+                if (bgStart >= 0) {
+                    float bx = content.x + static_cast<float>(bgStart) * cellW;
+                    float bw = static_cast<float>(col - bgStart) * cellW;
+                    ctx.setFillStyle(FillStyle::solid(bgColor));
+                    ctx.setStrokeStyle(StrokeStyle::none());
+                    ctx.drawRect(Rect(bx, lineTop, bw, lineH));
+                    bgStart = -1;
+                }
+            }
         }
-        const std::vector<Cell>& line = snap.lines[li];
 
-        // Sparse lines: columns past line.size() are implicit default cells (no storage).
+        // --- Pass 2: text with style-change batching ---
+        // Each character is positioned individually on the cell grid, but style
+        // commands (setTextStyle/setFillStyle) are only emitted when they change.
+        Color prevFg{};
+        bool prevBold = false;
+        bool styleSet = false;
+
         for (int col = 0; col < snap.cols; ++col) {
-            const Cell cell =
-                col < static_cast<int>(line.size()) ? line[static_cast<std::size_t>(col)] : Cell{};
-            const float cx = content.x + static_cast<float>(col) * cellW;
+            const Cell& cell = col < lineSz ? line[static_cast<std::size_t>(col)] : defaultCell_;
+            if (cell.empty()) continue;
 
-            if (cell.bg != defaultBg) {
-                ctx.setFillStyle(FillStyle::solid(cell.bg));
-                ctx.setStrokeStyle(StrokeStyle::none());
-                ctx.drawRect(Rect(cx, lineTop, cellW, lineH));
-            }
+            Color fg = cell.fg();
+            bool bold = cell.bold();
 
-            if (!cell.g.empty()) {
+            if (!styleSet || bold != prevBold) {
                 TextStyle st = baseStyle;
-                st.weight = cell.bold ? FontWeight::bold : FontWeight::semibold;
+                st.weight = bold ? FontWeight::bold : FontWeight::semibold;
                 ctx.setTextStyle(st);
-                ctx.setFillStyle(FillStyle::solid(cell.fg));
-                ctx.drawText(cell.g, {cx + 1.0f, lineBottom - 2.0f},
-                    HorizontalAlignment::leading, VerticalAlignment::bottom);
+                prevBold = bold;
             }
+            if (!styleSet || fg != prevFg) {
+                ctx.setFillStyle(FillStyle::solid(fg));
+                prevFg = fg;
+            }
+            styleSet = true;
+
+            const float cx = content.x + static_cast<float>(col) * cellW;
+            ctx.drawText(cell.grapheme(), {cx + 1.0f, lineBottom - 2.0f},
+                         HorizontalAlignment::leading, VerticalAlignment::bottom);
         }
     }
 

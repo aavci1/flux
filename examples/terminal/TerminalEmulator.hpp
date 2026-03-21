@@ -2,19 +2,64 @@
 
 #include <Flux/Core/Types.hpp>
 
+#include <array>
 #include <cstddef>
+#include <cstdint>
+#include <cstring>
 #include <mutex>
 #include <string>
 #include <vector>
 
 namespace flux::term {
 
-struct Cell {
-    std::string g; // one UTF-8 grapheme (or empty)
-    Color fg{Color::rgb(230, 230, 230)};
-    Color bg{Color::rgb(30, 30, 30)};
-    bool bold{false};
+// ---------------------------------------------------------------------------
+// ColorPalette — maps 8-bit indices to RGBA Color values.
+// Indices 0–15 are the standard ANSI colors. 16–231 are the 6×6×6 cube.
+// 232–255 are the greyscale ramp. Index 256 = default fg, 257 = default bg.
+// ---------------------------------------------------------------------------
+class ColorPalette {
+public:
+    static constexpr uint16_t kDefaultFg = 256;
+    static constexpr uint16_t kDefaultBg = 257;
+    static constexpr uint16_t kSize = 258;
+
+    ColorPalette();
+    Color operator[](uint16_t idx) const { return colors_[idx]; }
+    uint16_t match(const Color& c) const;
+
+private:
+    std::array<Color, kSize> colors_;
 };
+
+const ColorPalette& globalPalette();
+
+// ---------------------------------------------------------------------------
+// Cell — compact per-character storage: 8 bytes instead of the former 64.
+// ---------------------------------------------------------------------------
+struct Cell {
+    char g[4]{};
+    uint8_t gLen{0};
+    uint16_t fgIdx{ColorPalette::kDefaultFg};
+    uint16_t bgIdx{ColorPalette::kDefaultBg};
+    uint8_t attrs{0};
+
+    static constexpr uint8_t kBold = 1;
+
+    bool bold() const { return (attrs & kBold) != 0; }
+    void setBold(bool b) { if (b) attrs |= kBold; else attrs &= ~kBold; }
+
+    bool empty() const { return gLen == 0; }
+
+    std::string grapheme() const { return std::string(g, gLen); }
+    void setGrapheme(const std::string& s) {
+        gLen = static_cast<uint8_t>(s.size() <= 4 ? s.size() : 4);
+        std::memcpy(g, s.data(), gLen);
+    }
+
+    Color fg() const { return globalPalette()[fgIdx]; }
+    Color bg() const { return globalPalette()[bgIdx]; }
+};
+static_assert(sizeof(Cell) <= 12, "Cell should be compact");
 
 struct TermSnapshot {
     std::vector<std::vector<Cell>> lines;
@@ -23,6 +68,9 @@ struct TermSnapshot {
     int cursorCol{0};
     int cols{80};
     int rows{24};
+
+    std::size_t totalLineCount{0};
+    std::size_t lineOffset{0};
 };
 
 /// Minimal VT100 / xterm-style parser with scrollback (sufficient for common shells).
@@ -35,9 +83,13 @@ public:
 
     [[nodiscard]] TermSnapshot snapshot() const;
 
+    /// Return only lines in [fromLine, fromLine+count). Much cheaper than full snapshot().
+    [[nodiscard]] TermSnapshot snapshotRange(std::size_t fromLine, std::size_t count) const;
+
     [[nodiscard]] int cols() const { return cols_; }
     [[nodiscard]] int rows() const { return rows_; }
     [[nodiscard]] std::size_t scrollbackLines() const;
+    [[nodiscard]] std::size_t totalLines() const;
 
 private:
     [[nodiscard]] Cell defaultCell() const;
@@ -47,14 +99,13 @@ private:
 
     void clearScreen();
     void ensureScreen();
-    /// Grow buffer only through the current cursor row (no full-screen empty padding).
     void ensureForCursor();
     void scrollUp();
     void putUtf8(std::string utf8);
     void handleCsi(const std::vector<int>& params, char finalCh);
     void applySgr(const std::vector<int>& params, std::size_t& i);
-    Color ansi16(int code, bool fg) const;
-    static Color xterm256(int i);
+    static uint16_t ansi16Index(int code, bool fg);
+    static uint16_t xterm256Index(int i);
 
     mutable std::mutex mutex_;
     int cols_{80};
@@ -68,10 +119,10 @@ private:
     int cursorRow_{0};
     int cursorCol_{0};
 
-    Color defaultFg_{Color::rgb(230, 230, 230)};
-    Color defaultBg_{Color::rgb(30, 30, 30)};
-    Color curFg_{defaultFg_};
-    Color curBg_{defaultBg_};
+    uint16_t defaultFgIdx_{ColorPalette::kDefaultFg};
+    uint16_t defaultBgIdx_{ColorPalette::kDefaultBg};
+    uint16_t curFgIdx_{defaultFgIdx_};
+    uint16_t curBgIdx_{defaultBgIdx_};
     bool bold_{false};
 
     int savedRow_{0};

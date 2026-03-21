@@ -395,6 +395,16 @@ if(BUILD_EXAMPLES)
         )
         target_include_directories(terminal PRIVATE ${CMAKE_SOURCE_DIR}/examples/terminal)
         target_link_libraries(terminal PRIVATE flux util)
+
+        add_executable(terminal_memory_bench
+            examples/terminal/memory_benchmark.cpp
+            examples/terminal/TerminalEmulator.cpp
+        )
+        target_include_directories(terminal_memory_bench PRIVATE
+            ${CMAKE_SOURCE_DIR}/examples/terminal
+            ${CMAKE_SOURCE_DIR}/include
+        )
+        target_link_libraries(terminal_memory_bench PRIVATE Threads::Threads)
     endif()
 
 endif()

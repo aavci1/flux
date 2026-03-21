@@ -31,6 +31,10 @@ public:
                    const std::string& fontName);
 
     [[nodiscard]] TermSnapshot snapshot() const { return emu_.snapshot(); }
+    [[nodiscard]] TermSnapshot snapshotRange(std::size_t fromLine, std::size_t count) const {
+        return emu_.snapshotRange(fromLine, count);
+    }
+    [[nodiscard]] std::size_t totalLines() const { return emu_.totalLines(); }
 
     [[nodiscard]] bool writeBytes(const char* data, std::size_t len);
     /// Handle key using binding table when provided. If bindings is null, uses built-in defaults.
