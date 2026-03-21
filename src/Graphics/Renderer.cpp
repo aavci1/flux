@@ -8,6 +8,7 @@
 #include <Flux/Core/Property.hpp>
 #include <Flux/Core/EventTypes.hpp>
 #include <Flux/Core/Environment.hpp>
+#include <Flux/Core/OverlayManager.hpp>
 #include <optional>
 #include <vector>
 
@@ -71,6 +72,7 @@ void Renderer::renderFrame(const Rect& bounds) {
         commandBuffer_.reserve(512);
         renderContext_->setRecordingBuffer(&commandBuffer_);
         renderTree(cachedLayoutTree_, rootElement_.get());
+        renderOverlays(bounds);
         renderContext_->setRecordingBuffer(nullptr);
 
         // Dispatch deferred focus/blur notifications now that views are valid
@@ -409,6 +411,27 @@ void Renderer::handleEvent(const struct Event& event, const Rect& windowBounds) 
             break;
     }
 
+    // Dispatch to overlays first (they render on top)
+    if (!overlayManager_.empty() && (!mouseCapture_.active || mouseCapture_.fromOverlay)) {
+        if (mouseCapture_.active && mouseCapture_.fromOverlay &&
+            (event.type == Event::MouseMove || event.type == Event::MouseUp)) {
+            dispatchPointerEventToOverlays(ptrEvent);
+            needsRedraw = true;
+            if (event.type == Event::MouseUp) {
+                mouseCapture_.active = false;
+                mouseCapture_.fromOverlay = false;
+            }
+            requestApplicationRedraw();
+            return;
+        }
+        if (dispatchPointerEventToOverlays(ptrEvent)) {
+            if (mouseCapture_.active) mouseCapture_.fromOverlay = true;
+            needsRedraw = true;
+            requestApplicationRedraw();
+            return;
+        }
+    }
+
     if (mouseCapture_.active && (event.type == Event::MouseMove || event.type == Event::MouseUp)) {
         LayoutNode* captured = findNodeByPath(cachedLayoutTree_, mouseCapture_.treePath);
         if (captured && captured->view.isInteractive()) {
@@ -421,6 +444,7 @@ void Renderer::handleEvent(const struct Event& event, const Rect& windowBounds) 
         }
         if (event.type == Event::MouseUp) {
             mouseCapture_.active = false;
+            mouseCapture_.fromOverlay = false;
         }
     } else if (event.type != Event::MouseMove) {
         mouseCapture_.treePath.clear();
@@ -454,7 +478,18 @@ bool Renderer::updateHoverState(const Point& point) {
 
     hasHoveredView_ = false;
     std::vector<View> newPath;
-    collectHoverPath(cachedLayoutTree_, point, newPath);
+
+    // Check overlays first (reverse order — topmost overlay has priority)
+    for (auto it = overlayManager_.entries().rbegin(); it != overlayManager_.entries().rend(); ++it) {
+        if (it->layoutTree.bounds.contains(point)) {
+            collectHoverPath(it->layoutTree, point, newPath);
+            break;
+        }
+    }
+
+    if (newPath.empty()) {
+        collectHoverPath(cachedLayoutTree_, point, newPath);
+    }
 
     size_t commonLen = 0;
     size_t minLen = std::min(hoveredViews_.size(), newPath.size());
@@ -475,6 +510,46 @@ bool Renderer::updateHoverState(const Point& point) {
 
     hoveredViews_ = std::move(newPath);
     return changed;
+}
+
+void Renderer::renderOverlays(const Rect& viewport) {
+    if (overlayManager_.empty()) return;
+
+    suppressRedrawRequests();
+    overlayManager_.layoutOverlays(*renderContext_, viewport);
+    resumeRedrawRequests();
+
+    for (auto& entry : overlayManager_.entries()) {
+        // Draw backdrop if configured
+        if (entry.config.backdrop.a > 0.0f) {
+            renderContext_->save();
+            renderContext_->setFillColor(entry.config.backdrop);
+            renderContext_->drawRect(viewport);
+            renderContext_->restore();
+        }
+
+        renderTree(entry.layoutTree, entry.element.get());
+    }
+}
+
+bool Renderer::dispatchPointerEventToOverlays(PointerEvent& event) {
+    auto& entries = overlayManager_.entries();
+    for (auto it = entries.rbegin(); it != entries.rend(); ++it) {
+        if (it->layoutTree.bounds.contains(event.windowPosition)) {
+            return dispatchPointerEvent(it->layoutTree, event);
+        }
+
+        if (it->config.dismissOnClickOutside &&
+            event.kind == PointerEvent::Kind::Down) {
+            std::string id = it->id;
+            auto onDismiss = it->config.onDismiss;
+            bool modal = it->config.modal;
+            overlayManager_.hide(id);
+            if (onDismiss) onDismiss();
+            return modal;
+        }
+    }
+    return false;
 }
 
 } // namespace flux
