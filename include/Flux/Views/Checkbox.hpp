@@ -14,7 +14,7 @@ namespace flux {
 
 // size 20px
 // font 14px
-void drawCheckbox(RenderContext& ctx, const Rect& bounds, bool isChecked) {
+inline void drawCheckbox(RenderContext& ctx, const Rect& bounds, bool isChecked) {
     auto ux = bounds.width * 0.05f;
     auto uy = bounds.height * 0.05f;
     auto ur = (ux + uy) * 0.5f;

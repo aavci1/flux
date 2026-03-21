@@ -12,7 +12,7 @@
 
 namespace flux {
 
-void drawToggle(RenderContext& ctx, const Rect& bounds, bool isOn) {
+inline void drawToggle(RenderContext& ctx, const Rect& bounds, bool isOn) {
     ctx.setFillStyle(FillStyle::solid(isOn ? Colors::blue : Colors::gray));
     ctx.setStrokeStyle(StrokeStyle::none());
     ctx.drawRect(bounds, CornerRadius(bounds.height / 2));
