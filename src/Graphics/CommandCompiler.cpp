@@ -41,7 +41,7 @@ size_t CommandCompiler::PathTessCacheKeyHash::operator()(const PathTessCacheKey&
 
 std::optional<CommandCompiler::PathTessCacheKey> CommandCompiler::makePathTessCacheKey(
     const Path& path, float vpW, float vpH) const {
-    if (current_.fill.type != FillStyle::Type::None && current_.fill.type != FillStyle::Type::Solid) {
+    if (!current_.fill.isNone() && !current_.fill.isSolid()) {
         return std::nullopt;
     }
     if (current_.stroke.type == StrokeStyle::Type::Dashed) return std::nullopt;
@@ -56,9 +56,9 @@ std::optional<CommandCompiler::PathTessCacheKey> CommandCompiler::makePathTessCa
     k.m11 = quantizeAffine(current_.m11);
     k.m12 = quantizeAffine(current_.m12);
 
-    k.hasFill = (current_.fill.type == FillStyle::Type::Solid) ? 1 : 0;
+    k.hasFill = current_.fill.isSolid() ? 1 : 0;
     if (k.hasFill) {
-        Color fc = current_.fill.color;
+        Color fc = current_.fill.solid().color;
         fc.a *= current_.opacity;
         k.fillArgb = packArgb(fc);
     }
@@ -321,16 +321,20 @@ void CommandCompiler::transformGlyphInstance(GlyphInstance& gi) const {
 
 void CommandCompiler::fillInstanceColors(SDFQuadInstance& inst) const {
     const auto& fc = current_.fill;
-    if (fc.type == FillStyle::Type::Solid || fc.type == FillStyle::Type::None) {
-        inst.fillColor[0] = fc.color.r;
-        inst.fillColor[1] = fc.color.g;
-        inst.fillColor[2] = fc.color.b;
-        inst.fillColor[3] = (fc.type == FillStyle::Type::None) ? 0.0f : fc.color.a;
+    if (fc.isNone()) {
+        std::memset(inst.fillColor, 0, sizeof(inst.fillColor));
+    } else if (fc.isSolid()) {
+        const auto& c = fc.solid().color;
+        inst.fillColor[0] = c.r;
+        inst.fillColor[1] = c.g;
+        inst.fillColor[2] = c.b;
+        inst.fillColor[3] = c.a;
     } else {
-        inst.fillColor[0] = fc.startColor.r;
-        inst.fillColor[1] = fc.startColor.g;
-        inst.fillColor[2] = fc.startColor.b;
-        inst.fillColor[3] = fc.startColor.a;
+        Color c = fc.primaryColor();
+        inst.fillColor[0] = c.r;
+        inst.fillColor[1] = c.g;
+        inst.fillColor[2] = c.b;
+        inst.fillColor[3] = c.a;
     }
 
     const auto& sc = current_.stroke;
@@ -457,7 +461,7 @@ void CommandCompiler::pushText(CompiledBatches& out, const std::string& text,
     if (!fontIndex) return;
 
     const float fontSize = current_.textStyle.size * horizontalScale();
-    Color textColor = current_.fill.color;
+    Color textColor = current_.fill.primaryColor();
     textColor.a *= current_.opacity;
 
     auto sz = atlas_->measureText(text, fontSize, *fontIndex);
@@ -548,8 +552,8 @@ void CommandCompiler::pushPath(CompiledBatches& out, const Path& path) {
         built.insert(built.end(), t.vertices.begin(), t.vertices.end());
     };
 
-    if (current_.fill.type != FillStyle::Type::None) {
-        Color fc = current_.fill.color;
+    if (!current_.fill.isNone()) {
+        Color fc = current_.fill.primaryColor();
         fc.a *= current_.opacity;
         for (const auto& sub : subpaths) {
             if (sub.size() < 3) continue;
@@ -599,7 +603,7 @@ void CommandCompiler::pushTextBox(CompiledBatches& out, const std::string& text,
 
     const float fontSize = current_.textStyle.size * horizontalScale();
     const float scaledMaxWidth = maxWidth * horizontalScale();
-    Color textColor = current_.fill.color;
+    Color textColor = current_.fill.primaryColor();
     textColor.a *= current_.opacity;
 
     std::vector<GlyphInstance> glyphs;

@@ -4,6 +4,7 @@
 #include <Flux/Core/Types.hpp>
 #include <Flux/Graphics/Path.hpp>
 #include <string>
+#include <variant>
 #include <vector>
 
 namespace flux {
@@ -41,116 +42,102 @@ enum class ImageFit {
     Cover,     // Scale to cover entire rect (maintains aspect, may crop)
     None       // Use original size, no scaling
 };
-// Unified fill style configuration
-struct FillStyle {
-    enum class Type {
-        None,               // No fill
-        Solid,              // Solid color fill
-        LinearGradient,     // Linear gradient fill
-        RadialGradient,     // Radial gradient fill
-        BoxGradient,        // Box gradient fill (rounded rectangle)
-        ImagePattern        // Image/texture pattern fill
-    };
-    
-    Type type = Type::Solid;
-    PathWinding winding = PathWinding::CounterClockwise;
-
-    // ============================================================================
-    // SOLID FILL PROPERTIES
-    // ============================================================================
+struct SolidFill {
     Color color = Colors::black;
+};
 
-    // ============================================================================
-    // GRADIENT PROPERTIES (shared by Linear, Radial, Box)
-    // ============================================================================
-    Color startColor = Colors::black;
-    Color endColor = Colors::white;
-
-    // Linear gradient specific
+struct LinearGradientFill {
     Point startPoint = {0, 0};
     Point endPoint = {100, 0};
+    Color startColor = Colors::black;
+    Color endColor = Colors::white;
+};
 
-    // Radial gradient specific
+struct RadialGradientFill {
     Point center = {50, 50};
     float innerRadius = 0.0f;
     float outerRadius = 100.0f;
+    Color startColor = Colors::black;
+    Color endColor = Colors::white;
+};
 
-    // Box gradient specific
+struct BoxGradientFill {
     Rect bounds = {0, 0, 100, 100};
     float cornerRadius = 0.0f;
     float feather = 0.0f;
+    Color innerColor = Colors::black;
+    Color outerColor = Colors::white;
+};
 
-    // ============================================================================
-    // IMAGE PATTERN PROPERTIES
-    // ============================================================================
+struct ImagePatternFill {
     int imageId = -1;
-    Point imageOrigin = {0, 0};
-    Size imageSize = {100, 100};
-    float imageAngle = 0.0f;
-    float imageAlpha = 1.0f;
+    Point origin = {0, 0};
+    Size size = {100, 100};
+    float angle = 0.0f;
+    float alpha = 1.0f;
+};
 
-    // ============================================================================
-    // FACTORY METHODS
-    // ============================================================================
+struct FillStyle {
+    using Data = std::variant<std::monostate, SolidFill, LinearGradientFill,
+                              RadialGradientFill, BoxGradientFill, ImagePatternFill>;
+
+    enum class Type { None, Solid, LinearGradient, RadialGradient, BoxGradient, ImagePattern };
+
+    Data data = SolidFill{};
+    PathWinding winding = PathWinding::CounterClockwise;
+
+    FillStyle() = default;
+
+    Type type() const { return static_cast<Type>(data.index()); }
+
+    bool isNone()            const { return std::holds_alternative<std::monostate>(data); }
+    bool isSolid()           const { return std::holds_alternative<SolidFill>(data); }
+    bool isLinearGradient()  const { return std::holds_alternative<LinearGradientFill>(data); }
+    bool isRadialGradient()  const { return std::holds_alternative<RadialGradientFill>(data); }
+    bool isBoxGradient()     const { return std::holds_alternative<BoxGradientFill>(data); }
+    bool isImagePattern()    const { return std::holds_alternative<ImagePatternFill>(data); }
+
+    const SolidFill&          solid()          const { return std::get<SolidFill>(data); }
+    const LinearGradientFill& linearGradient() const { return std::get<LinearGradientFill>(data); }
+    const RadialGradientFill& radialGradient() const { return std::get<RadialGradientFill>(data); }
+    const BoxGradientFill&    boxGradient()    const { return std::get<BoxGradientFill>(data); }
+    const ImagePatternFill&   imagePattern()   const { return std::get<ImagePatternFill>(data); }
+
+    SolidFill&          solid()          { return std::get<SolidFill>(data); }
+    LinearGradientFill& linearGradient() { return std::get<LinearGradientFill>(data); }
+    RadialGradientFill& radialGradient() { return std::get<RadialGradientFill>(data); }
+    BoxGradientFill&    boxGradient()    { return std::get<BoxGradientFill>(data); }
+    ImagePatternFill&   imagePattern()   { return std::get<ImagePatternFill>(data); }
+
+    Color primaryColor() const {
+        if (auto* s = std::get_if<SolidFill>(&data))          return s->color;
+        if (auto* g = std::get_if<LinearGradientFill>(&data)) return g->startColor;
+        if (auto* g = std::get_if<RadialGradientFill>(&data)) return g->startColor;
+        if (auto* g = std::get_if<BoxGradientFill>(&data))    return g->innerColor;
+        return Colors::black;
+    }
 
     static FillStyle none() {
-        FillStyle style;
-        style.type = Type::None;
-        return style;
+        FillStyle s; s.data = std::monostate{}; return s;
     }
-
     static FillStyle solid(const Color& color) {
-        FillStyle style;
-        style.type = Type::Solid;
-        style.color = color;
-        return style;
+        FillStyle s; s.data = SolidFill{color}; return s;
     }
-
     static FillStyle linearGradient(const Point& start, const Point& end,
                                     const Color& startColor, const Color& endColor) {
-        FillStyle style;
-        style.type = Type::LinearGradient;
-        style.startPoint = start;
-        style.endPoint = end;
-        style.startColor = startColor;
-        style.endColor = endColor;
-        return style;
+        FillStyle s; s.data = LinearGradientFill{start, end, startColor, endColor}; return s;
     }
-
     static FillStyle radialGradient(const Point& center, float innerRadius, float outerRadius,
                                     const Color& startColor, const Color& endColor) {
-        FillStyle style;
-        style.type = Type::RadialGradient;
-        style.center = center;
-        style.innerRadius = innerRadius;
-        style.outerRadius = outerRadius;
-        style.startColor = startColor;
-        style.endColor = endColor;
-        return style;
+        FillStyle s; s.data = RadialGradientFill{center, innerRadius, outerRadius, startColor, endColor}; return s;
     }
-
     static FillStyle boxGradient(const Rect& bounds, float cornerRadius, float feather,
                                  const Color& innerColor, const Color& outerColor) {
-        FillStyle style;
-        style.type = Type::BoxGradient;
-        style.bounds = bounds;
-        style.cornerRadius = cornerRadius;
-        style.feather = feather;
-        style.startColor = innerColor;
-        style.endColor = outerColor;
-        return style;
+        FillStyle s; s.data = BoxGradientFill{bounds, cornerRadius, feather, innerColor, outerColor}; return s;
     }
-
     static FillStyle imagePattern(int imageId, const Point& origin, const Size& size,
                                   float angle = 0.0f, float alpha = 1.0f) {
-        FillStyle style;
-        style.type = Type::ImagePattern;
-        style.imageId = imageId;
-        style.imageOrigin = origin;
-        style.imageSize = size;
-        style.imageAngle = angle;
-        style.imageAlpha = alpha;
-        return style;
+        FillStyle s; s.data = ImagePatternFill{imageId, origin, size, angle, alpha}; return s;
     }
 };
 

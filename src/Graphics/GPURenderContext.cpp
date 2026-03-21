@@ -155,8 +155,7 @@ void GPURenderContext::setStrokeStyle(const StrokeStyle& style) {
 }
 
 void GPURenderContext::setFillColor(const Color& color) {
-    currentFill_.color = color;
-    currentFill_.type = FillStyle::Type::Solid;
+    currentFill_ = FillStyle::solid(color);
 }
 
 void GPURenderContext::setPathWinding(PathWinding winding) {

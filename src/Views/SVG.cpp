@@ -181,77 +181,40 @@ FillStyle nsvgPaintToFillStyle(const NSVGpaint& paint) {
         }
         
         case NSVG_PAINT_LINEAR_GRADIENT: {
-            FillStyle style;
-            style.type = FillStyle::Type::LinearGradient;
-            
             if (paint.gradient && paint.gradient->nstops >= 2) {
-                // Get first and last color stops
-                Color startColor = nsvgColorToFluxColor(paint.gradient->stops[0].color);
-                Color endColor = nsvgColorToFluxColor(paint.gradient->stops[paint.gradient->nstops - 1].color);
-                
-                style.startColor = startColor;
-                style.endColor = endColor;
-                
-                // Extract gradient line from transform matrix
-                // NanoSVG stores: xform[0]=dy, xform[1]=-dx, xform[2]=dx, xform[3]=dy, xform[4]=x1, xform[5]=y1
+                Color sc = nsvgColorToFluxColor(paint.gradient->stops[0].color);
+                Color ec = nsvgColorToFluxColor(paint.gradient->stops[paint.gradient->nstops - 1].color);
                 float* xform = paint.gradient->xform;
                 float dx = xform[2];
                 float dy = xform[3];
-                
-                // Start point (x1, y1)
-                style.startPoint = {xform[4], xform[5]};
-                
-                // For proper gradient rendering, we need a reasonable end point
-                // The gradient direction is stored in xform[2] and xform[3]
-                // We'll use the original length to get proper scaling
+                Point sp = {xform[4], xform[5]};
+                Point ep;
                 float gradLength = sqrtf(dx * dx + dy * dy);
-                
-                // End point is start point plus the direction vector
                 if (gradLength > 0.0001f) {
-                    style.endPoint = {
-                        style.startPoint.x + dx,
-                        style.startPoint.y + dy
-                    };
+                    ep = {sp.x + dx, sp.y + dy};
                 } else {
-                    // Fallback for zero-length gradients (shouldn't happen in practice)
-                    style.endPoint = {style.startPoint.x + 100, style.startPoint.y};
+                    ep = {sp.x + 100, sp.y};
                 }
+                return FillStyle::linearGradient(sp, ep, sc, ec);
             }
-            
-            return style;
+            return FillStyle::linearGradient({0,0}, {100,0}, Colors::black, Colors::white);
         }
-        
+
         case NSVG_PAINT_RADIAL_GRADIENT: {
-            FillStyle style;
-            style.type = FillStyle::Type::RadialGradient;
-            
             if (paint.gradient && paint.gradient->nstops >= 2) {
-                // Get first and last color stops
-                Color startColor = nsvgColorToFluxColor(paint.gradient->stops[0].color);
-                Color endColor = nsvgColorToFluxColor(paint.gradient->stops[paint.gradient->nstops - 1].color);
-                
-                style.startColor = startColor;
-                style.endColor = endColor;
-                
-                // Get center from transform
+                Color sc = nsvgColorToFluxColor(paint.gradient->stops[0].color);
+                Color ec = nsvgColorToFluxColor(paint.gradient->stops[paint.gradient->nstops - 1].color);
                 float* xform = paint.gradient->xform;
-                style.center = {xform[4], xform[5]};
-                
-                // Get radius from focus point
-                style.innerRadius = 0.0f;
-                style.outerRadius = 100.0f; // Default fallback
-                
-                if (paint.gradient) {
-                    // Use fx, fy as the focus point to estimate outer radius
-                    float focusX = paint.gradient->fx;
-                    float focusY = paint.gradient->fy;
-                    float dx = focusX - style.center.x;
-                    float dy = focusY - style.center.y;
-                    style.outerRadius = sqrtf(dx * dx + dy * dy);
-                }
+                Point center = {xform[4], xform[5]};
+                float outerR = 100.0f;
+                float focusX = paint.gradient->fx;
+                float focusY = paint.gradient->fy;
+                float fdx = focusX - center.x;
+                float fdy = focusY - center.y;
+                outerR = sqrtf(fdx * fdx + fdy * fdy);
+                return FillStyle::radialGradient(center, 0.0f, outerR, sc, ec);
             }
-            
-            return style;
+            return FillStyle::radialGradient({50,50}, 0.0f, 100.0f, Colors::black, Colors::white);
         }
         
         default:
