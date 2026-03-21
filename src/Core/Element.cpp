@@ -59,39 +59,47 @@ void Element::reconcile(const LayoutNode& newNode) {
 }
 
 void Element::reconcileChildren(const std::vector<LayoutNode>& newChildren) {
+    std::unordered_map<std::string, size_t> keyIndex;
+    std::unordered_map<uint64_t, size_t> structIndex;
+
+    for (size_t j = 0; j < children.size(); ++j) {
+        if (!children[j]->key.empty()) {
+            keyIndex[children[j]->key] = j;
+        } else {
+            auto h = std::hash<std::string>{}(children[j]->typeName);
+            h ^= children[j]->structuralIndex * 0x9e3779b97f4a7c15ULL;
+            structIndex[h] = j;
+        }
+    }
+
     std::vector<bool> oldMatched(children.size(), false);
     std::vector<std::unique_ptr<Element>> result;
     result.reserve(newChildren.size());
 
     for (size_t i = 0; i < newChildren.size(); ++i) {
         const auto& newChild = newChildren[i];
-        std::string newTypeName = newChild.view.getTypeName();
         std::string newKey = newChild.view.getKey();
 
-        int matchIdx = -1;
+        size_t matchIdx = SIZE_MAX;
 
         if (!newKey.empty()) {
-            for (size_t j = 0; j < children.size(); ++j) {
-                if (!oldMatched[j] && children[j]->key == newKey) {
-                    matchIdx = static_cast<int>(j);
-                    break;
-                }
+            auto it = keyIndex.find(newKey);
+            if (it != keyIndex.end() && !oldMatched[it->second]) {
+                matchIdx = it->second;
             }
         }
 
-        if (matchIdx < 0) {
-            for (size_t j = 0; j < children.size(); ++j) {
-                if (!oldMatched[j] &&
-                    children[j]->key.empty() &&
-                    children[j]->typeName == newTypeName &&
-                    children[j]->structuralIndex == i) {
-                    matchIdx = static_cast<int>(j);
-                    break;
-                }
+        if (matchIdx == SIZE_MAX) {
+            std::string newTypeName = newChild.view.getTypeName();
+            auto h = std::hash<std::string>{}(newTypeName);
+            h ^= i * 0x9e3779b97f4a7c15ULL;
+            auto it = structIndex.find(h);
+            if (it != structIndex.end() && !oldMatched[it->second]) {
+                matchIdx = it->second;
             }
         }
 
-        if (matchIdx >= 0) {
+        if (matchIdx != SIZE_MAX) {
             oldMatched[matchIdx] = true;
             children[matchIdx]->reconcile(newChild);
             result.push_back(std::move(children[matchIdx]));

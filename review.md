@@ -215,4 +215,42 @@ FreeType-based glyph rasterization packed into a GPU texture atlas. Instanced gl
 - Text measurement cache in `GPURenderContext`: `unordered_map<{text, font, size}, Size>` cleared every 300 frames.
 - NanoVG remains as compile-time fallback (default when no `--backend` specified).
 
-**Remaining:** Dirty-subtree rendering, visible line culling, MSDF text for large sizes.
+**Remaining:** Visible line culling, MSDF text for large sizes.
+
+---
+
+## 11. Architectural Review (Deep Review Session)
+
+Comprehensive architectural improvements implemented across the entire codebase:
+
+### ~~11.1 Structural Refactoring~~ **Done**
+- **Split View.hpp** (1,376 → 4 files): ViewInterface.hpp, ViewTraits.hpp, ViewAdapter.hpp, View.hpp umbrella
+- **Decompose ViewInterface** (~40 virtuals → ~25): VisualStyle + LayoutConstraints struct batching
+- **Mixin base structs**: ViewProperties, InteractiveProperties, TransformProperties alongside macros (full replacement blocked by C++ designated initializer limitation)
+
+### ~~11.2 Performance~~ **Done**
+- **Flat Path storage**: Replaced per-command `vector<float>` with flat buffer + offsets
+- **Flat command buffer**: Replaced 18-type `std::variant` with `uint32_t` byte-stream + object pools (~10x memory reduction)
+- **Dirty-subtree rendering**: `subtreeDirty` flag propagation + per-component body cache invalidation via `markBodyDirty()`/`requestRedrawOnly()`
+- **LRU caches**: pathTessCache, measureCache, wrapLineCache all converted from full-clear to proper LRU eviction
+
+### ~~11.3 Resource Management~~ **Done**
+- **ImageCache LRU**: GPU textures now evicted via LRU with `unique_ptr` destructor cleanup
+- **GPURenderContext::deleteImage()**: Implemented (was a no-op)
+
+### ~~11.4 Code Quality~~ **Done**
+- **ODR fixes**: `drawCheckbox`/`drawToggle` marked inline
+- **Thread safety**: Removed `std::thread`-based animations from ProgressBar/TypingIndicator
+- **Code deduplication**: `drawInputFieldChrome()`, `LabeledControl::build()`/`measure()`
+- **Design tokens**: Expanded Theme with semantic tokens, `Colors::inherit` sentinel, views resolve from theme at render time
+- **NanoVG removal**: Deleted 6 files (~1,674 lines), eliminated OpenGL dependency
+
+### ~~11.5 Overlay/Portal Layer~~ **Done**
+- **OverlayManager**: show/hide/layout/render/hit-test for overlays rendered above main tree
+- **Renderer integration**: Overlay rendering after main tree, event dispatch with mouse capture tracking
+- **View migration**: Dialog, SelectInput, DropdownMenu use overlays; ViewAdapter calls render() before body() when both exist
+- **Test infrastructure**: serializeUITree includes overlay layout trees
+
+### 11.6 Remaining (Postponed)
+- **Vulkan backend completion**: Postponed (not a priority)
+- **Property<T> inline-default**: Implemented with `Property::shared()` opt-in for shared state
