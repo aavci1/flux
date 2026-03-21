@@ -36,12 +36,14 @@ std::string FocusState::registerFocusableElement(Element* element, const Rect& b
                    focusableViews_.size(), view->getTypeName().c_str(), key.c_str(),
                    bounds.x, bounds.y, bounds.width, bounds.height);
 
+    keyIndex_[key] = focusableViews_.size();
     focusableViews_.push_back({element, bounds, key});
     return key;
 }
 
 void FocusState::clearFocusableViews() {
     focusableViews_.clear();
+    keyIndex_.clear();
 }
 
 void FocusState::focusNext() {
@@ -262,16 +264,9 @@ bool FocusState::dispatchTextInputToFocused(LayoutNode& root, const TextInputEve
 }
 
 int FocusState::findViewIndexByKey(const std::string& key) const {
-    if (key.empty()) {
-        return -1;
-    }
-    
-    for (size_t i = 0; i < focusableViews_.size(); ++i) {
-        if (focusableViews_[i].key == key) {
-            return static_cast<int>(i);
-        }
-    }
-    
+    if (key.empty()) return -1;
+    auto it = keyIndex_.find(key);
+    if (it != keyIndex_.end()) return static_cast<int>(it->second);
     return -1;
 }
 
