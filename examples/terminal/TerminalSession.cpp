@@ -55,7 +55,6 @@ void TerminalSession::readerLoop() {
             if (n > 0) {
                 emu_.feed(buf, static_cast<std::size_t>(n));
                 requestApplicationRedraw();
-                wakePlatformEventLoop();
             } else if (n == 0) {
                 // EOF on the PTY master: shell closed the slave (e.g. `exit`).
                 running_ = false;
