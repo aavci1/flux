@@ -38,14 +38,31 @@ GlyphAtlas::GlyphAtlas(gpu::Device* device, uint32_t atlasSize)
     : device_(device), atlasSize_(atlasSize)
 {
     FT_Init_FreeType(&ftLib_);
+    allocNewPage();
+}
 
-    atlasData_.resize(atlasSize_ * atlasSize_, 0);
-
+uint8_t GlyphAtlas::allocNewPage() {
+    AtlasPage page;
+    page.data.resize(atlasSize_ * atlasSize_, 0);
     gpu::TextureDesc td;
     td.width = atlasSize_;
     td.height = atlasSize_;
     td.format = gpu::PixelFormat::R8;
-    texture_ = device_->createTexture(td);
+    page.texture = device_->createTexture(td);
+    auto idx = static_cast<uint8_t>(pages_.size());
+    pages_.push_back(std::move(page));
+    return idx;
+}
+
+gpu::Texture* GlyphAtlas::texture(uint8_t page) const {
+    if (page >= pages_.size()) return nullptr;
+    return pages_[page].texture.get();
+}
+
+bool GlyphAtlas::dirty() const {
+    for (auto& p : pages_)
+        if (p.dirty) return true;
+    return false;
 }
 
 GlyphAtlas::~GlyphAtlas() {
@@ -193,6 +210,8 @@ std::optional<uint16_t> GlyphAtlas::loadFallbackForCodepoint(uint32_t codepoint,
 }
 
 bool GlyphAtlas::rasterizeGlyph(const GlyphKey& key, GlyphInfo& out) {
+    static constexpr uint8_t kMaxPages = 8;
+
     auto tryRender = [&](uint16_t fi) -> bool {
         auto it = faces_.find(fi);
         if (it == faces_.end()) return false;
@@ -216,47 +235,52 @@ bool GlyphAtlas::rasterizeGlyph(const GlyphKey& key, GlyphInfo& out) {
             out.bearingX = static_cast<float>(g->bitmap_left);
             out.bearingY = static_cast<float>(g->bitmap_top);
             out.advance = static_cast<float>(g->advance.x >> 6);
+            out.pageIndex = 0;
             return true;
         }
 
+        uint8_t pageIdx = static_cast<uint8_t>(pages_.size() - 1);
+        AtlasPage* page = &pages_[pageIdx];
+
         uint32_t pad = 1;
-        if (cursorX_ + gw + pad > atlasSize_) {
-            cursorX_ = 0;
-            cursorY_ += rowHeight_ + pad;
-            rowHeight_ = 0;
+        if (page->cursorX + gw + pad > atlasSize_) {
+            page->cursorX = 0;
+            page->cursorY += page->rowHeight + pad;
+            page->rowHeight = 0;
         }
-        if (cursorY_ + gh + pad > atlasSize_) {
-            return false;
+        if (page->cursorY + gh + pad > atlasSize_) {
+            if (pages_.size() >= kMaxPages) return false;
+            pageIdx = allocNewPage();
+            page = &pages_[pageIdx];
         }
 
         for (uint32_t row = 0; row < gh; row++) {
-            uint32_t dstY = cursorY_ + row;
-            std::memcpy(&atlasData_[dstY * atlasSize_ + cursorX_],
+            uint32_t dstY = page->cursorY + row;
+            std::memcpy(&page->data[dstY * atlasSize_ + page->cursorX],
                      &g->bitmap.buffer[row * g->bitmap.pitch], gw);
         }
 
-        expandDirtyRect(cursorX_, cursorY_, gw, gh);
+        expandDirtyRect(*page, page->cursorX, page->cursorY, gw, gh);
 
         float inv = 1.0f / static_cast<float>(atlasSize_);
-        out.u0 = static_cast<float>(cursorX_) * inv;
-        out.v0 = static_cast<float>(cursorY_) * inv;
-        out.u1 = static_cast<float>(cursorX_ + gw) * inv;
-        out.v1 = static_cast<float>(cursorY_ + gh) * inv;
+        out.u0 = static_cast<float>(page->cursorX) * inv;
+        out.v0 = static_cast<float>(page->cursorY) * inv;
+        out.u1 = static_cast<float>(page->cursorX + gw) * inv;
+        out.v1 = static_cast<float>(page->cursorY + gh) * inv;
         out.width = static_cast<float>(gw);
         out.height = static_cast<float>(gh);
         out.bearingX = static_cast<float>(g->bitmap_left);
         out.bearingY = static_cast<float>(g->bitmap_top);
         out.advance = static_cast<float>(g->advance.x >> 6);
+        out.pageIndex = pageIdx;
 
-        cursorX_ += gw + pad;
-        rowHeight_ = std::max(rowHeight_, gh);
+        page->cursorX += gw + pad;
+        page->rowHeight = std::max(page->rowHeight, gh);
         return true;
     };
 
-    // 1. Try the requested font.
     if (tryRender(key.fontIndex)) return true;
 
-    // 2. Ask the OS for a fallback and try it.
     auto fb = loadFallbackForCodepoint(key.codepoint, key.fontIndex);
     if (fb.has_value() && tryRender(fb.value())) return true;
 
@@ -275,49 +299,44 @@ const GlyphInfo* GlyphAtlas::getGlyph(uint32_t codepoint, uint16_t fontSize, uin
 }
 
 void GlyphAtlas::uploadIfDirty() {
-    if (!dirty_) return;
-    if (!texture_) return;
+    lastGpuUploadBytes_ = 0;
+    for (auto& page : pages_) {
+        if (!page.dirty || !page.texture) continue;
 
-    if (!dirtyRectValid_) {
-        texture_->write(atlasData_.data(), 0, 0, atlasSize_, atlasSize_, atlasSize_);
-        lastGpuUploadBytes_ = static_cast<uint64_t>(atlasSize_) * atlasSize_;
-        dirty_ = false;
-        return;
+        if (!page.dirtyRectValid) {
+            page.texture->write(page.data.data(), 0, 0, atlasSize_, atlasSize_, atlasSize_);
+            lastGpuUploadBytes_ += static_cast<uint64_t>(atlasSize_) * atlasSize_;
+        } else {
+            const uint32_t w = page.dirtyX1 - page.dirtyX0;
+            const uint32_t h = page.dirtyY1 - page.dirtyY0;
+            if (w > 0 && h > 0) {
+                const uint8_t* src = &page.data[page.dirtyY0 * atlasSize_ + page.dirtyX0];
+                page.texture->write(src, page.dirtyX0, page.dirtyY0, w, h, atlasSize_);
+                lastGpuUploadBytes_ += static_cast<uint64_t>(w) * h;
+            }
+        }
+        page.dirty = false;
+        page.dirtyRectValid = false;
     }
-
-    const uint32_t w = dirtyX1_ - dirtyX0_;
-    const uint32_t h = dirtyY1_ - dirtyY0_;
-    if (w == 0 || h == 0) {
-        dirty_ = false;
-        dirtyRectValid_ = false;
-        lastGpuUploadBytes_ = 0;
-        return;
-    }
-
-    const uint8_t* src = &atlasData_[dirtyY0_ * atlasSize_ + dirtyX0_];
-    texture_->write(src, dirtyX0_, dirtyY0_, w, h, atlasSize_);
-    lastGpuUploadBytes_ = static_cast<uint64_t>(w) * h;
-    dirty_ = false;
-    dirtyRectValid_ = false;
 }
 
-void GlyphAtlas::expandDirtyRect(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
+void GlyphAtlas::expandDirtyRect(AtlasPage& page, uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
     if (w == 0 || h == 0) return;
     const uint32_t x1 = x + w;
     const uint32_t y1 = y + h;
-    if (!dirtyRectValid_) {
-        dirtyX0_ = x;
-        dirtyY0_ = y;
-        dirtyX1_ = x1;
-        dirtyY1_ = y1;
-        dirtyRectValid_ = true;
+    if (!page.dirtyRectValid) {
+        page.dirtyX0 = x;
+        page.dirtyY0 = y;
+        page.dirtyX1 = x1;
+        page.dirtyY1 = y1;
+        page.dirtyRectValid = true;
     } else {
-        dirtyX0_ = std::min(dirtyX0_, x);
-        dirtyY0_ = std::min(dirtyY0_, y);
-        dirtyX1_ = std::max(dirtyX1_, x1);
-        dirtyY1_ = std::max(dirtyY1_, y1);
+        page.dirtyX0 = std::min(page.dirtyX0, x);
+        page.dirtyY0 = std::min(page.dirtyY0, y);
+        page.dirtyX1 = std::max(page.dirtyX1, x1);
+        page.dirtyY1 = std::max(page.dirtyY1, y1);
     }
-    dirty_ = true;
+    page.dirty = true;
 }
 
 void GlyphAtlas::clearTextLayoutCaches() {
@@ -328,12 +347,14 @@ void GlyphAtlas::clearTextLayoutCaches() {
 }
 
 void GlyphAtlas::markFullAtlasDirty() {
-    dirty_ = true;
-    dirtyRectValid_ = true;
-    dirtyX0_ = 0;
-    dirtyY0_ = 0;
-    dirtyX1_ = atlasSize_;
-    dirtyY1_ = atlasSize_;
+    for (auto& page : pages_) {
+        page.dirty = true;
+        page.dirtyRectValid = true;
+        page.dirtyX0 = 0;
+        page.dirtyY0 = 0;
+        page.dirtyX1 = atlasSize_;
+        page.dirtyY1 = atlasSize_;
+    }
     clearTextLayoutCaches();
 }
 
@@ -480,7 +501,7 @@ std::vector<GlyphInstance> GlyphAtlas::layoutText(const std::string& text, float
         inst.viewport[0] = vpW;
         inst.viewport[1] = vpH;
         inst.rotation = 0.0f;
-        inst._pad = 0.0f;
+        inst.atlasPage = static_cast<float>(g->pageIndex);
 
         out.push_back(inst);
         penX += g->advance;

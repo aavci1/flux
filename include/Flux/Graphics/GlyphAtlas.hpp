@@ -21,6 +21,7 @@ struct GlyphInfo {
     float width, height;
     float bearingX, bearingY;
     float advance;
+    uint8_t pageIndex = 0;
 };
 
 struct GlyphKey {
@@ -46,7 +47,7 @@ struct GlyphInstance {
     float color[4];
     float viewport[2];
     float rotation; // radians, 0 = axis-aligned
-    float _pad;
+    float atlasPage; // page index stored as float (shader ignores, used by batching)
 };
 static_assert(sizeof(GlyphInstance) == 64);
 
@@ -88,11 +89,11 @@ public:
                                               HorizontalAlignment hAlign,
                                               uint16_t fontIndex = 0);
 
-    gpu::Texture* texture() const { return texture_.get(); }
-    bool dirty() const { return dirty_; }
+    gpu::Texture* texture(uint8_t page = 0) const;
+    uint8_t pageCount() const { return static_cast<uint8_t>(pages_.size()); }
+    bool dirty() const;
     void uploadIfDirty();
 
-    /// Bytes written to the GPU texture in the last \ref uploadIfDirty (R8: one byte per texel). Zero if no upload ran.
     uint64_t lastGpuUploadBytes() const { return lastGpuUploadBytes_; }
 
 private:
@@ -104,17 +105,18 @@ private:
     uint16_t nextFontIndex_{0};
 
     uint32_t atlasSize_;
-    std::vector<uint8_t> atlasData_;
-    std::unique_ptr<gpu::Texture> texture_;
-    bool dirty_ = false;
-    /// Bounding box of CPU atlas texels touched since the last upload (half-open ranges).
-    bool dirtyRectValid_ = false;
-    uint32_t dirtyX0_ = 0, dirtyY0_ = 0, dirtyX1_ = 0, dirtyY1_ = 0;
     uint64_t lastGpuUploadBytes_ = 0;
 
-    uint32_t cursorX_ = 0;
-    uint32_t cursorY_ = 0;
-    uint32_t rowHeight_ = 0;
+    struct AtlasPage {
+        std::vector<uint8_t> data;
+        std::unique_ptr<gpu::Texture> texture;
+        uint32_t cursorX = 0, cursorY = 0, rowHeight = 0;
+        bool dirty = false;
+        bool dirtyRectValid = false;
+        uint32_t dirtyX0 = 0, dirtyY0 = 0, dirtyX1 = 0, dirtyY1 = 0;
+    };
+    std::vector<AtlasPage> pages_;
+    uint8_t allocNewPage();
 
     std::unordered_map<std::string, uint16_t> fallbackPathToIndex_;
     std::unordered_set<uint32_t> codepointMisses_;
@@ -126,7 +128,7 @@ private:
     std::vector<std::string> wrapText(const std::string& text, float fontSize,
                                        float maxWidth, uint16_t fontIndex);
 
-    void expandDirtyRect(uint32_t x, uint32_t y, uint32_t w, uint32_t h);
+    void expandDirtyRect(AtlasPage& page, uint32_t x, uint32_t y, uint32_t w, uint32_t h);
     void markFullAtlasDirty();
     void clearTextLayoutCaches();
 

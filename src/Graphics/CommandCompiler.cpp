@@ -316,7 +316,7 @@ void CommandCompiler::transformGlyphInstance(GlyphInstance& gi) const {
     gi.screenRect[2] = w;
     gi.screenRect[3] = h;
     gi.rotation = std::atan2(current_.m10, current_.m00);
-    gi._pad = 0.f;
+    gi.atlasPage = 0.f;
 }
 
 void CommandCompiler::fillInstanceColors(SDFQuadInstance& inst) const {
@@ -494,10 +494,25 @@ void CommandCompiler::pushText(CompiledBatches& out, const std::string& text,
         }
     }
 
+    if (glyphs.empty()) return;
+
     auto& gr = out.groups.back();
-    gr.drawOps.push_back({DrawOpType::Glyph, gr.glyphCount, static_cast<uint32_t>(glyphs.size())});
-    out.glyphs.insert(out.glyphs.end(), glyphs.begin(), glyphs.end());
-    gr.glyphCount += static_cast<uint32_t>(glyphs.size());
+    std::sort(glyphs.begin(), glyphs.end(), [](const GlyphInstance& a, const GlyphInstance& b) {
+        return a.atlasPage < b.atlasPage;
+    });
+    uint8_t curPage = static_cast<uint8_t>(glyphs[0].atlasPage);
+    uint32_t runStart = 0;
+    for (uint32_t i = 1; i <= static_cast<uint32_t>(glyphs.size()); ++i) {
+        uint8_t pg = (i < glyphs.size()) ? static_cast<uint8_t>(glyphs[i].atlasPage) : 255;
+        if (pg != curPage) {
+            uint32_t count = i - runStart;
+            gr.drawOps.push_back({DrawOpType::Glyph, gr.glyphCount, count, curPage});
+            out.glyphs.insert(out.glyphs.end(), glyphs.begin() + runStart, glyphs.begin() + i);
+            gr.glyphCount += count;
+            runStart = i;
+            curPage = pg;
+        }
+    }
 }
 
 void CommandCompiler::pushPath(CompiledBatches& out, const Path& path) {
@@ -603,10 +618,25 @@ void CommandCompiler::pushTextBox(CompiledBatches& out, const std::string& text,
         }
     }
 
+    if (glyphs.empty()) return;
+
     auto& gr = out.groups.back();
-    gr.drawOps.push_back({DrawOpType::Glyph, gr.glyphCount, static_cast<uint32_t>(glyphs.size())});
-    out.glyphs.insert(out.glyphs.end(), glyphs.begin(), glyphs.end());
-    gr.glyphCount += static_cast<uint32_t>(glyphs.size());
+    std::sort(glyphs.begin(), glyphs.end(), [](const GlyphInstance& a, const GlyphInstance& b) {
+        return a.atlasPage < b.atlasPage;
+    });
+    uint8_t curPage = static_cast<uint8_t>(glyphs[0].atlasPage);
+    uint32_t runStart = 0;
+    for (uint32_t i = 1; i <= static_cast<uint32_t>(glyphs.size()); ++i) {
+        uint8_t pg = (i < glyphs.size()) ? static_cast<uint8_t>(glyphs[i].atlasPage) : 255;
+        if (pg != curPage) {
+            uint32_t count = i - runStart;
+            gr.drawOps.push_back({DrawOpType::Glyph, gr.glyphCount, count, curPage});
+            out.glyphs.insert(out.glyphs.end(), glyphs.begin() + runStart, glyphs.begin() + i);
+            gr.glyphCount += count;
+            runStart = i;
+            curPage = pg;
+        }
+    }
 }
 
 ImageInstance CommandCompiler::makeImageInstance(const Rect& rect, float alpha) const {
