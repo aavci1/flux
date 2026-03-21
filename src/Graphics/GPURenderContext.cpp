@@ -66,14 +66,24 @@ void GPURenderContext::reset() {
 }
 
 void GPURenderContext::translate(float x, float y) {
+    transform_.matrix[4] += transform_.matrix[0] * x + transform_.matrix[2] * y;
+    transform_.matrix[5] += transform_.matrix[1] * x + transform_.matrix[3] * y;
     transform_.tx += x;
     transform_.ty += y;
-    transform_.matrix[4] += x;
-    transform_.matrix[5] += y;
     if (cmdBuf_) cmdBuf_->push(CmdTranslate{x, y});
 }
 
 void GPURenderContext::rotate(float angle) {
+    const float co = std::cos(angle);
+    const float si = std::sin(angle);
+    const float m00 = transform_.matrix[0];
+    const float m01 = transform_.matrix[2];
+    const float m10 = transform_.matrix[1];
+    const float m11 = transform_.matrix[3];
+    transform_.matrix[0] = m00 * co + m01 * si;
+    transform_.matrix[2] = -m00 * si + m01 * co;
+    transform_.matrix[1] = m10 * co + m11 * si;
+    transform_.matrix[3] = -m10 * si + m11 * co;
     if (cmdBuf_) cmdBuf_->push(CmdRotate{angle});
 }
 
@@ -81,6 +91,8 @@ void GPURenderContext::scale(float sx, float sy) {
     transform_.sx *= sx;
     transform_.sy *= sy;
     transform_.matrix[0] *= sx;
+    transform_.matrix[2] *= sy;
+    transform_.matrix[1] *= sx;
     transform_.matrix[3] *= sy;
     if (cmdBuf_) cmdBuf_->push(CmdScale{sx, sy});
 }
@@ -289,13 +301,21 @@ void GPURenderContext::clipPath(const Path& path) {
 void GPURenderContext::resetClip() {}
 
 Point GPURenderContext::transformPoint(const Point& point) {
-    return {point.x * transform_.sx + transform_.tx,
-            point.y * transform_.sy + transform_.ty};
+    const float* m = transform_.matrix;
+    return {point.x * m[0] + point.y * m[2] + m[4],
+            point.x * m[1] + point.y * m[3] + m[5]};
 }
 
 Rect GPURenderContext::transformRect(const Rect& rect) {
-    Point tl = transformPoint({rect.x, rect.y});
-    return {tl.x, tl.y, rect.width * transform_.sx, rect.height * transform_.sy};
+    Point p0 = transformPoint({rect.x, rect.y});
+    Point p1 = transformPoint({rect.x + rect.width, rect.y});
+    Point p2 = transformPoint({rect.x, rect.y + rect.height});
+    Point p3 = transformPoint({rect.x + rect.width, rect.y + rect.height});
+    float minX = std::min({p0.x, p1.x, p2.x, p3.x});
+    float maxX = std::max({p0.x, p1.x, p2.x, p3.x});
+    float minY = std::min({p0.y, p1.y, p2.y, p3.y});
+    float maxY = std::max({p0.y, p1.y, p2.y, p3.y});
+    return {minX, minY, maxX - minX, maxY - minY};
 }
 
 float GPURenderContext::degToRad(float degrees) { return degrees * 0.017453293f; }
