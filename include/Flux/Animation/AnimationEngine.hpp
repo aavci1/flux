@@ -103,6 +103,8 @@ public:
     void tick(float dt);
     bool hasActiveAnimations() const;
 
+    std::unordered_set<Element*>& elements() { return elements_; }
+
 private:
     std::unordered_set<Element*> elements_;
 };

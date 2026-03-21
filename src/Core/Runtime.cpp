@@ -18,8 +18,6 @@ namespace flux {
 
 Runtime* Runtime::current_ = nullptr;
 
-static std::atomic<uint64_t> bodyGeneration_{0};
-
 static thread_local int suppressRedrawRequests_ = 0;
 
 void suppressRedrawRequests() { ++suppressRedrawRequests_; }
@@ -27,8 +25,8 @@ void resumeRedrawRequests()   { --suppressRedrawRequests_; }
 
 void requestApplicationRedraw() {
     if (suppressRedrawRequests_ > 0) return;
-    bodyGeneration_.fetch_add(1, std::memory_order_relaxed);
     if (Runtime::current_) {
+        Runtime::current_->bumpBodyGeneration();
         Runtime::current_->requestRedraw();
     }
 }
@@ -41,7 +39,8 @@ void requestRedrawOnly() {
 }
 
 uint64_t currentBodyGeneration() {
-    return bodyGeneration_.load(std::memory_order_relaxed);
+    if (!Runtime::hasInstance()) return 0;
+    return Runtime::instance().bodyGeneration();
 }
 
 OverlayManager* Runtime::findOverlayManager() {
@@ -170,14 +169,14 @@ int Runtime::run() {
     auto lastFrameTime = std::chrono::steady_clock::now();
 
     while (running_) {
-        bool animating = AnimationEngine::instance().hasActiveAnimations();
+        bool animating = animationEngine_.hasActiveAnimations();
         bool redrawPending = needsRedraw_.load(std::memory_order_relaxed);
 
         if (animating) {
             auto now = std::chrono::steady_clock::now();
             float dt = std::chrono::duration<float>(now - lastFrameTime).count();
             lastFrameTime = now;
-            AnimationEngine::instance().tick(dt);
+            animationEngine_.tick(dt);
             needsRedraw_.store(true, std::memory_order_relaxed);
             redrawPending = true;
 
@@ -216,7 +215,7 @@ int Runtime::run() {
         }
 
         // If animations are still running, keep the event loop awake
-        if (AnimationEngine::instance().hasActiveAnimations()) {
+        if (animationEngine_.hasActiveAnimations()) {
             needsRedraw_.store(true, std::memory_order_relaxed);
             wakePlatformEventLoop();
         }

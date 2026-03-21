@@ -5,12 +5,6 @@
 
 using namespace flux;
 
-// Stub out the global redraw request so Property<T> works in tests
-namespace flux {
-void requestApplicationRedraw() {}
-void requestRedrawOnly() {}
-}
-
 // --- Basic Property<int> ---
 
 TEST_CASE("Property<int> default construction", "[property]") {
