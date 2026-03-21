@@ -3,6 +3,7 @@
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/View.hpp>
 #include <Flux/Core/KeyEvent.hpp>
+#include <unordered_map>
 #include <vector>
 #include <string>
 
@@ -111,6 +112,7 @@ private:
     
     std::string focusedKey_;
     std::vector<FocusableViewInfo> focusableViews_;
+    std::unordered_map<std::string, size_t> keyIndex_;
     std::string pendingBlurKey_;
     std::string pendingFocusKey_;
     
