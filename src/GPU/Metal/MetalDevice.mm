@@ -279,7 +279,7 @@ MetalDevice::MetalDevice(void* nsViewPtr)
     NSSize backing = [view convertSizeToBacking:NSMakeSize(NSWidth(view.bounds), NSHeight(view.bounds))];
     layer_.drawableSize = CGSizeMake(std::max(1.0, backing.width), std::max(1.0, backing.height));
 
-    frameSemaphore_ = dispatch_semaphore_create(1);
+    frameSemaphore_ = dispatch_semaphore_create(kMaxFramesInFlight);
 }
 
 MetalDevice::~MetalDevice() {
@@ -402,6 +402,7 @@ void MetalDevice::endFrame() {
     }
     currentCommandBuffer_ = nil;
     currentDrawable_ = nil;
+    frameIndex_ = (frameIndex_ + 1) % kMaxFramesInFlight;
 }
 
 void MetalDevice::resize(uint32_t width, uint32_t height) {

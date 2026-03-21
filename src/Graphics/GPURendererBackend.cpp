@@ -341,40 +341,32 @@ void GPURendererBackend::execute(const RenderCommandBuffer& buffer) {
 }
 
 void GPURendererBackend::uploadAndDraw(const CompiledBatches& batches) {
-    // Ensure and upload all instance buffers (shared across draw groups)
-    ensureInstanceBuffer<SDFQuadInstance>(device_, rectInstanceBuffer_, rectBufferCapacity_,
-                                          batches.rects.size());
-    ensureInstanceBuffer<SDFQuadInstance>(device_, circleInstanceBuffer_, circleBufferCapacity_,
-                                          batches.circles.size());
-    ensureInstanceBuffer<SDFQuadInstance>(device_, lineInstanceBuffer_, lineBufferCapacity_,
-                                          batches.lines.size());
+    if (!device_->beginFrame()) return;
+
+    auto& fb = frameBuffers_[device_->currentFrameIndex()];
+
+    ensureInstanceBuffer<SDFQuadInstance>(device_, fb.rect, fb.rectCap, batches.rects.size());
+    ensureInstanceBuffer<SDFQuadInstance>(device_, fb.circle, fb.circleCap, batches.circles.size());
+    ensureInstanceBuffer<SDFQuadInstance>(device_, fb.line, fb.lineCap, batches.lines.size());
 
     if (!batches.rects.empty())
-        rectInstanceBuffer_->write(batches.rects.data(),
-                                   batches.rects.size() * sizeof(SDFQuadInstance));
+        fb.rect->write(batches.rects.data(), batches.rects.size() * sizeof(SDFQuadInstance));
     if (!batches.circles.empty())
-        circleInstanceBuffer_->write(batches.circles.data(),
-                                     batches.circles.size() * sizeof(SDFQuadInstance));
+        fb.circle->write(batches.circles.data(), batches.circles.size() * sizeof(SDFQuadInstance));
     if (!batches.lines.empty())
-        lineInstanceBuffer_->write(batches.lines.data(),
-                                   batches.lines.size() * sizeof(SDFQuadInstance));
+        fb.line->write(batches.lines.data(), batches.lines.size() * sizeof(SDFQuadInstance));
 
     if (!batches.glyphs.empty() && glyphAtlas_) {
         glyphAtlas_->uploadIfDirty();
-        ensureInstanceBuffer<GlyphInstance>(device_, glyphInstanceBuffer_, glyphBufferCapacity_,
-                                            batches.glyphs.size());
-        glyphInstanceBuffer_->write(batches.glyphs.data(),
-                                     batches.glyphs.size() * sizeof(GlyphInstance));
+        ensureInstanceBuffer<GlyphInstance>(device_, fb.glyph, fb.glyphCap, batches.glyphs.size());
+        fb.glyph->write(batches.glyphs.data(), batches.glyphs.size() * sizeof(GlyphInstance));
     }
 
     if (!batches.pathVertices.empty()) {
         const size_t pathCount = batches.pathVertices.size();
-        ensureInstanceBuffer<PathVertex>(device_, pathVertexBuffer_, pathBufferCapacity_, pathCount,
-                                         256);
-        pathVertexBuffer_->write(batches.pathVertices.data(), pathCount * sizeof(PathVertex));
+        ensureInstanceBuffer<PathVertex>(device_, fb.path, fb.pathCap, pathCount, 256);
+        fb.path->write(batches.pathVertices.data(), pathCount * sizeof(PathVertex));
     }
-
-    if (!device_->beginFrame()) return;
 
     gpu::RenderPassDesc passDesc;
     passDesc.clearColor = batches.clearColor;
@@ -403,21 +395,21 @@ void GPURendererBackend::uploadAndDraw(const CompiledBatches& batches) {
                 case DrawOpType::Rect:
                     enc->setPipeline(rectPipeline_.get());
                     enc->setVertexBuffer(0, quadVB_.get());
-                    enc->setVertexBuffer(1, rectInstanceBuffer_.get());
+                    enc->setVertexBuffer(1, fb.rect.get());
                     enc->draw(6, op.count, 0, group.rectOffset + op.offset);
                     ++i;
                     break;
                 case DrawOpType::Circle:
                     enc->setPipeline(circlePipeline_.get());
                     enc->setVertexBuffer(0, quadVB_.get());
-                    enc->setVertexBuffer(1, circleInstanceBuffer_.get());
+                    enc->setVertexBuffer(1, fb.circle.get());
                     enc->draw(6, op.count, 0, group.circleOffset + op.offset);
                     ++i;
                     break;
                 case DrawOpType::Line:
                     enc->setPipeline(linePipeline_.get());
                     enc->setVertexBuffer(0, quadVB_.get());
-                    enc->setVertexBuffer(1, lineInstanceBuffer_.get());
+                    enc->setVertexBuffer(1, fb.line.get());
                     enc->draw(6, op.count, 0, group.lineOffset + op.offset);
                     ++i;
                     break;
@@ -427,7 +419,7 @@ void GPURendererBackend::uploadAndDraw(const CompiledBatches& batches) {
                         if (pageTex) {
                             enc->setPipeline(glyphPipeline_.get());
                             enc->setVertexBuffer(0, quadVB_.get());
-                            enc->setVertexBuffer(1, glyphInstanceBuffer_.get());
+                            enc->setVertexBuffer(1, fb.glyph.get());
                             enc->setFragmentTexture(0, pageTex);
                             enc->draw(6, op.count, 0, group.glyphOffset + op.offset);
                         }
@@ -437,7 +429,7 @@ void GPURendererBackend::uploadAndDraw(const CompiledBatches& batches) {
                 case DrawOpType::Path:
                     if (op.count > 0) {
                         enc->setPipeline(pathPipeline_.get());
-                        enc->setVertexBuffer(0, pathVertexBuffer_.get());
+                        enc->setVertexBuffer(0, fb.path.get());
                         enc->draw(op.count, 1, group.pathOffset + op.offset, 0);
                     }
                     ++i;
@@ -467,13 +459,13 @@ void GPURendererBackend::uploadAndDraw(const CompiledBatches& batches) {
                         ++j;
                     }
                     const uint32_t instCount = static_cast<uint32_t>(imageBatchScratch_.size());
-                    ensureImageInstanceBuffer(device_, imageInstanceBuffer_, imageBufferCapacity_,
+                    ensureImageInstanceBuffer(device_, fb.image, fb.imageCap,
                                               imageBatchScratch_.size());
-                    imageInstanceBuffer_->write(imageBatchScratch_.data(),
-                                                imageBatchScratch_.size() * sizeof(ImageInstance));
+                    fb.image->write(imageBatchScratch_.data(),
+                                    imageBatchScratch_.size() * sizeof(ImageInstance));
                     enc->setPipeline(imagePipeline_.get());
                     enc->setVertexBuffer(0, quadVB_.get());
-                    enc->setVertexBuffer(1, imageInstanceBuffer_.get());
+                    enc->setVertexBuffer(1, fb.image.get());
                     enc->setFragmentTexture(0, tex);
                     enc->draw(6, instCount);
                     i = j;
