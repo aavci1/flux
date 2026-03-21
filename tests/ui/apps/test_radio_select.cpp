@@ -6,9 +6,9 @@ using namespace flux;
 int main(int argc, char* argv[]) {
     Runtime runtime(argc, argv);
 
-    Property<std::string> selectedRadio = "opt1";
-    Property<int> selectedSelectIdx = 0;
-    Property<std::string> selectedSelectLabel = "Apple";
+    auto selectedRadio = Property<std::string>::shared(std::string("opt1"));
+    auto selectedSelectIdx = Property<int>::shared(0);
+    auto selectedSelectLabel = Property<std::string>::shared(std::string("Apple"));
 
     auto& window = runtime.createWindow({
         .size = {600, 500},

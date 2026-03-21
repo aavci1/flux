@@ -6,8 +6,8 @@ using namespace flux;
 int main(int argc, char* argv[]) {
     Runtime runtime(argc, argv);
 
-    Property<float> sliderVal = 0.5f;
-    Property<float> steppedVal = 50.0f;
+    auto sliderVal = Property<float>::shared(0.5f);
+    auto steppedVal = Property<float>::shared(50.0f);
 
     auto& window = runtime.createWindow({
         .size = {600, 400},

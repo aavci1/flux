@@ -21,9 +21,9 @@ struct TerminalView {
     /// Key bindings (zoom, scroll, PTY bytes). If null, session uses built-in defaults.
     std::shared_ptr<TerminalKeyBindings> keyBindings;
 
-    Property<float> fontSize = 14.0f;
+    Property<float> fontSize = Property<float>::shared(14.0f);
     /// Prefer "Monaco" on macOS (CoreText); Linux FontProvider still resolves a system sans path.
-    Property<std::string> fontFamily = std::string("Monaco");
+    Property<std::string> fontFamily = Property<std::string>::shared(std::string("Monaco"));
 
     /// Vertical scroll offset in px (content moves up as this increases).
     mutable float scrollY = 0.0f;

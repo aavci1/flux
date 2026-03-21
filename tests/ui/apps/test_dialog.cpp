@@ -6,10 +6,10 @@ using namespace flux;
 int main(int argc, char* argv[]) {
     Runtime runtime(argc, argv);
 
-    Property<bool> dialogVisible = false;
-    Property<std::string> dialogResult = "none";
-    Property<bool> dropdownOpen = false;
-    Property<std::string> dropdownResult = "none";
+    auto dialogVisible = Property<bool>::shared(false);
+    auto dialogResult = Property<std::string>::shared(std::string("none"));
+    auto dropdownOpen = Property<bool>::shared(false);
+    auto dropdownResult = Property<std::string>::shared(std::string("none"));
 
     auto& window = runtime.createWindow({
         .size = {700, 500},

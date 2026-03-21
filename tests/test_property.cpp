@@ -112,12 +112,21 @@ TEST_CASE("Property<bool> toggle behavior", "[property]") {
     REQUIRE(static_cast<bool>(p));
 }
 
-// --- Property copy sharing ---
+// --- Property copy semantics ---
 
-TEST_CASE("Property copies share storage", "[property]") {
+TEST_CASE("Inline Property copies are independent", "[property]") {
     Property<int> a = 10;
     Property<int> b = a;
     a = 20;
+    REQUIRE(a.get() == 20);
+    REQUIRE(b.get() == 10);
+}
+
+TEST_CASE("Shared Property copies share storage", "[property]") {
+    auto a = Property<int>::shared(10);
+    Property<int> b = a;
+    a = 20;
+    REQUIRE(a.get() == 20);
     REQUIRE(b.get() == 20);
 }
 

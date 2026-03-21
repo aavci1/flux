@@ -6,11 +6,11 @@ using namespace flux;
 int main(int argc, char* argv[]) {
     Runtime runtime(argc, argv);
 
-    Property<bool> cb1 = false;
-    Property<bool> cb2 = true;
-    Property<bool> cb3 = false;
-    Property<bool> tg1 = false;
-    Property<bool> tg2 = true;
+    auto cb1 = Property<bool>::shared(false);
+    auto cb2 = Property<bool>::shared(true);
+    auto cb3 = Property<bool>::shared(false);
+    auto tg1 = Property<bool>::shared(false);
+    auto tg2 = Property<bool>::shared(true);
 
     auto& window = runtime.createWindow({
         .size = {600, 500},
