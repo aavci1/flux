@@ -17,7 +17,7 @@ struct Text {
     /** macOS body default (~17pt). */
     Property<float> fontSize = Typography::body;
     Property<FontWeight> fontWeight = FontWeight::regular;
-    Property<Color> color = Colors::black;
+    Property<Color> color = Colors::inherit;
     Property<HorizontalAlignment> horizontalAlignment = HorizontalAlignment::center;
     Property<VerticalAlignment> verticalAlignment = VerticalAlignment::center;
     /**
@@ -50,7 +50,7 @@ struct Text {
 
         TextStyle style = resolvedStyle(false);
         ctx.setTextStyle(style);
-        ctx.setFillStyle(FillStyle::solid(color));
+        ctx.setFillStyle(FillStyle::solid(resolveColor(color, ctx.theme().foreground)));
 
         float contentWidth = bounds.width - paddingVal.horizontal();
 
