@@ -126,22 +126,24 @@ void CommandCompiler::compile(const RenderCommandBuffer& buffer,
     current_.m11 = dpiScaleY;
     current_.fill = FillStyle::none();
     current_.stroke = StrokeStyle::none();
-    current_.textStyle = TextStyle{};  // default font/size until CmdSetTextStyle
+    current_.textStyle = TextStyle{};
     stateStack_.clear();
 
     startNewGroup(out);
 
-    for (const auto& cmd : buffer.commands()) {
-        std::visit([&](const auto& c) {
-            using T = std::decay_t<decltype(c)>;
-
-            if constexpr (std::is_same_v<T, CmdClear>) {
-                out.clearColor = {c.color.r, c.color.g, c.color.b, c.color.a};
+    auto r = buffer.reader();
+    while (r.hasNext()) {
+        CmdOp op = r.nextOp();
+        switch (op) {
+            case CmdOp::Clear: {
+                Color col{r.readFloat(), r.readFloat(), r.readFloat(), r.readFloat()};
+                out.clearColor = {col.r, col.g, col.b, col.a};
+                break;
             }
-            else if constexpr (std::is_same_v<T, CmdSave>) {
+            case CmdOp::Save:
                 stateStack_.push_back(current_);
-            }
-            else if constexpr (std::is_same_v<T, CmdRestore>) {
+                break;
+            case CmdOp::Restore:
                 if (!stateStack_.empty()) {
                     ScissorState prevScissor = current_.scissor;
                     current_ = stateStack_.back();
@@ -149,14 +151,17 @@ void CommandCompiler::compile(const RenderCommandBuffer& buffer,
                     if (current_.scissor != prevScissor)
                         startNewGroup(out);
                 }
+                break;
+            case CmdOp::Translate: {
+                float x = r.readFloat(), y = r.readFloat();
+                current_.m02 += current_.m00 * x + current_.m01 * y;
+                current_.m12 += current_.m10 * x + current_.m11 * y;
+                break;
             }
-            else if constexpr (std::is_same_v<T, CmdTranslate>) {
-                current_.m02 += current_.m00 * c.x + current_.m01 * c.y;
-                current_.m12 += current_.m10 * c.x + current_.m11 * c.y;
-            }
-            else if constexpr (std::is_same_v<T, CmdRotate>) {
-                const float co = std::cos(c.angle);
-                const float si = std::sin(c.angle);
+            case CmdOp::Rotate: {
+                float angle = r.readFloat();
+                const float co = std::cos(angle);
+                const float si = std::sin(angle);
                 const float n00 = current_.m00 * co + current_.m01 * si;
                 const float n01 = -current_.m00 * si + current_.m01 * co;
                 const float n10 = current_.m10 * co + current_.m11 * si;
@@ -165,45 +170,70 @@ void CommandCompiler::compile(const RenderCommandBuffer& buffer,
                 current_.m01 = n01;
                 current_.m10 = n10;
                 current_.m11 = n11;
+                break;
             }
-            else if constexpr (std::is_same_v<T, CmdScale>) {
-                current_.m00 *= c.sx;
-                current_.m01 *= c.sy;
-                current_.m10 *= c.sx;
-                current_.m11 *= c.sy;
+            case CmdOp::Scale: {
+                float sx = r.readFloat(), sy = r.readFloat();
+                current_.m00 *= sx;
+                current_.m01 *= sy;
+                current_.m10 *= sx;
+                current_.m11 *= sy;
+                break;
             }
-            else if constexpr (std::is_same_v<T, CmdSetOpacity>) {
-                current_.opacity = c.opacity;
+            case CmdOp::SetOpacity:
+                current_.opacity = r.readFloat();
+                break;
+            case CmdOp::SetFillStyle:
+                current_.fill = buffer.fillStyle(r.readUint32());
+                break;
+            case CmdOp::SetStrokeStyle:
+                current_.stroke = buffer.strokeStyle(r.readUint32());
+                break;
+            case CmdOp::SetTextStyle:
+                current_.textStyle = buffer.textStyle(r.readUint32());
+                break;
+            case CmdOp::DrawRect: {
+                Rect bounds{r.readFloat(), r.readFloat(), r.readFloat(), r.readFloat()};
+                CornerRadius cr{r.readFloat(), r.readFloat(), r.readFloat(), r.readFloat()};
+                pushRect(out, bounds, cr);
+                break;
             }
-            else if constexpr (std::is_same_v<T, CmdSetFillStyle>) {
-                current_.fill = c.style;
+            case CmdOp::DrawCircle: {
+                Point center{r.readFloat(), r.readFloat()};
+                float radius = r.readFloat();
+                pushCircle(out, center, radius);
+                break;
             }
-            else if constexpr (std::is_same_v<T, CmdSetStrokeStyle>) {
-                current_.stroke = c.style;
+            case CmdOp::DrawLine: {
+                Point from{r.readFloat(), r.readFloat()};
+                Point to{r.readFloat(), r.readFloat()};
+                pushLine(out, from, to);
+                break;
             }
-            else if constexpr (std::is_same_v<T, CmdDrawRect>) {
-                pushRect(out, c);
+            case CmdOp::DrawPath: {
+                const Path& path = buffer.path(r.readUint32());
+                pushPath(out, path);
+                break;
             }
-            else if constexpr (std::is_same_v<T, CmdDrawCircle>) {
-                pushCircle(out, c);
+            case CmdOp::DrawText: {
+                uint32_t strId = r.readUint32();
+                Point pos{r.readFloat(), r.readFloat()};
+                auto hAlign = static_cast<HorizontalAlignment>(r.readUint32());
+                auto vAlign = static_cast<VerticalAlignment>(r.readUint32());
+                pushText(out, buffer.str(strId), pos, hAlign, vAlign);
+                break;
             }
-            else if constexpr (std::is_same_v<T, CmdDrawLine>) {
-                pushLine(out, c);
+            case CmdOp::DrawTextBox: {
+                uint32_t strId = r.readUint32();
+                Point pos{r.readFloat(), r.readFloat()};
+                float maxWidth = r.readFloat();
+                auto hAlign = static_cast<HorizontalAlignment>(r.readUint32());
+                pushTextBox(out, buffer.str(strId), pos, maxWidth, hAlign);
+                break;
             }
-            else if constexpr (std::is_same_v<T, CmdSetTextStyle>) {
-                current_.textStyle = c.style;
-            }
-            else if constexpr (std::is_same_v<T, CmdDrawText>) {
-                pushText(out, c, buffer);
-            }
-            else if constexpr (std::is_same_v<T, CmdDrawTextBox>) {
-                pushTextBox(out, c, buffer);
-            }
-            else if constexpr (std::is_same_v<T, CmdDrawPath>) {
-                pushPath(out, c);
-            }
-            else if constexpr (std::is_same_v<T, CmdClipPath>) {
-                auto bounds = c.path.getBounds();
+            case CmdOp::ClipPath: {
+                const Path& clipPath = buffer.path(r.readUint32());
+                auto bounds = clipPath.getBounds();
                 float bx = bounds.x, by = bounds.y, bw = bounds.width, bh = bounds.height;
                 float x0 = bx, y0 = by;
                 float x1 = bx + bw, y1 = by;
@@ -223,14 +253,27 @@ void CommandCompiler::compile(const RenderCommandBuffer& buffer,
                     current_.scissor = merged;
                     startNewGroup(out);
                 }
+                break;
             }
-            else if constexpr (std::is_same_v<T, CmdDrawImage>) {
-                pushImage(out, c);
+            case CmdOp::DrawImage: {
+                int imageId = r.readInt32();
+                Rect rect{r.readFloat(), r.readFloat(), r.readFloat(), r.readFloat()};
+                auto fit = static_cast<ImageFit>(r.readUint32());
+                CornerRadius cr{r.readFloat(), r.readFloat(), r.readFloat(), r.readFloat()};
+                float alpha = r.readFloat();
+                pushImage(out, imageId, rect, fit, cr, alpha);
+                break;
             }
-            else if constexpr (std::is_same_v<T, CmdDrawImagePath>) {
-                pushImagePath(out, c, buffer);
+            case CmdOp::DrawImagePath: {
+                uint32_t pathStrId = r.readUint32();
+                Rect rect{r.readFloat(), r.readFloat(), r.readFloat(), r.readFloat()};
+                auto fit = static_cast<ImageFit>(r.readUint32());
+                CornerRadius cr{r.readFloat(), r.readFloat(), r.readFloat(), r.readFloat()};
+                float alpha = r.readFloat();
+                pushImagePath(out, buffer.str(pathStrId), rect, fit, cr, alpha);
+                break;
             }
-        }, cmd);
+        }
     }
 
     rectPeak_ = std::max(rectPeak_, out.rects.size());
@@ -263,9 +306,6 @@ bool CommandCompiler::isAxisAligned() const {
 }
 
 void CommandCompiler::transformGlyphInstance(GlyphInstance& gi) const {
-    // Layout/measure already use fontSize = userSize * horizontalScale() (atlas pixels).
-    // Only map the quad center through M and apply rotation; do not rescale w/h or we
-    // double-apply DPI/scale vs the old translate+scaleX path.
     const float w = gi.screenRect[2];
     const float h = gi.screenRect[3];
     float cx = gi.screenRect[0] + w * 0.5f;
@@ -308,15 +348,15 @@ void CommandCompiler::fillInstanceColors(SDFQuadInstance& inst) const {
     inst.opacity = current_.opacity;
 }
 
-void CommandCompiler::pushRect(CompiledBatches& out, const CmdDrawRect& cmd) {
+void CommandCompiler::pushRect(CompiledBatches& out, const Rect& bounds, const CornerRadius& cornerRadius) {
     SDFQuadInstance inst{};
-    const float cx = cmd.bounds.x + cmd.bounds.width * 0.5f;
-    const float cy = cmd.bounds.y + cmd.bounds.height * 0.5f;
+    const float cx = bounds.x + bounds.width * 0.5f;
+    const float cy = bounds.y + bounds.height * 0.5f;
     float ox = cx, oy = cy;
     applyTransform(ox, oy);
 
-    const float hw = cmd.bounds.width * 0.5f;
-    const float hh = cmd.bounds.height * 0.5f;
+    const float hw = bounds.width * 0.5f;
+    const float hh = bounds.height * 0.5f;
     const float hwScr = std::hypot(current_.m00 * hw, current_.m10 * hw);
     const float hhScr = std::hypot(current_.m01 * hh, current_.m11 * hh);
     inst.rect[0] = ox - hwScr;
@@ -329,10 +369,10 @@ void CommandCompiler::pushRect(CompiledBatches& out, const CmdDrawRect& cmd) {
     const float col0 = std::hypot(current_.m00, current_.m10);
     const float col1 = std::hypot(current_.m01, current_.m11);
     const float s = 0.5f * (col0 + col1);
-    inst.corners[0] = cmd.cornerRadius.topLeft * s;
-    inst.corners[1] = cmd.cornerRadius.topRight * s;
-    inst.corners[2] = cmd.cornerRadius.bottomRight * s;
-    inst.corners[3] = cmd.cornerRadius.bottomLeft * s;
+    inst.corners[0] = cornerRadius.topLeft * s;
+    inst.corners[1] = cornerRadius.topRight * s;
+    inst.corners[2] = cornerRadius.bottomRight * s;
+    inst.corners[3] = cornerRadius.bottomLeft * s;
 
     inst.viewport[0] = out.viewportWidth;
     inst.viewport[1] = out.viewportHeight;
@@ -343,11 +383,11 @@ void CommandCompiler::pushRect(CompiledBatches& out, const CmdDrawRect& cmd) {
     g.rectCount++;
 }
 
-void CommandCompiler::pushCircle(CompiledBatches& out, const CmdDrawCircle& cmd) {
+void CommandCompiler::pushCircle(CompiledBatches& out, const Point& center, float radius) {
     SDFQuadInstance inst{};
-    float cx = cmd.center.x, cy = cmd.center.y;
+    float cx = center.x, cy = center.y;
     applyTransform(cx, cy);
-    const float rScr = cmd.radius * linearScale();
+    const float rScr = radius * linearScale();
     const float diam = rScr * 2.0f;
 
     inst.rect[0] = cx - rScr;
@@ -366,10 +406,10 @@ void CommandCompiler::pushCircle(CompiledBatches& out, const CmdDrawCircle& cmd)
     g.circleCount++;
 }
 
-void CommandCompiler::pushLine(CompiledBatches& out, const CmdDrawLine& cmd) {
+void CommandCompiler::pushLine(CompiledBatches& out, const Point& from, const Point& to) {
     SDFQuadInstance inst{};
-    float x0 = cmd.from.x, y0 = cmd.from.y;
-    float x1 = cmd.to.x, y1 = cmd.to.y;
+    float x0 = from.x, y0 = from.y;
+    float x1 = to.x, y1 = to.y;
     applyTransform(x0, y0);
     applyTransform(x1, y1);
 
@@ -385,7 +425,6 @@ void CommandCompiler::pushLine(CompiledBatches& out, const CmdDrawLine& cmd) {
     inst.rect[2] = len + halfW * 2.0f;
     inst.rect[3] = halfW * 2.0f;
 
-    // Line angle for GPU rotation: corners.xy = (cos(angle), sin(angle))
     float angle = (len > 1e-6f) ? std::atan2(dy, dx) : 0.0f;
     inst.corners[0] = std::cos(angle);
     inst.corners[1] = std::sin(angle);
@@ -409,16 +448,13 @@ void CommandCompiler::pushLine(CompiledBatches& out, const CmdDrawLine& cmd) {
     g.lineCount++;
 }
 
-void CommandCompiler::pushText(CompiledBatches& out, const CmdDrawText& cmd,
-                               const RenderCommandBuffer& buffer) {
+void CommandCompiler::pushText(CompiledBatches& out, const std::string& text,
+                               const Point& position,
+                               HorizontalAlignment hAlign, VerticalAlignment vAlign) {
     if (!atlas_) return;
 
-    const std::string& text = buffer.str(cmd.textStrId);
-
     auto fontIndex = atlas_->ensureFontLoaded(current_.textStyle.fontName, current_.textStyle.weight);
-    if (!fontIndex) {
-        return;
-    }
+    if (!fontIndex) return;
 
     const float fontSize = current_.textStyle.size * horizontalScale();
     Color textColor = current_.fill.color;
@@ -429,29 +465,27 @@ void CommandCompiler::pushText(CompiledBatches& out, const CmdDrawText& cmd,
     std::vector<GlyphInstance> glyphs;
 
     if (isAxisAligned()) {
-        // Match legacy behavior: transform anchor first, then align in screen space (avoids wrong
-        // centering when scale is applied).
-        float x = cmd.position.x, y = cmd.position.y;
+        float x = position.x, y = position.y;
         applyTransform(x, y);
 
         float drawX = x;
-        if (cmd.hAlign == HorizontalAlignment::center) drawX -= sz.width * 0.5f;
-        else if (cmd.hAlign == HorizontalAlignment::trailing) drawX -= sz.width;
+        if (hAlign == HorizontalAlignment::center) drawX -= sz.width * 0.5f;
+        else if (hAlign == HorizontalAlignment::trailing) drawX -= sz.width;
 
         float drawY = y;
-        if (cmd.vAlign == VerticalAlignment::center) drawY += fontSize * 0.35f;
-        else if (cmd.vAlign == VerticalAlignment::top) drawY += fontSize;
+        if (vAlign == VerticalAlignment::center) drawY += fontSize * 0.35f;
+        else if (vAlign == VerticalAlignment::top) drawY += fontSize;
 
         glyphs = atlas_->layoutText(text, drawX, drawY, fontSize, textColor,
                                     out.viewportWidth, out.viewportHeight, *fontIndex);
     } else {
-        float drawX = cmd.position.x;
-        if (cmd.hAlign == HorizontalAlignment::center) drawX -= sz.width * 0.5f;
-        else if (cmd.hAlign == HorizontalAlignment::trailing) drawX -= sz.width;
+        float drawX = position.x;
+        if (hAlign == HorizontalAlignment::center) drawX -= sz.width * 0.5f;
+        else if (hAlign == HorizontalAlignment::trailing) drawX -= sz.width;
 
-        float drawY = cmd.position.y;
-        if (cmd.vAlign == VerticalAlignment::center) drawY += fontSize * 0.35f;
-        else if (cmd.vAlign == VerticalAlignment::top) drawY += fontSize;
+        float drawY = position.y;
+        if (vAlign == VerticalAlignment::center) drawY += fontSize * 0.35f;
+        else if (vAlign == VerticalAlignment::top) drawY += fontSize;
 
         glyphs = atlas_->layoutText(text, drawX, drawY, fontSize, textColor,
                                     out.viewportWidth, out.viewportHeight, *fontIndex);
@@ -466,8 +500,8 @@ void CommandCompiler::pushText(CompiledBatches& out, const CmdDrawText& cmd,
     gr.glyphCount += static_cast<uint32_t>(glyphs.size());
 }
 
-void CommandCompiler::pushPath(CompiledBatches& out, const CmdDrawPath& cmd) {
-    auto keyOpt = makePathTessCacheKey(cmd.path, out.viewportWidth, out.viewportHeight);
+void CommandCompiler::pushPath(CompiledBatches& out, const Path& path) {
+    auto keyOpt = makePathTessCacheKey(path, out.viewportWidth, out.viewportHeight);
     if (keyOpt) {
         auto it = pathTessCache_.find(*keyOpt);
         if (it != pathTessCache_.end()) {
@@ -484,7 +518,7 @@ void CommandCompiler::pushPath(CompiledBatches& out, const CmdDrawPath& cmd) {
         }
     }
 
-    auto subpaths = PathFlattener::flattenSubpaths(cmd.path);
+    auto subpaths = PathFlattener::flattenSubpaths(path);
     for (auto& sub : subpaths) {
         for (auto& p : sub) applyTransform(p.x, p.y);
     }
@@ -534,33 +568,30 @@ void CommandCompiler::pushPath(CompiledBatches& out, const CmdDrawPath& cmd) {
     }
 }
 
-void CommandCompiler::pushTextBox(CompiledBatches& out, const CmdDrawTextBox& cmd,
-                                  const RenderCommandBuffer& buffer) {
+void CommandCompiler::pushTextBox(CompiledBatches& out, const std::string& text,
+                                  const Point& position,
+                                  float maxWidth, HorizontalAlignment hAlign) {
     if (!atlas_) return;
 
-    const std::string& text = buffer.str(cmd.textStrId);
-
     auto fontIndex = atlas_->ensureFontLoaded(current_.textStyle.fontName, current_.textStyle.weight);
-    if (!fontIndex) {
-        return;
-    }
+    if (!fontIndex) return;
 
     const float fontSize = current_.textStyle.size * horizontalScale();
-    const float maxWidth = cmd.maxWidth * horizontalScale();
+    const float scaledMaxWidth = maxWidth * horizontalScale();
     Color textColor = current_.fill.color;
     textColor.a *= current_.opacity;
 
     std::vector<GlyphInstance> glyphs;
 
     if (isAxisAligned()) {
-        float x = cmd.position.x, y = cmd.position.y;
+        float x = position.x, y = position.y;
         applyTransform(x, y);
-        glyphs = atlas_->layoutTextBox(text, x, y + fontSize, fontSize, maxWidth, textColor,
-                                        out.viewportWidth, out.viewportHeight, cmd.hAlign, *fontIndex);
+        glyphs = atlas_->layoutTextBox(text, x, y + fontSize, fontSize, scaledMaxWidth, textColor,
+                                        out.viewportWidth, out.viewportHeight, hAlign, *fontIndex);
     } else {
-        glyphs = atlas_->layoutTextBox(text, cmd.position.x, cmd.position.y + fontSize, fontSize,
-                                        maxWidth, textColor, out.viewportWidth, out.viewportHeight,
-                                        cmd.hAlign, *fontIndex);
+        glyphs = atlas_->layoutTextBox(text, position.x, position.y + fontSize, fontSize,
+                                        scaledMaxWidth, textColor, out.viewportWidth, out.viewportHeight,
+                                        hAlign, *fontIndex);
         for (auto& g : glyphs) {
             transformGlyphInstance(g);
         }
@@ -591,21 +622,22 @@ ImageInstance CommandCompiler::makeImageInstance(const Rect& rect, float alpha) 
     return inst;
 }
 
-void CommandCompiler::pushImage(CompiledBatches& out, const CmdDrawImage& cmd) {
-    const float cx = cmd.rect.x + cmd.rect.width * 0.5f;
-    const float cy = cmd.rect.y + cmd.rect.height * 0.5f;
+void CommandCompiler::pushImage(CompiledBatches& out, int imageId, const Rect& rect,
+                                ImageFit fit, const CornerRadius& cr, float alpha) {
+    const float cx = rect.x + rect.width * 0.5f;
+    const float cy = rect.y + rect.height * 0.5f;
     float ox = cx, oy = cy;
     applyTransform(ox, oy);
-    const float hw = cmd.rect.width * 0.5f;
-    const float hh = cmd.rect.height * 0.5f;
+    const float hw = rect.width * 0.5f;
+    const float hh = rect.height * 0.5f;
     const float hwScr = std::hypot(current_.m00 * hw, current_.m10 * hw);
     const float hhScr = std::hypot(current_.m01 * hh, current_.m11 * hh);
     const float rot = std::atan2(current_.m10, current_.m00);
     Rect transformed{ox - hwScr, oy - hhScr, 2.f * hwScr, 2.f * hhScr};
 
     ImageDrawCmd draw;
-    draw.imageId = cmd.imageId;
-    draw.instance = makeImageInstance(transformed, cmd.alpha);
+    draw.imageId = imageId;
+    draw.instance = makeImageInstance(transformed, alpha);
     draw.instance.rotation = rot;
     draw.instance.viewport[0] = out.viewportWidth;
     draw.instance.viewport[1] = out.viewportHeight;
@@ -614,22 +646,22 @@ void CommandCompiler::pushImage(CompiledBatches& out, const CmdDrawImage& cmd) {
     g.imageDraws.push_back(std::move(draw));
 }
 
-void CommandCompiler::pushImagePath(CompiledBatches& out, const CmdDrawImagePath& cmd,
-                                    const RenderCommandBuffer& buffer) {
-    const float cx = cmd.rect.x + cmd.rect.width * 0.5f;
-    const float cy = cmd.rect.y + cmd.rect.height * 0.5f;
+void CommandCompiler::pushImagePath(CompiledBatches& out, const std::string& imgPath, const Rect& rect,
+                                    ImageFit fit, const CornerRadius& cr, float alpha) {
+    const float cx = rect.x + rect.width * 0.5f;
+    const float cy = rect.y + rect.height * 0.5f;
     float ox = cx, oy = cy;
     applyTransform(ox, oy);
-    const float hw = cmd.rect.width * 0.5f;
-    const float hh = cmd.rect.height * 0.5f;
+    const float hw = rect.width * 0.5f;
+    const float hh = rect.height * 0.5f;
     const float hwScr = std::hypot(current_.m00 * hw, current_.m10 * hw);
     const float hhScr = std::hypot(current_.m01 * hh, current_.m11 * hh);
     const float rot = std::atan2(current_.m10, current_.m00);
     Rect transformed{ox - hwScr, oy - hhScr, 2.f * hwScr, 2.f * hhScr};
 
     ImageDrawCmd draw;
-    draw.path = buffer.str(cmd.pathStrId);
-    draw.instance = makeImageInstance(transformed, cmd.alpha);
+    draw.path = imgPath;
+    draw.instance = makeImageInstance(transformed, alpha);
     draw.instance.rotation = rot;
     draw.instance.viewport[0] = out.viewportWidth;
     draw.instance.viewport[1] = out.viewportHeight;

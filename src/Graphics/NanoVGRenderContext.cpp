@@ -36,7 +36,7 @@ void NanoVGRenderContext::clear(const Color& color) {
     nvgRect(nvgContext_, 0, 0, width_, height_);
     nvgFillColor(nvgContext_, toNVGColor(color));
     nvgFill(nvgContext_);
-    if (recordingBuffer_) recordingBuffer_->push(CmdClear{color});
+    if (recordingBuffer_) recordingBuffer_->pushClear(color);
 }
 
 void NanoVGRenderContext::present() {
@@ -73,12 +73,12 @@ void NanoVGRenderContext::updateDPIScale(float dpiScaleX, float dpiScaleY) {
 
 void NanoVGRenderContext::save() {
     nvgSave(nvgContext_);
-    if (recordingBuffer_) recordingBuffer_->push(CmdSave{});
+    if (recordingBuffer_) recordingBuffer_->pushSave();
 }
 
 void NanoVGRenderContext::restore() {
     nvgRestore(nvgContext_);
-    if (recordingBuffer_) recordingBuffer_->push(CmdRestore{});
+    if (recordingBuffer_) recordingBuffer_->pushRestore();
 }
 
 void NanoVGRenderContext::reset() {
@@ -91,17 +91,17 @@ void NanoVGRenderContext::reset() {
 
 void NanoVGRenderContext::translate(float x, float y) {
     nvgTranslate(nvgContext_, x, y);
-    if (recordingBuffer_) recordingBuffer_->push(CmdTranslate{x, y});
+    if (recordingBuffer_) recordingBuffer_->pushTranslate(x, y);
 }
 
 void NanoVGRenderContext::rotate(float angle) {
     nvgRotate(nvgContext_, angle);
-    if (recordingBuffer_) recordingBuffer_->push(CmdRotate{angle});
+    if (recordingBuffer_) recordingBuffer_->pushRotate(angle);
 }
 
 void NanoVGRenderContext::scale(float sx, float sy) {
     nvgScale(nvgContext_, sx, sy);
-    if (recordingBuffer_) recordingBuffer_->push(CmdScale{sx, sy});
+    if (recordingBuffer_) recordingBuffer_->pushScale(sx, sy);
 }
 
 void NanoVGRenderContext::skewX(float angle) {
@@ -134,7 +134,7 @@ void NanoVGRenderContext::setCompositeOperation(CompositeOperation op) {
 
 void NanoVGRenderContext::setOpacity(float alpha) {
     nvgGlobalAlpha(nvgContext_, alpha);
-    if (recordingBuffer_) recordingBuffer_->push(CmdSetOpacity{alpha});
+    if (recordingBuffer_) recordingBuffer_->pushSetOpacity(alpha);
 }
 
 void NanoVGRenderContext::setShapeAntiAlias(bool enabled) {
@@ -189,7 +189,7 @@ void NanoVGRenderContext::setStrokeStyle(const StrokeStyle& style) {
     if (style.type == StrokeStyle::Type::Dashed) {
         setDashPattern(style.dashPattern, style.dashOffset);
     }
-    if (recordingBuffer_) recordingBuffer_->push(CmdSetStrokeStyle{style});
+    if (recordingBuffer_) recordingBuffer_->pushSetStrokeStyle(style);
 }
 
 // ============================================================================
@@ -210,7 +210,7 @@ void NanoVGRenderContext::setFillStyle(const FillStyle& style) {
     currentFillStyle_ = style;
     nvgFillPaint(nvgContext_, toNVGFillStyle(style));
     nvgPathWinding(nvgContext_, getNVGPathWinding(style.winding));
-    if (recordingBuffer_) recordingBuffer_->push(CmdSetFillStyle{style});
+    if (recordingBuffer_) recordingBuffer_->pushSetFillStyle(style);
 }
 
 // ============================================================================
@@ -225,7 +225,7 @@ void NanoVGRenderContext::drawPath(const Path& path) {
     if (path.isEmpty()) {
         return;
     }
-    if (recordingBuffer_) recordingBuffer_->push(CmdDrawPath{path});
+    if (recordingBuffer_) recordingBuffer_->pushDrawPath(path);
 
     nvgBeginPath(nvgContext_);
     
@@ -300,7 +300,7 @@ void NanoVGRenderContext::drawCircle(const Point& center, float radius) {
     nvgCircle(nvgContext_, center.x, center.y, radius);
     if (currentFillStyle_.type != FillStyle::Type::None) nvgFill(nvgContext_);
     if (currentStrokeStyle_.type != StrokeStyle::Type::None) nvgStroke(nvgContext_);
-    if (recordingBuffer_) recordingBuffer_->push(CmdDrawCircle{center, radius});
+    if (recordingBuffer_) recordingBuffer_->pushDrawCircle(center, radius);
 }
 
 void NanoVGRenderContext::drawLine(const Point& start, const Point& end) {
@@ -308,7 +308,7 @@ void NanoVGRenderContext::drawLine(const Point& start, const Point& end) {
     nvgMoveTo(nvgContext_, start.x, start.y);
     nvgLineTo(nvgContext_, end.x, end.y);
     if (currentStrokeStyle_.type != StrokeStyle::Type::None) nvgStroke(nvgContext_);
-    if (recordingBuffer_) recordingBuffer_->push(CmdDrawLine{start, end});
+    if (recordingBuffer_) recordingBuffer_->pushDrawLine(start, end);
 }
 
 void NanoVGRenderContext::drawRect(const Rect& rect, const CornerRadius& cornerRadius) {
@@ -324,7 +324,7 @@ void NanoVGRenderContext::drawRect(const Rect& rect, const CornerRadius& cornerR
     }
     if (currentFillStyle_.type != FillStyle::Type::None) nvgFill(nvgContext_);
     if (currentStrokeStyle_.type != StrokeStyle::Type::None) nvgStroke(nvgContext_);
-    if (recordingBuffer_) recordingBuffer_->push(CmdDrawRect{rect, cornerRadius});
+    if (recordingBuffer_) recordingBuffer_->pushDrawRect(rect, cornerRadius);
 }
 
 void NanoVGRenderContext::drawEllipse(const Point& center, float radiusX, float radiusY) {
@@ -383,7 +383,7 @@ void NanoVGRenderContext::setTextStyle(const TextStyle& style) {
     setFontSize(style.size);
     setLetterSpacing(style.letterSpacing);
     setLineHeight(style.lineHeight);
-    if (recordingBuffer_) recordingBuffer_->push(CmdSetTextStyle{style});
+    if (recordingBuffer_) recordingBuffer_->pushSetTextStyle(style);
 }
 
 void NanoVGRenderContext::drawText(const std::string& text, const Point& position, HorizontalAlignment hAlign, VerticalAlignment vAlign) {
@@ -391,7 +391,7 @@ void NanoVGRenderContext::drawText(const std::string& text, const Point& positio
     nvgText(nvgContext_, position.x, position.y, text.c_str(), nullptr);
     if (recordingBuffer_) {
         uint32_t sid = recordingBuffer_->internString(std::string(text));
-        recordingBuffer_->push(CmdDrawText{sid, position, hAlign, vAlign});
+        recordingBuffer_->pushDrawText(sid, position, hAlign, vAlign);
     }
 }
 
@@ -407,7 +407,7 @@ void NanoVGRenderContext::drawTextBox(const std::string& text, const Point& posi
     nvgTextBox(nvgContext_, position.x, position.y, maxWidth, text.c_str(), nullptr);
     if (recordingBuffer_) {
         uint32_t sid = recordingBuffer_->internString(std::string(text));
-        recordingBuffer_->push(CmdDrawTextBox{sid, position, maxWidth, hAlign});
+        recordingBuffer_->pushDrawTextBox(sid, position, maxWidth, hAlign);
     }
 }
 
@@ -584,7 +584,7 @@ void NanoVGRenderContext::drawImage(int imageId, const Rect& rect, ImageFit fit,
     }
     nvgFillPaint(nvgContext_, toNVGFillStyle(fillStyle));
     nvgFill(nvgContext_);
-    if (recordingBuffer_) recordingBuffer_->push(CmdDrawImage{imageId, rect, fit, cornerRadius, alpha});
+    if (recordingBuffer_) recordingBuffer_->pushDrawImage(imageId, rect, fit, cornerRadius, alpha);
 }
 
 void NanoVGRenderContext::drawImage(const std::string& path, const Rect& rect, ImageFit fit,
@@ -621,7 +621,7 @@ void NanoVGRenderContext::drawImage(const std::string& path, const Rect& rect, I
 void NanoVGRenderContext::clipPath(const Path& path) {
     Rect bounds = path.getBounds();
     nvgIntersectScissor(nvgContext_, bounds.x, bounds.y, bounds.width, bounds.height);
-    if (recordingBuffer_) recordingBuffer_->push(CmdClipPath{path});
+    if (recordingBuffer_) recordingBuffer_->pushClipPath(path);
 }
 
 void NanoVGRenderContext::resetClip() {
