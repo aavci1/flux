@@ -282,10 +282,9 @@ void NanoVGBackend::dispatch(const CmdDrawImagePath& c) {
     }
 }
 
-// Clipping
+// Clipping — scissor is scoped by the surrounding CmdSave/CmdRestore pair
 void NanoVGBackend::dispatch(const CmdClipPath& c) {
     Rect b = c.path.getBounds();
-    nvgSave(nvg_);
     nvgIntersectScissor(nvg_, b.x, b.y, b.width, b.height);
 }
 

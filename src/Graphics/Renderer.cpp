@@ -432,13 +432,11 @@ bool Renderer::updateHoverState(const Point& point) {
     bool changed = (commonLen != hoveredViews_.size() || commonLen != newPath.size());
 
     for (size_t i = hoveredViews_.size(); i > commonLen; --i) {
-        View v = hoveredViews_[i - 1];
-        v.handleMouseLeave();
+        hoveredViews_[i - 1].handleMouseLeave();
     }
 
     for (size_t i = commonLen; i < newPath.size(); ++i) {
-        View v = newPath[i];
-        v.handleMouseEnter();
+        newPath[i].handleMouseEnter();
     }
 
     hoveredViews_ = std::move(newPath);

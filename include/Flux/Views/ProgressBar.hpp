@@ -4,11 +4,9 @@
 #include <Flux/Core/ViewHelpers.hpp>
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/Property.hpp>
+#include <Flux/Core/Runtime.hpp>
 #include <cmath>
 #include <chrono>
-#include <thread>
-#include <atomic>
-#include <memory>
 #include <Flux/Core/Typography.hpp>
 
 namespace flux {
@@ -28,33 +26,6 @@ struct ProgressBar {
     Property<Color> trackColor = Colors::lightGray;
     Property<bool> showLabel = false;
     Property<float> labelFontSize = Typography::caption;
-    
-    // Animation property for indeterminate mode
-    Property<float> animationPhase = 0.0f;
-    
-    // Track if animation thread is running (using shared_ptr to make it copyable)
-    mutable std::shared_ptr<std::atomic<bool>> animationRunning = std::make_shared<std::atomic<bool>>(false);
-    
-    void init() {
-        // Start animation thread for indeterminate mode
-        if (mode == ProgressBarMode::Indeterminate && !animationRunning->exchange(true)) {
-            std::thread([this]() {
-                while (*animationRunning) {
-                    auto now = std::chrono::steady_clock::now();
-                    auto duration = now.time_since_epoch();
-                    float time = std::chrono::duration<float>(duration).count();
-                    
-                    float cycleTime = 2.0f;  // 2 second cycle
-                    float phase = std::fmod(time, cycleTime) / cycleTime;
-                    
-                    animationPhase = phase;
-                    
-                    // Update at ~60 FPS
-                    std::this_thread::sleep_for(std::chrono::milliseconds(16));
-                }
-            }).detach();
-        }
-    }
 
     void render(RenderContext& ctx, const Rect& bounds) const {
         ViewHelpers::renderView(*this, ctx, bounds);
@@ -109,16 +80,19 @@ struct ProgressBar {
                 ctx.drawText(labelText, {labelX, labelY}, HorizontalAlignment::leading, VerticalAlignment::bottom);
             }
         } else {
-            // Indeterminate mode - animated sliding bar
-            // Use the animationPhase property for smooth animation
-            float phase = animationPhase;
-            
+            float time = std::chrono::duration<float>(
+                std::chrono::steady_clock::now().time_since_epoch()).count();
+            float cycleTime = 2.0f;
+            float phase = std::fmod(time, cycleTime) / cycleTime;
+
             float indeterminateWidth = barWidth * 0.3f;
             float indeterminateX = barX + (barWidth - indeterminateWidth) * phase;
             
             Rect fillRect = {indeterminateX, barY, indeterminateWidth, barHeight};
             ctx.setFillStyle(FillStyle::solid(fillColor));
             ctx.drawRect(fillRect, CornerRadius(barHeight / 2));
+
+            requestApplicationRedraw();
         }
     }
 
