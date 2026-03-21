@@ -61,6 +61,7 @@ struct DrawOp {
     DrawOpType type = DrawOpType::Rect;
     uint32_t offset = 0;  // index into the type's buffer (for Image: index into imageDraws)
     uint32_t count = 0;
+    uint8_t pageIndex = 0; // atlas page for Glyph ops
 };
 
 struct DrawGroup {

@@ -422,12 +422,15 @@ void GPURendererBackend::uploadAndDraw(const CompiledBatches& batches) {
                     ++i;
                     break;
                 case DrawOpType::Glyph:
-                    if (glyphAtlas_ && glyphAtlas_->texture() && op.count > 0) {
-                        enc->setPipeline(glyphPipeline_.get());
-                        enc->setVertexBuffer(0, quadVB_.get());
-                        enc->setVertexBuffer(1, glyphInstanceBuffer_.get());
-                        enc->setFragmentTexture(0, glyphAtlas_->texture());
-                        enc->draw(6, op.count, 0, group.glyphOffset + op.offset);
+                    if (glyphAtlas_ && op.count > 0) {
+                        auto* pageTex = glyphAtlas_->texture(op.pageIndex);
+                        if (pageTex) {
+                            enc->setPipeline(glyphPipeline_.get());
+                            enc->setVertexBuffer(0, quadVB_.get());
+                            enc->setVertexBuffer(1, glyphInstanceBuffer_.get());
+                            enc->setFragmentTexture(0, pageTex);
+                            enc->draw(6, op.count, 0, group.glyphOffset + op.offset);
+                        }
                     }
                     ++i;
                     break;
