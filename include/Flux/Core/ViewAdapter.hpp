@@ -39,16 +39,8 @@ public:
     bool hasChildrenProperty() const override;
     std::vector<View> getChildren() const override;
 
-    bool isVisible() const override;
-    bool shouldClip() const override;
-    float getExpansionBias() const override;
-    float getCompressionBias() const override;
-    std::optional<float> getMinWidth() const override;
-    std::optional<float> getMaxWidth() const override;
-    std::optional<float> getMinHeight() const override;
-    std::optional<float> getMaxHeight() const override;
-    int getColspan() const override;
-    int getRowspan() const override;
+    VisualStyle getVisualStyle() const override;
+    LayoutConstraints getLayoutConstraints() const override;
 
     std::string getTypeName() const override {
         return demangleTypeName(typeid(T).name());
@@ -87,31 +79,6 @@ public:
 
     std::string getTextContent() const override;
     std::string getAccessibleValue() const override;
-
-    std::optional<Animation> getAnimation() const override { return component.animation; }
-    float getOpacity() const override { return component.opacity; }
-    Color getBackgroundColor() const override { return component.backgroundColor; }
-    Color getBorderColor() const override { return component.borderColor; }
-    float getBorderWidth() const override { return component.borderWidth; }
-    CornerRadius getCornerRadius() const override { return component.cornerRadius; }
-    EdgeInsets getPadding() const override { return component.padding; }
-
-    float getRotation() const override {
-        if constexpr (decltype(ViewHelpers::detail::hasRotation<T>(0))::value) return component.rotation;
-        else return 0.0f;
-    }
-    float getScaleX() const override {
-        if constexpr (decltype(ViewHelpers::detail::hasScaleX<T>(0))::value) return component.scaleX;
-        else return 1.0f;
-    }
-    float getScaleY() const override {
-        if constexpr (decltype(ViewHelpers::detail::hasScaleY<T>(0))::value) return component.scaleY;
-        else return 1.0f;
-    }
-    Point getOffset() const override {
-        if constexpr (decltype(ViewHelpers::detail::hasOffset<T>(0))::value) return component.offset;
-        else return Point{0, 0};
-    }
 };
 
 // =============================================================================
@@ -238,135 +205,58 @@ inline bool ViewAdapter<T>::hasChildrenProperty() const {
 }
 
 template<ViewComponent T>
-inline bool ViewAdapter<T>::isVisible() const {
-    if constexpr (has_body<T>::value) {
-        const View& bodyView = getCachedBody();
-        if (bodyView.isValid()) {
-            if (static_cast<bool>(component.visible) != true) {
-                return component.visible;
-            }
-            return bodyView->isVisible();
-        }
-    }
-    return component.visible;
+inline VisualStyle ViewAdapter<T>::getVisualStyle() const {
+    VisualStyle s;
+    s.animation = component.animation;
+    s.opacity = component.opacity;
+    s.backgroundColor = component.backgroundColor;
+    s.borderColor = component.borderColor;
+    s.borderWidth = component.borderWidth;
+    s.cornerRadius = component.cornerRadius;
+    s.padding = component.padding;
+    if constexpr (decltype(ViewHelpers::detail::hasRotation<T>(0))::value)
+        s.rotation = component.rotation;
+    if constexpr (decltype(ViewHelpers::detail::hasScaleX<T>(0))::value)
+        s.scaleX = component.scaleX;
+    if constexpr (decltype(ViewHelpers::detail::hasScaleY<T>(0))::value)
+        s.scaleY = component.scaleY;
+    if constexpr (decltype(ViewHelpers::detail::hasOffset<T>(0))::value)
+        s.offset = component.offset;
+    return s;
 }
 
 template<ViewComponent T>
-inline bool ViewAdapter<T>::shouldClip() const {
-    if constexpr (has_body<T>::value) {
-        const View& bodyView = getCachedBody();
-        if (bodyView.isValid()) {
-            if (static_cast<bool>(component.clip) != false) {
-                return component.clip;
-            }
-            return bodyView->shouldClip();
-        }
-    }
-    return component.clip;
-}
+inline LayoutConstraints ViewAdapter<T>::getLayoutConstraints() const {
+    LayoutConstraints lc;
+    lc.visible = component.visible;
+    lc.clip = component.clip;
+    lc.expansionBias = component.expansionBias;
+    lc.compressionBias = component.compressionBias;
+    lc.minWidth = component.minWidth.get();
+    lc.maxWidth = component.maxWidth.get();
+    lc.minHeight = component.minHeight.get();
+    lc.maxHeight = component.maxHeight.get();
+    lc.colspan = component.colspan;
+    lc.rowspan = component.rowspan;
 
-template<ViewComponent T>
-inline float ViewAdapter<T>::getExpansionBias() const {
     if constexpr (has_body<T>::value) {
         const View& bodyView = getCachedBody();
         if (bodyView.isValid()) {
-            if (static_cast<float>(component.expansionBias) != 0.0f) {
-                return component.expansionBias;
-            }
-            return bodyView->getExpansionBias();
+            LayoutConstraints bodyLc = bodyView->getLayoutConstraints();
+            if (lc.visible == true) lc.visible = bodyLc.visible;
+            if (lc.clip == false) lc.clip = bodyLc.clip;
+            if (lc.expansionBias == 0.0f) lc.expansionBias = bodyLc.expansionBias;
+            if (lc.compressionBias == 1.0f) lc.compressionBias = bodyLc.compressionBias;
+            if (!lc.minWidth) lc.minWidth = bodyLc.minWidth;
+            if (!lc.maxWidth) lc.maxWidth = bodyLc.maxWidth;
+            if (!lc.minHeight) lc.minHeight = bodyLc.minHeight;
+            if (!lc.maxHeight) lc.maxHeight = bodyLc.maxHeight;
+            if (lc.colspan == 1) lc.colspan = bodyLc.colspan;
+            if (lc.rowspan == 1) lc.rowspan = bodyLc.rowspan;
         }
     }
-    return component.expansionBias;
-}
 
-template<ViewComponent T>
-inline float ViewAdapter<T>::getCompressionBias() const {
-    if constexpr (has_body<T>::value) {
-        const View& bodyView = getCachedBody();
-        if (bodyView.isValid()) {
-            if (static_cast<float>(component.compressionBias) != 1.0f) {
-                return component.compressionBias;
-            }
-            return bodyView->getCompressionBias();
-        }
-    }
-    return component.compressionBias;
-}
-
-template<ViewComponent T>
-inline std::optional<float> ViewAdapter<T>::getMinWidth() const {
-    if constexpr (has_body<T>::value) {
-        const View& bodyView = getCachedBody();
-        if (bodyView.isValid()) {
-            auto minWidthVal = component.minWidth.get();
-            if (minWidthVal) return minWidthVal;
-            return bodyView->getMinWidth();
-        }
-    }
-    return component.minWidth.get();
-}
-
-template<ViewComponent T>
-inline std::optional<float> ViewAdapter<T>::getMaxWidth() const {
-    if constexpr (has_body<T>::value) {
-        const View& bodyView = getCachedBody();
-        if (bodyView.isValid()) {
-            auto maxWidthVal = component.maxWidth.get();
-            if (maxWidthVal) return maxWidthVal;
-            return bodyView->getMaxWidth();
-        }
-    }
-    return component.maxWidth.get();
-}
-
-template<ViewComponent T>
-inline std::optional<float> ViewAdapter<T>::getMinHeight() const {
-    if constexpr (has_body<T>::value) {
-        const View& bodyView = getCachedBody();
-        if (bodyView.isValid()) {
-            auto minHeightVal = component.minHeight.get();
-            if (minHeightVal) return minHeightVal;
-            return bodyView->getMinHeight();
-        }
-    }
-    return component.minHeight.get();
-}
-
-template<ViewComponent T>
-inline std::optional<float> ViewAdapter<T>::getMaxHeight() const {
-    if constexpr (has_body<T>::value) {
-        const View& bodyView = getCachedBody();
-        if (bodyView.isValid()) {
-            auto maxHeightVal = component.maxHeight.get();
-            if (maxHeightVal) return maxHeightVal;
-            return bodyView->getMaxHeight();
-        }
-    }
-    return component.maxHeight.get();
-}
-
-template<ViewComponent T>
-inline int ViewAdapter<T>::getColspan() const {
-    if constexpr (has_body<T>::value) {
-        const View& bodyView = getCachedBody();
-        if (bodyView.isValid()) {
-            if (static_cast<int>(component.colspan) != 1) return component.colspan;
-            return bodyView->getColspan();
-        }
-    }
-    return component.colspan;
-}
-
-template<ViewComponent T>
-inline int ViewAdapter<T>::getRowspan() const {
-    if constexpr (has_body<T>::value) {
-        const View& bodyView = getCachedBody();
-        if (bodyView.isValid()) {
-            if (static_cast<int>(component.rowspan) != 1) return component.rowspan;
-            return bodyView->getRowspan();
-        }
-    }
-    return component.rowspan;
+    return lc;
 }
 
 template<ViewComponent T>
