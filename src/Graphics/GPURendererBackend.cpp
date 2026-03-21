@@ -315,9 +315,9 @@ void GPURendererBackend::execute(const RenderCommandBuffer& buffer) {
 
     ensurePipelines();
 
-    auto batches = compiler_.compile(buffer, viewportWidth_, viewportHeight_,
-                                     dpiScaleX_, dpiScaleY_);
-    uploadAndDraw(batches);
+    compiler_.compile(buffer, viewportWidth_, viewportHeight_,
+                      dpiScaleX_, dpiScaleY_, compiledBatches_);
+    uploadAndDraw(compiledBatches_);
 }
 
 void GPURendererBackend::uploadAndDraw(const CompiledBatches& batches) {

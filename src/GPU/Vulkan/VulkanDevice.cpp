@@ -97,7 +97,7 @@ VulkanTexture::~VulkanTexture() {
     }
 }
 
-void VulkanTexture::write(const void*, uint32_t, uint32_t, uint32_t, uint32_t) {
+void VulkanTexture::write(const void*, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t) {
     // TODO: staging buffer upload with command buffer
 }
 

@@ -26,12 +26,19 @@ void CommandCompiler::startNewGroup(CompiledBatches& out) {
     out.groups.push_back(std::move(g));
 }
 
-CompiledBatches CommandCompiler::compile(const RenderCommandBuffer& buffer,
-                                         float vpWidth, float vpHeight,
-                                         float dpiScaleX, float dpiScaleY) {
-    CompiledBatches out;
+void CommandCompiler::compile(const RenderCommandBuffer& buffer,
+                              float vpWidth, float vpHeight,
+                              float dpiScaleX, float dpiScaleY,
+                              CompiledBatches& out) {
+    out.rects.clear();
+    out.circles.clear();
+    out.lines.clear();
+    out.glyphs.clear();
+    out.pathVertices.clear();
+    out.groups.clear();
     out.viewportWidth = vpWidth;
     out.viewportHeight = vpHeight;
+    out.clearColor = {};
 
     current_ = State{};
     current_.scaleX = dpiScaleX;
@@ -121,8 +128,6 @@ CompiledBatches CommandCompiler::compile(const RenderCommandBuffer& buffer,
             }
         }, cmd);
     }
-
-    return out;
 }
 
 void CommandCompiler::applyTransform(float& x, float& y) const {

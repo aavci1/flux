@@ -31,7 +31,8 @@ public:
     VulkanTexture(VkDevice device, VmaAllocator allocator, const TextureDesc& desc);
     VulkanTexture(VkImageView view, uint32_t w, uint32_t h);
     ~VulkanTexture() override;
-    void write(const void* data, uint32_t x, uint32_t y, uint32_t w, uint32_t h) override;
+    void write(const void* data, uint32_t x, uint32_t y, uint32_t w, uint32_t h,
+               uint32_t srcBytesPerRow) override;
     uint32_t width() const override;
     uint32_t height() const override;
     VkImageView view() const { return view_; }

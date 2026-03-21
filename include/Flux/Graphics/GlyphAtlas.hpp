@@ -90,6 +90,9 @@ public:
     bool dirty() const { return dirty_; }
     void uploadIfDirty();
 
+    /// Bytes written to the GPU texture in the last \ref uploadIfDirty (R8: one byte per texel). Zero if no upload ran.
+    uint64_t lastGpuUploadBytes() const { return lastGpuUploadBytes_; }
+
 private:
     gpu::Device* device_;
     FT_Library ftLib_ = nullptr;
@@ -102,6 +105,10 @@ private:
     std::vector<uint8_t> atlasData_;
     std::unique_ptr<gpu::Texture> texture_;
     bool dirty_ = false;
+    /// Bounding box of CPU atlas texels touched since the last upload (half-open ranges).
+    bool dirtyRectValid_ = false;
+    uint32_t dirtyX0_ = 0, dirtyY0_ = 0, dirtyX1_ = 0, dirtyY1_ = 0;
+    uint64_t lastGpuUploadBytes_ = 0;
 
     uint32_t cursorX_ = 0;
     uint32_t cursorY_ = 0;
@@ -116,6 +123,9 @@ private:
     bool rasterizeGlyph(const GlyphKey& key, GlyphInfo& out);
     std::vector<std::string> wrapText(const std::string& text, float fontSize,
                                        float maxWidth, uint16_t fontIndex);
+
+    void expandDirtyRect(uint32_t x, uint32_t y, uint32_t w, uint32_t h);
+    void markFullAtlasDirty();
 };
 
 } // namespace flux

@@ -28,7 +28,8 @@ class MetalTexture : public Texture {
 public:
     MetalTexture(id<MTLDevice> device, const TextureDesc& desc);
     MetalTexture(id<MTLTexture> texture, uint32_t w, uint32_t h);
-    void write(const void* data, uint32_t x, uint32_t y, uint32_t w, uint32_t h) override;
+    void write(const void* data, uint32_t x, uint32_t y, uint32_t w, uint32_t h,
+               uint32_t srcBytesPerRow) override;
     uint32_t width() const override;
     uint32_t height() const override;
     id<MTLTexture> native() const { return texture_; }
