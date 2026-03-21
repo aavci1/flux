@@ -147,6 +147,8 @@ private:
     };
     std::unordered_map<TextMeasureKey, Size, TextMeasureKeyHash> measureCache_;
     uint32_t frameCount_ = 0;
+    /// High-water mark of command count in \ref ownedBuffer_ for allocation-free steady state.
+    size_t commandBufferPeak_ = 512;
 };
 
 } // namespace flux

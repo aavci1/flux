@@ -1,6 +1,7 @@
 #include <Flux/Graphics/GPURenderContext.hpp>
 #include <Flux/Graphics/FontProvider.hpp>
 #include <Flux/Graphics/GPURendererBackend.hpp>
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 
@@ -16,8 +17,9 @@ GPURenderContext::GPURenderContext(FontProvider* fontProvider, ImageCache* image
 void GPURenderContext::beginFrame() {
     frameCount_++;
     if (frameCount_ % 300 == 0) measureCache_.clear();
+    commandBufferPeak_ = std::max(commandBufferPeak_, ownedBuffer_.size());
     ownedBuffer_.clear();
-    ownedBuffer_.reserve(512);
+    ownedBuffer_.reserve(commandBufferPeak_);
     cmdBuf_ = &ownedBuffer_;
     recordingBuffer_ = &ownedBuffer_;
 }
