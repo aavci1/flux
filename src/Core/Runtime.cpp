@@ -1,5 +1,6 @@
 #include <Flux/Core/Runtime.hpp>
 #include <Flux/Core/Window.hpp>
+#include <Flux/Core/OverlayManager.hpp>
 #include <Flux/Platform/EventLoopWake.hpp>
 #include <Flux/Platform/PlatformRegistry.hpp>
 #include <Flux/Platform/PlatformWindowFactory.hpp>
@@ -32,6 +33,32 @@ void requestApplicationRedraw() {
 
 uint64_t currentBodyGeneration() {
     return bodyGeneration_.load(std::memory_order_relaxed);
+}
+
+OverlayManager* Runtime::findOverlayManager() {
+    if (windows_.empty()) return nullptr;
+    return windows_.front()->overlayManager();
+}
+
+void showOverlay(const std::string& id, View content, Rect anchor, OverlayConfig config) {
+    if (!Runtime::hasInstance()) return;
+    if (auto* mgr = Runtime::instance().findOverlayManager()) {
+        mgr->show(id, std::move(content), anchor, std::move(config));
+    }
+}
+
+void hideOverlay(const std::string& id) {
+    if (!Runtime::hasInstance()) return;
+    if (auto* mgr = Runtime::instance().findOverlayManager()) {
+        mgr->hide(id);
+    }
+}
+
+void hideAllOverlays() {
+    if (!Runtime::hasInstance()) return;
+    if (auto* mgr = Runtime::instance().findOverlayManager()) {
+        mgr->hideAll();
+    }
 }
 
 void Runtime::requestRedraw() {

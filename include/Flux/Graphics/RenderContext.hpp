@@ -469,6 +469,11 @@ public:
     virtual void setCurrentViewGlobalBounds(const Rect& bounds) = 0;
 
     /**
+     * Get the global bounds of the view currently being rendered
+     */
+    Rect getCurrentViewGlobalBounds() const { return currentViewBounds_; }
+
+    /**
      * Check if the currently rendering view is hovered
      */
     virtual bool isCurrentViewHovered() const = 0;

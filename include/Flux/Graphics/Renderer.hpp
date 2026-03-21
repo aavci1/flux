@@ -9,6 +9,7 @@
 #include <Flux/Core/EventTypes.hpp>
 #include <Flux/Graphics/RenderContext.hpp>
 #include <Flux/Graphics/RenderCommandBuffer.hpp>
+#include <Flux/Core/OverlayManager.hpp>
 
 namespace flux {
 
@@ -86,6 +87,7 @@ private:
     struct {
         std::vector<size_t> treePath;
         bool active = false;
+        bool fromOverlay = false;
     } mouseCapture_;
 
     LayoutNode* findNodeByPath(LayoutNode& root, const std::vector<size_t>& path);
@@ -114,9 +116,12 @@ public:
     }
 
     const LayoutNode& getCachedLayoutTree() const { return cachedLayoutTree_; }
+    const OverlayManager& getOverlayManager() const { return overlayManager_; }
     bool hasValidLayout() const { return layoutCacheValid_; }
     bool isCursorBlinkActive() const { return cursorBlinkActive_; }
     const RenderCommandBuffer& lastCommandBuffer() const { return commandBuffer_; }
+
+    OverlayManager& overlayManager() { return overlayManager_; }
 
 private:
     void renderTree(LayoutNode& node, Element* element, Point parentOrigin = {0, 0});
@@ -130,6 +135,11 @@ private:
     
     // Collect cursor by traversing view hierarchy
     std::optional<CursorType> collectCursor(const LayoutNode& node, const Point& point, std::optional<CursorType> inheritedCursor);
+
+    // Overlay rendering and event dispatch
+    OverlayManager overlayManager_;
+    void renderOverlays(const Rect& viewport);
+    bool dispatchPointerEventToOverlays(PointerEvent& event);
 
     // Hover tracking
     void collectHoverPath(const LayoutNode& node, const Point& point, std::vector<View>& path);
