@@ -7,6 +7,7 @@
 #include <Flux/Core/Types.hpp>
 #include <cstdint>
 #include <array>
+#include <list>
 #include <optional>
 #include <unordered_map>
 #include <vector>
@@ -116,7 +117,11 @@ private:
         size_t operator()(const PathTessCacheKey& k) const noexcept;
     };
 
-    std::unordered_map<PathTessCacheKey, std::vector<PathVertex>, PathTessCacheKeyHash> pathTessCache_;
+    using PathTessEntry = std::pair<PathTessCacheKey, std::vector<PathVertex>>;
+    std::list<PathTessEntry> pathTessLru_;
+    std::unordered_map<PathTessCacheKey,
+                       std::list<PathTessEntry>::iterator,
+                       PathTessCacheKeyHash> pathTessIndex_;
     /// 2×3 affine (column-major linear part): (x,y)' -> (m00*x+m01*y+m02, m10*x+m11*y+m12)
     struct State {
         float m00 = 1, m01 = 0, m02 = 0;
