@@ -37,10 +37,10 @@ inline void renderView(const ViewType& view, RenderContext& ctx, const Rect& bou
     bool animated = el && el->hasActiveAnimations();
 
     Color bgColor = animated
-        ? el->getAnimatedValue<Color>("backgroundColor", view.backgroundColor)
+        ? el->getAnimatedValue<Color>(AnimPropID::BackgroundColor, view.backgroundColor)
         : static_cast<Color>(view.backgroundColor);
     CornerRadius cr = animated
-        ? el->getAnimatedValue<CornerRadius>("cornerRadius", view.cornerRadius)
+        ? el->getAnimatedValue<CornerRadius>(AnimPropID::CornerRadius, view.cornerRadius)
         : static_cast<CornerRadius>(view.cornerRadius);
 
     if (bgColor.a > 0) {
@@ -55,10 +55,10 @@ inline void renderView(const ViewType& view, RenderContext& ctx, const Rect& bou
     }
 
     float bw = animated
-        ? el->getAnimatedValue<float>("borderWidth", view.borderWidth)
+        ? el->getAnimatedValue<float>(AnimPropID::BorderWidth, view.borderWidth)
         : static_cast<float>(view.borderWidth);
     Color bc = animated
-        ? el->getAnimatedValue<Color>("borderColor", view.borderColor)
+        ? el->getAnimatedValue<Color>(AnimPropID::BorderColor, view.borderColor)
         : static_cast<Color>(view.borderColor);
     if (bw > 0 && bc.a > 0) {
         ctx.setFillStyle(FillStyle::none());
@@ -134,7 +134,7 @@ inline void drawInputFieldChrome(RenderContext& ctx, const Rect& bounds,
     Color bc = isFocused ? focusBorderColor
              : isHovered ? borderCol.lighten(0.3f)
              : borderCol;
-    if (el) bc = el->animateValue<Color>("_hover_bc", bc);
+    if (el) bc = el->animateValue<Color>(AnimPropID::Custom0, bc);
     float bw = isFocused ? 2.0f : 1.0f;
     Path border;
     border.rect(bounds, CornerRadius(cornerRadius));

@@ -4,16 +4,40 @@
 #include <Flux/Animation/AnimationEngine.hpp>
 #include <Flux/Animation/Animatable.hpp>
 #include <any>
+#include <array>
 #include <memory>
 #include <vector>
 #include <string>
-#include <unordered_map>
 
 namespace flux {
 
 class View;
 struct LayoutNode;
 struct Animation;
+
+enum class AnimPropID : uint8_t {
+    Opacity = 0,
+    BackgroundColor,
+    BorderColor,
+    BorderWidth,
+    CornerRadius,
+    Rotation,
+    ScaleX,
+    ScaleY,
+    Offset,
+    Padding,
+    Bounds,
+
+    // Ad-hoc slots for view-specific implicit animations (hover effects, etc.)
+    Custom0,
+    Custom1,
+    Custom2,
+    Custom3,
+
+    Count
+};
+
+static constexpr size_t kAnimPropCount = static_cast<size_t>(AnimPropID::Count);
 
 class Element {
 public:
@@ -33,34 +57,32 @@ public:
     Rect cachedBounds = {0, 0, 0, 0};
     Rect lastConstraints = {0, 0, 0, 0};
 
-    // Active property animations keyed by property name
-    std::unordered_map<std::string, std::unique_ptr<AnimationStateBase>> activeAnimations;
-
-    // Type-erased snapshots of the previous property values.
-    // reconcileProperty<T>() stores and retrieves from this map,
-    // so adding a new animated property only requires one call.
-    std::unordered_map<std::string, std::any> animSnapshots_;
+    std::array<std::unique_ptr<AnimationStateBase>, kAnimPropCount> activeAnimations{};
+    std::array<std::any, kAnimPropCount> animSnapshots_{};
 
     bool hasValidLayout() const {
         return !layoutDirty && cachedBounds.width > 0;
     }
 
-    bool hasActiveAnimations() const { return !activeAnimations.empty(); }
+    bool hasActiveAnimations() const {
+        for (auto& a : activeAnimations) if (a) return true;
+        return false;
+    }
+
+    size_t activeAnimationCount() const {
+        size_t n = 0;
+        for (auto& a : activeAnimations) if (a) ++n;
+        return n;
+    }
 
     template<typename T>
-    T getAnimatedValue(const std::string& propName, T fallback) const;
+    T getAnimatedValue(AnimPropID prop, T fallback) const;
 
-    // Compare newValue against the stored snapshot for propName.
-    // If changed and config is non-null, create/replace an AnimationState.
-    // Always updates the snapshot to newValue.
     template<Animatable T>
-    void reconcileProperty(const char* propName, T newValue, const Animation* config);
+    void reconcileProperty(AnimPropID prop, T newValue, const Animation* config);
 
-    // Render-time convenience: reconcile + return the current animated value.
-    // Ideal for computed values like hover/pressed color adjustments that
-    // bypass the property system and are only known at render time.
     template<Animatable T>
-    T animateValue(const char* propName, T targetValue);
+    T animateValue(AnimPropID prop, T targetValue);
 
     void markDirty();
 
@@ -86,21 +108,22 @@ private:
 };
 
 template<typename T>
-T Element::getAnimatedValue(const std::string& propName, T fallback) const {
-    auto it = activeAnimations.find(propName);
-    if (it != activeAnimations.end()) {
-        auto* state = dynamic_cast<const AnimationState<T>*>(it->second.get());
+T Element::getAnimatedValue(AnimPropID prop, T fallback) const {
+    auto& slot = activeAnimations[static_cast<size_t>(prop)];
+    if (slot) {
+        auto* state = dynamic_cast<const AnimationState<T>*>(slot.get());
         if (state) return state->current;
     }
     return fallback;
 }
 
 template<Animatable T>
-void Element::reconcileProperty(const char* propName, T newValue, const Animation* config) {
-    auto it = animSnapshots_.find(propName);
-    if (it != animSnapshots_.end()) {
+void Element::reconcileProperty(AnimPropID prop, T newValue, const Animation* config) {
+    size_t idx = static_cast<size_t>(prop);
+    auto& snapshot = animSnapshots_[idx];
+    if (snapshot.has_value()) {
         try {
-            T prev = std::any_cast<T>(it->second);
+            T prev = std::any_cast<T>(snapshot);
             bool changed = false;
             if constexpr (requires(const T& a, const T& b) { a != b; }) {
                 changed = (prev != newValue);
@@ -109,28 +132,28 @@ void Element::reconcileProperty(const char* propName, T newValue, const Animatio
             }
             if (changed && config) {
                 T fromValue = prev;
-                auto animIt = activeAnimations.find(propName);
-                if (animIt != activeAnimations.end()) {
-                    auto* existing = dynamic_cast<AnimationState<T>*>(animIt->second.get());
+                auto& animSlot = activeAnimations[idx];
+                if (animSlot) {
+                    auto* existing = dynamic_cast<AnimationState<T>*>(animSlot.get());
                     if (existing) fromValue = existing->current;
                 }
-                activeAnimations[propName] =
+                activeAnimations[idx] =
                     std::make_unique<AnimationState<T>>(fromValue, newValue, *config);
             }
         } catch (const std::bad_any_cast&) {}
     }
-    animSnapshots_[propName] = newValue;
+    snapshot = newValue;
 }
 
 template<Animatable T>
-T Element::animateValue(const char* propName, T targetValue) {
+T Element::animateValue(AnimPropID prop, T targetValue) {
     static const Animation kImplicit = Animation::defaultImplicit();
-    bool hadAnimations = !activeAnimations.empty();
-    reconcileProperty<T>(propName, targetValue, &kImplicit);
-    if (!hadAnimations && !activeAnimations.empty()) {
+    bool hadAnimations = hasActiveAnimations();
+    reconcileProperty<T>(prop, targetValue, &kImplicit);
+    if (!hadAnimations && hasActiveAnimations()) {
         AnimationEngine::instance().registerElement(this);
     }
-    return getAnimatedValue<T>(propName, targetValue);
+    return getAnimatedValue<T>(prop, targetValue);
 }
 
 } // namespace flux
