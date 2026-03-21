@@ -59,6 +59,9 @@ private:
     std::string testSocketPath_;
     bool backendArgInvalid_ = false;
 
+    /// Basename of argv[0] for logging (e.g. `llm_studio`, `terminal`).
+    std::string programName_;
+
     static Runtime* current_;
     friend void requestApplicationRedraw();
 };

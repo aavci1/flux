@@ -270,7 +270,8 @@ MetalDevice::MetalDevice(void* nsViewPtr)
     layer_ = (CAMetalLayer*)view.layer;
     layer_.device = device_;
     layer_.pixelFormat = MTLPixelFormatBGRA8Unorm;
-    layer_.framebufferOnly = NO;
+    // Cheaper drawable path when GPU→CPU readback is off (see setReadbackEnabled).
+    layer_.framebufferOnly = YES;
 
     NSSize backing = [view convertSizeToBacking:NSMakeSize(NSWidth(view.bounds), NSHeight(view.bounds))];
     layer_.drawableSize = CGSizeMake(std::max(1.0, backing.width), std::max(1.0, backing.height));
@@ -359,34 +360,33 @@ void MetalDevice::endFrame() {
         uint32_t tw = static_cast<uint32_t>(drawableTex.width);
         uint32_t th = static_cast<uint32_t>(drawableTex.height);
 
-        if (readbackWidth_ != tw || readbackHeight_ != th) {
-            readbackWidth_ = tw;
-            readbackHeight_ = th;
+        if (readbackEnabled_) {
+            if (readbackWidth_ != tw || readbackHeight_ != th) {
+                readbackWidth_ = tw;
+                readbackHeight_ = th;
 
-            MTLTextureDescriptor* desc = [[MTLTextureDescriptor alloc] init];
-            desc.width = tw;
-            desc.height = th;
-            desc.pixelFormat = MTLPixelFormatBGRA8Unorm;
-            desc.storageMode = MTLStorageModeManaged;
-            desc.usage = MTLTextureUsageShaderRead;
-            readbackTexture_ = [device_ newTextureWithDescriptor:desc];
+                MTLTextureDescriptor* desc = [[MTLTextureDescriptor alloc] init];
+                desc.width = tw;
+                desc.height = th;
+                desc.pixelFormat = MTLPixelFormatBGRA8Unorm;
+                desc.storageMode = MTLStorageModeManaged;
+                desc.usage = MTLTextureUsageShaderRead;
+                readbackTexture_ = [device_ newTextureWithDescriptor:desc];
+            }
 
-            readbackBuffer_ = [device_ newBufferWithLength:(NSUInteger)tw * th * 4
-                                                   options:MTLResourceStorageModeShared];
+            id<MTLBlitCommandEncoder> blit = [currentCommandBuffer_ blitCommandEncoder];
+            [blit copyFromTexture:drawableTex
+                      sourceSlice:0
+                      sourceLevel:0
+                     sourceOrigin:MTLOriginMake(0, 0, 0)
+                       sourceSize:MTLSizeMake(tw, th, 1)
+                        toTexture:readbackTexture_
+                 destinationSlice:0
+                 destinationLevel:0
+                destinationOrigin:MTLOriginMake(0, 0, 0)];
+            [blit synchronizeTexture:readbackTexture_ slice:0 level:0];
+            [blit endEncoding];
         }
-
-        id<MTLBlitCommandEncoder> blit = [currentCommandBuffer_ blitCommandEncoder];
-        [blit copyFromTexture:drawableTex
-                  sourceSlice:0
-                  sourceLevel:0
-                 sourceOrigin:MTLOriginMake(0, 0, 0)
-                   sourceSize:MTLSizeMake(tw, th, 1)
-                    toTexture:readbackTexture_
-             destinationSlice:0
-             destinationLevel:0
-            destinationOrigin:MTLOriginMake(0, 0, 0)];
-        [blit synchronizeTexture:readbackTexture_ slice:0 level:0];
-        [blit endEncoding];
 
         __block dispatch_semaphore_t sem = frameSemaphore_;
         [currentCommandBuffer_ addCompletedHandler:^(id<MTLCommandBuffer>) {
@@ -409,8 +409,20 @@ PixelFormat MetalDevice::swapchainFormat() const {
     return PixelFormat::BGRA8;
 }
 
+void MetalDevice::setReadbackEnabled(bool enabled) {
+    readbackEnabled_ = enabled;
+    if (!enabled) {
+        readbackTexture_ = nil;
+        readbackWidth_ = 0;
+        readbackHeight_ = 0;
+        layer_.framebufferOnly = YES;
+    } else {
+        layer_.framebufferOnly = NO;
+    }
+}
+
 bool MetalDevice::readPixels(int x, int y, int w, int h, std::vector<uint8_t>& out) {
-    if (!readbackTexture_ || w <= 0 || h <= 0) return false;
+    if (!readbackEnabled_ || !readbackTexture_ || w <= 0 || h <= 0) return false;
 
     // Wait for the last frame to finish so readbackTexture_ is populated
     dispatch_semaphore_wait(frameSemaphore_, DISPATCH_TIME_FOREVER);

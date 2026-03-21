@@ -38,6 +38,9 @@ public:
     virtual CursorType currentCursor() const = 0;
 
     virtual void setFluxWindow(Window* window) = 0;
+
+    /// Enables GPU→CPU framebuffer readback (Metal path). Used by UI test / screenshot mode.
+    virtual void setGpuReadbackEnabled(bool enabled) { (void)enabled; }
 };
 
 } // namespace flux

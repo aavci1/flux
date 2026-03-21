@@ -45,6 +45,7 @@ public:
     CursorType currentCursor() const override;
 
     void setFluxWindow(Window* window) override;
+    void setGpuReadbackEnabled(bool enabled) override;
 
     /// NSView* for `NativeGraphicsSurface::fromAppleView` (Metal layer host).
     void* metalContentView() const;

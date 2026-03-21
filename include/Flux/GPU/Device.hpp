@@ -72,6 +72,10 @@ public:
         (void)x; (void)y; (void)w; (void)h; (void)out;
         return false;
     }
+
+    /// When false (default), Metal may skip per-frame drawable readback and use a cheaper
+    /// framebuffer path. Enable for UI test screenshots (`Window::enableTestMode`).
+    virtual void setReadbackEnabled(bool enabled) { (void)enabled; }
 };
 
 std::unique_ptr<Device> createDevice(Backend backend, NativeGraphicsSurface surface);

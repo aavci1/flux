@@ -372,6 +372,9 @@ void Window::processPendingEvents(LayoutNode& layoutTree) {
 void Window::enableTestMode(int tcpPort, const std::string& unixSocketPath) {
     impl_->testCapture = std::make_unique<ScreenCapture>();
     impl_->testServer = std::make_unique<TestServer>(*this, tcpPort, unixSocketPath);
+    if (impl_->platformWindow) {
+        impl_->platformWindow->setGpuReadbackEnabled(true);
+    }
     impl_->testServer->start();
 }
 

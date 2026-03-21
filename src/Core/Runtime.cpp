@@ -3,10 +3,12 @@
 #include <Flux/Platform/PlatformRegistry.hpp>
 #include <Flux/Platform/PlatformWindowFactory.hpp>
 #include <Flux/Platform/PlatformWindow.hpp>
+#include <Flux/Platform/MemoryFootprint.hpp>
 #include <Flux/Core/Log.hpp>
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
 
 namespace flux {
 
@@ -93,6 +95,14 @@ Runtime::Runtime(int argc, char** argv) {
             }
         }
     }
+
+    if (argv && argv[0] && argv[0][0] != '\0') {
+        try {
+            programName_ = std::filesystem::path(argv[0]).filename().string();
+        } catch (...) {
+            programName_ = "flux";
+        }
+    }
 }
 
 Runtime::~Runtime() {
@@ -121,6 +131,7 @@ int Runtime::run() {
     if (backendArgInvalid_) {
         return 1;
     }
+    bool memoryReportAfterFirstFrame = false;
     while (running_) {
         bool redrawPending = needsRedraw_.load(std::memory_order_relaxed);
 
@@ -146,6 +157,12 @@ int Runtime::run() {
         if (needsRedraw_.exchange(false, std::memory_order_relaxed)) {
             for (auto& window : windows_) {
                 window->render();
+            }
+            if (!memoryReportAfterFirstFrame) {
+                memoryReportAfterFirstFrame = true;
+                const std::string tag =
+                    programName_.empty() ? std::string("flux") : programName_;
+                logMemoryFootprintIfRequested((tag + ": first frame").c_str());
             }
         }
     }

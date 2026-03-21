@@ -182,9 +182,11 @@ if(APPLE)
         src/Platform/AppleEventLoopWake.mm
         src/Platform/ApplePathUtil.mm
         src/Platform/MacWindow.mm
+        src/Platform/AppleMemoryFootprint.mm
     )
 else()
     list(APPEND FLUX_SOURCES
+        src/Platform/MemoryFootprintStub.cpp
         src/Platform/PlatformRegistrySDL.cpp
         src/Platform/SDLWindowFactory.cpp
         src/Platform/SDLClipboard.cpp

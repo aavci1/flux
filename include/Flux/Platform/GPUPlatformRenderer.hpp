@@ -29,6 +29,8 @@ public:
 
     bool readPixels(int x, int y, int w, int h, std::vector<uint8_t>& out) override;
 
+    void setReadbackEnabled(bool enabled);
+
     void setGraphicsSurface(gpu::NativeGraphicsSurface surface) { surface_ = surface; }
     gpu::Device* device() const { return device_.get(); }
 

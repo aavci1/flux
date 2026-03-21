@@ -93,6 +93,7 @@ public:
     PixelFormat swapchainFormat() const override;
 
     bool readPixels(int x, int y, int w, int h, std::vector<uint8_t>& out) override;
+    void setReadbackEnabled(bool enabled) override;
 
 private:
     id<MTLDevice> device_;
@@ -105,9 +106,9 @@ private:
     dispatch_semaphore_t frameSemaphore_;
 
     id<MTLTexture> readbackTexture_;
-    id<MTLBuffer> readbackBuffer_;
     uint32_t readbackWidth_ = 0;
     uint32_t readbackHeight_ = 0;
+    bool readbackEnabled_ = false;
 };
 
 #endif // __OBJC__

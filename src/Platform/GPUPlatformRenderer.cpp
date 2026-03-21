@@ -1,4 +1,5 @@
 #include <Flux/Platform/GPUPlatformRenderer.hpp>
+#include <Flux/Platform/MemoryFootprint.hpp>
 #include <Flux/Core/Log.hpp>
 
 namespace flux {
@@ -47,6 +48,7 @@ bool GPUPlatformRenderer::initialize(int width, int height, float dpiScaleX, flo
         FLUX_LOG_INFO("[GPUPlatformRenderer] Initialized %s backend %dx%d (fb %dx%d)",
                       backend_ == gpu::Backend::Metal ? "Metal" : "Vulkan",
                       width, height, pw, ph);
+        logMemoryFootprintIfRequested("after GPU init");
         return true;
     } catch (const std::exception& ex) {
         FLUX_LOG_ERROR("[GPUPlatformRenderer] Init failed: %s", ex.what());
@@ -99,6 +101,12 @@ void GPUPlatformRenderer::swapBuffers() {
 bool GPUPlatformRenderer::readPixels(int x, int y, int w, int h, std::vector<uint8_t>& out) {
     if (!device_) return false;
     return device_->readPixels(x, y, w, h, out);
+}
+
+void GPUPlatformRenderer::setReadbackEnabled(bool enabled) {
+    if (device_) {
+        device_->setReadbackEnabled(enabled);
+    }
 }
 
 } // namespace flux

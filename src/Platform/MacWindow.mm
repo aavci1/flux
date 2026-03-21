@@ -575,6 +575,12 @@ PlatformRenderer* MacWindow::platformRenderer() {
 void MacWindow::swapBuffers() {
 }
 
+void MacWindow::setGpuReadbackEnabled(bool enabled) {
+    if (auto* gpu = dynamic_cast<GPUPlatformRenderer*>(renderer_.get())) {
+        gpu->setReadbackEnabled(enabled);
+    }
+}
+
 float MacWindow::dpiScaleX() const {
     if (!impl_->window) return 1.f;
     return static_cast<float>(impl_->window.backingScaleFactor);
