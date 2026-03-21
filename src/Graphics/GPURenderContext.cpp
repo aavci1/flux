@@ -298,7 +298,9 @@ Size GPURenderContext::getImageSize(int) {
     return {0, 0};
 }
 
-void GPURenderContext::deleteImage(int) {}
+void GPURenderContext::deleteImage(int imageId) {
+    if (imageCache_) imageCache_->removeById(imageId);
+}
 
 void GPURenderContext::drawImage(int imageId, const Rect& rect, ImageFit fit,
                                   const CornerRadius& cornerRadius, float alpha) {

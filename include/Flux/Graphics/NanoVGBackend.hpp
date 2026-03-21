@@ -2,6 +2,7 @@
 
 #include <Flux/Graphics/RenderCommandBuffer.hpp>
 #include <unordered_map>
+#include <list>
 #include <string>
 
 struct NVGcontext;
@@ -15,12 +16,17 @@ public:
     void execute(const RenderCommandBuffer& buffer) override;
 
     std::unordered_map<std::string, int>& fontCache() { return fontCache_; }
-    std::unordered_map<std::string, int>& imageCache() { return imageCache_; }
 
 private:
     NVGcontext* nvg_;
     std::unordered_map<std::string, int> fontCache_;
-    std::unordered_map<std::string, int> imageCache_;
+
+    static constexpr size_t kMaxImageCacheEntries = 256;
+    struct ImageEntry { std::string path; int nvgId; };
+    std::list<ImageEntry> imageLru_;
+    std::unordered_map<std::string, std::list<ImageEntry>::iterator> imageIndex_;
+
+    int getOrCreateImage(const std::string& path);
 
     FillStyle currentFill_;
     StrokeStyle currentStroke_;

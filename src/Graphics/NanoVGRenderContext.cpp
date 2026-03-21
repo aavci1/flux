@@ -453,17 +453,30 @@ Rect NanoVGRenderContext::getTextBounds(const std::string& text, const Point& po
 int NanoVGRenderContext::createImage(const std::string& filename) {
     auto& mgr = ResourceManager::instance();
     ImageHandle cached = mgr.findImage(filename);
-    if (cached >= 0) return cached;
+    if (cached >= 0) {
+        auto iit = imageIndex_.find(filename);
+        if (iit != imageIndex_.end())
+            imageLru_.splice(imageLru_.end(), imageLru_, iit->second);
+        return cached;
+    }
 
-    auto it = imageCache_.find(filename);
-    if (it != imageCache_.end()) {
-        mgr.registerImage(filename, it->second);
-        return it->second;
+    auto iit = imageIndex_.find(filename);
+    if (iit != imageIndex_.end()) {
+        imageLru_.splice(imageLru_.end(), imageLru_, iit->second);
+        mgr.registerImage(filename, iit->second->nvgId);
+        return iit->second->nvgId;
     }
 
     int imageId = nvgCreateImage(nvgContext_, filename.c_str(), 0);
     if (imageId != -1) {
-        imageCache_[filename] = imageId;
+        if (imageIndex_.size() >= kMaxImageCacheEntries) {
+            auto& front = imageLru_.front();
+            nvgDeleteImage(nvgContext_, front.nvgId);
+            imageIndex_.erase(front.path);
+            imageLru_.pop_front();
+        }
+        imageLru_.push_back({filename, imageId});
+        imageIndex_[filename] = std::prev(imageLru_.end());
         mgr.registerImage(filename, imageId);
     }
     return imageId;
@@ -489,6 +502,13 @@ Size NanoVGRenderContext::getImageSize(int imageId) {
 
 void NanoVGRenderContext::deleteImage(int imageId) {
     nvgDeleteImage(nvgContext_, imageId);
+    for (auto it = imageLru_.begin(); it != imageLru_.end(); ++it) {
+        if (it->nvgId == imageId) {
+            imageIndex_.erase(it->path);
+            imageLru_.erase(it);
+            break;
+        }
+    }
 }
 
 void NanoVGRenderContext::drawImage(int imageId, const Rect& rect, ImageFit fit, 
