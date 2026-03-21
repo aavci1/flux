@@ -57,6 +57,12 @@ public:
     Rect cachedBounds = {0, 0, 0, 0};
     Rect lastConstraints = {0, 0, 0, 0};
 
+    // Monotonic version bumped when this element's render output changes.
+    // Used by CommandCompiler to skip recompilation of unchanged elements.
+    uint64_t renderVersion_ = 0;
+    // Max of renderVersion_ across this element and all descendants.
+    uint64_t subtreeRenderVersion_ = 0;
+
     std::array<std::unique_ptr<AnimationStateBase>, kAnimPropCount> activeAnimations{};
     std::array<std::any, kAnimPropCount> animSnapshots_{};
 
@@ -100,7 +106,11 @@ public:
 
     Element* findByFocusKey(const std::string& key);
 
+    void bumpRenderVersion();
+
 private:
+    static uint64_t sNextRenderVersion_;
+
     void reconcileChildren(const std::vector<LayoutNode>& newChildren);
     void mountSubtree();
     void unmountSubtree();

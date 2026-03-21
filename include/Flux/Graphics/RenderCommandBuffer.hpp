@@ -17,7 +17,9 @@ enum class CmdOp : uint32_t {
     DrawText, DrawTextBox,
     DrawImage, DrawImagePath,
     ClipPath,
-    Clear
+    Clear,
+    BeginElement,
+    EndElement
 };
 
 class RenderCommandBuffer {
@@ -29,7 +31,7 @@ public:
     class Reader {
     public:
         Reader(const uint32_t* begin, const uint32_t* end)
-            : pos_(begin), end_(end) {}
+            : begin_(begin), pos_(begin), end_(end) {}
 
         bool hasNext() const { return pos_ < end_; }
 
@@ -45,7 +47,12 @@ public:
 
         int32_t readInt32() { return static_cast<int32_t>(*pos_++); }
 
+        uint32_t wordOffset() const { return static_cast<uint32_t>(pos_ - begin_); }
+
+        void seekTo(uint32_t absoluteWordOffset) { pos_ = begin_ + absoluteWordOffset; }
+
     private:
+        const uint32_t* begin_;
         const uint32_t* pos_;
         const uint32_t* end_;
     };
@@ -146,6 +153,24 @@ public:
     void pushClear(const Color& c) {
         writeOp(CmdOp::Clear);
         writeF(c.r); writeF(c.g); writeF(c.b); writeF(c.a);
+    }
+
+    // Element boundary markers for incremental compilation.
+    // Returns the word offset of the skip-distance placeholder.
+    uint32_t pushBeginElement(uintptr_t elementId, uint64_t subtreeVersion) {
+        uint32_t patchOffset = static_cast<uint32_t>(stream_.size());
+        writeOp(CmdOp::BeginElement);
+        writeU(static_cast<uint32_t>(elementId));
+        writeU(static_cast<uint32_t>(elementId >> 32));
+        writeU(static_cast<uint32_t>(subtreeVersion));
+        writeU(static_cast<uint32_t>(subtreeVersion >> 32));
+        writeU(0);  // placeholder: absolute word offset of EndElement
+        return patchOffset;
+    }
+    void pushEndElement(uint32_t beginPatchOffset) {
+        // Patch the skip-distance in the matching BeginElement (field at offset+5)
+        stream_[beginPatchOffset + 5] = static_cast<uint32_t>(stream_.size());
+        writeOp(CmdOp::EndElement);
     }
 
     // =========================================================================

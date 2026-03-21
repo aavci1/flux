@@ -231,6 +231,18 @@ void Renderer::renderTree(LayoutNode& node, Element* element, Point parentOrigin
     renderContext_->pushEnvironment(node.environment.value_or(Environment::defaults()));
 
     bool animated = element && element->hasActiveAnimations();
+    if (animated) {
+        element->bumpRenderVersion();
+    }
+
+    // Emit element boundary marker into the command buffer (for incremental compilation)
+    uint32_t beginPatch = 0;
+    bool emittedMarker = false;
+    if (element) {
+        uint64_t stVer = element->subtreeRenderVersion_;
+        beginPatch = commandBuffer_.pushBeginElement(reinterpret_cast<uintptr_t>(element), stVer);
+        emittedMarker = true;
+    }
 
     Rect visBounds = animated
         ? element->getAnimatedValue<Rect>(AnimPropID::Bounds, node.bounds)
@@ -300,6 +312,10 @@ void Renderer::renderTree(LayoutNode& node, Element* element, Point parentOrigin
 
     renderContext_->restore();
     renderContext_->popEnvironment();
+
+    if (emittedMarker) {
+        commandBuffer_.pushEndElement(beginPatch);
+    }
 }
 
 void Renderer::handleEvent(const PointerEvent& event, const Rect& windowBounds) {
