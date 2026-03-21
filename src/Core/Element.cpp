@@ -58,7 +58,9 @@ void Element::reconcile(const LayoutNode& newNode) {
 
     if (bodyDirty || boundsChanged) {
         reconcileAnimations(newNode.view, newNode.bounds);
+        View oldView = *description;
         *description = newNode.view;
+        (**description).transferStateFrom(*oldView);
         description->setPropertyOwner(this);
         typeName = newNode.view.getTypeName();
         key = newNode.view.getKey();

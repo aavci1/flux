@@ -65,6 +65,8 @@ public:
     void notifyFocusGained() override;
     void notifyFocusLost() override;
 
+    void transferStateFrom(const ViewInterface& old) override;
+
     std::string getKey() const override;
 
     void setPropertyOwner(Element* owner) override;
@@ -439,6 +441,14 @@ template<ViewComponent T>
 inline void ViewAdapter<T>::notifyFocusLost() {
     if constexpr (has_onBlur<T>::value) {
         if (component.onBlur) component.onBlur();
+    }
+}
+
+template<ViewComponent T>
+inline void ViewAdapter<T>::transferStateFrom(const ViewInterface& old) {
+    if constexpr (has_transferState<T>::value) {
+        auto* src = dynamic_cast<const ViewAdapter<T>*>(&old);
+        if (src) component.transferState(src->component);
     }
 }
 

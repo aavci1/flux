@@ -340,4 +340,12 @@ struct has_onValueChange<T, std::void_t<
     decltype(std::declval<const T&>().onValueChange)
 >> : std::true_type {};
 
+template<typename T>
+struct has_transferState {
+    template<typename U>
+    static auto test(U& u) -> decltype(u.transferState(std::declval<const U&>()), std::true_type{});
+    static std::false_type test(...);
+    static constexpr bool value = decltype(test(std::declval<T&>()))::value;
+};
+
 } // namespace flux
