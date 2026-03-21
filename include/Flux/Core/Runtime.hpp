@@ -1,6 +1,8 @@
 #pragma once
 
 #include <Flux/Core/WindowEventObserver.hpp>
+#include <Flux/Core/ResourceManager.hpp>
+#include <Flux/Animation/AnimationEngine.hpp>
 #include <atomic>
 #include <string>
 #include <vector>
@@ -50,6 +52,7 @@ private:
     void waitForEventsImpl(int timeoutMs);
 
     std::atomic<bool> needsRedraw_{false};
+    std::atomic<uint64_t> bodyGeneration_{0};
     bool running_{true};
     std::vector<std::unique_ptr<Window>> windows_;
 
@@ -61,11 +64,23 @@ private:
     /// Basename of argv[0] for logging (e.g. `llm_studio`, `terminal`).
     std::string programName_;
 
+    AnimationEngine animationEngine_;
+    ResourceManager resourceManager_;
+
     static Runtime* current_;
     friend void requestApplicationRedraw();
     friend void requestRedrawOnly();
 
 public:
+    AnimationEngine& animationEngine() { return animationEngine_; }
+    const AnimationEngine& animationEngine() const { return animationEngine_; }
+
+    uint64_t bodyGeneration() const { return bodyGeneration_.load(std::memory_order_relaxed); }
+    void bumpBodyGeneration() { bodyGeneration_.fetch_add(1, std::memory_order_relaxed); }
+
+    ResourceManager& resourceManager() { return resourceManager_; }
+    const ResourceManager& resourceManager() const { return resourceManager_; }
+
     OverlayManager* findOverlayManager();
 
     static bool hasInstance() { return current_ != nullptr; }

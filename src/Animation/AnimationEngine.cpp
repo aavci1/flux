@@ -1,6 +1,7 @@
 #include <Flux/Animation/AnimationEngine.hpp>
 #include <Flux/Animation/Animation.hpp>
 #include <Flux/Core/Element.hpp>
+#include <Flux/Core/Runtime.hpp>
 #include <vector>
 
 namespace flux {
@@ -26,8 +27,7 @@ std::optional<Animation> consumePendingAnimationConfig() {
 }
 
 AnimationEngine& AnimationEngine::instance() {
-    static AnimationEngine engine;
-    return engine;
+    return Runtime::instance().animationEngine();
 }
 
 void AnimationEngine::registerElement(Element* el) {

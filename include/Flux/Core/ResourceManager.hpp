@@ -31,9 +31,9 @@ public:
     void collectUnused();
     void clear();
 
-private:
     ResourceManager() = default;
 
+private:
     struct TrackedFont {
         FontHandle handle;
         uint64_t lastUsedFrame = 0;
