@@ -1,6 +1,7 @@
 #include <Flux/Core/Element.hpp>
 #include <Flux/Core/View.hpp>
 #include <Flux/Core/Log.hpp>
+#include <Flux/Animation/AnimationEngine.hpp>
 
 namespace flux {
 
@@ -40,6 +41,8 @@ std::unique_ptr<Element> Element::buildTree(const LayoutNode& node, size_t index
 }
 
 void Element::reconcile(const LayoutNode& newNode) {
+    reconcileAnimations(newNode.view, newNode.bounds);
+
     *description = newNode.view;
     description->setPropertyOwner(this);
     typeName = newNode.view.getTypeName();
@@ -137,6 +140,18 @@ void Element::mountSubtree() {
         if (description && description->isValid()) {
             description->setPropertyOwner(this);
             description->onMounted();
+
+            reconcileProperty<float>("opacity",          description->getOpacity(),         nullptr);
+            reconcileProperty<Color>("backgroundColor",  description->getBackgroundColor(), nullptr);
+            reconcileProperty<Color>("borderColor",      description->getBorderColor(),     nullptr);
+            reconcileProperty<float>("borderWidth",      description->getBorderWidth(),     nullptr);
+            reconcileProperty<CornerRadius>("cornerRadius", description->getCornerRadius(), nullptr);
+            reconcileProperty<float>("rotation",         description->getRotation(),        nullptr);
+            reconcileProperty<float>("scaleX",           description->getScaleX(),          nullptr);
+            reconcileProperty<float>("scaleY",           description->getScaleY(),          nullptr);
+            reconcileProperty<Point>("offset",           description->getOffset(),          nullptr);
+            reconcileProperty<EdgeInsets>("padding",      description->getPadding(),         nullptr);
+            reconcileProperty<Rect>("bounds",            cachedBounds,                      nullptr);
         }
         FLUX_LOG_TRACE("[ELEMENT] Mounted %s", typeName.c_str());
     }
@@ -151,10 +166,48 @@ void Element::unmountSubtree() {
     }
     if (isMounted) {
         isMounted = false;
+        if (!activeAnimations.empty()) {
+            activeAnimations.clear();
+            AnimationEngine::instance().unregisterElement(this);
+        }
         if (description && description->isValid()) {
             description->onUnmounted();
         }
         FLUX_LOG_TRACE("[ELEMENT] Unmounted %s", typeName.c_str());
+    }
+}
+
+void Element::reconcileAnimations(const View& newView, const Rect& newBounds) {
+    if (!description || !description->isValid()) return;
+
+    auto anim = newView.getAnimation();
+    auto ctx = currentAnimationContext();
+    auto pending = consumePendingAnimationConfig();
+    std::optional<Animation> effectiveAnim = anim ? anim : (ctx ? ctx : pending);
+
+    const Animation* config = nullptr;
+    Animation resolved;
+    if (effectiveAnim && !effectiveAnim->isNone()) {
+        resolved = *effectiveAnim;
+        config = &resolved;
+    }
+
+    bool hadAnimations = !activeAnimations.empty();
+
+    reconcileProperty<float>("opacity",            newView.getOpacity(),         config);
+    reconcileProperty<Color>("backgroundColor",    newView.getBackgroundColor(), config);
+    reconcileProperty<Color>("borderColor",        newView.getBorderColor(),     config);
+    reconcileProperty<float>("borderWidth",        newView.getBorderWidth(),     config);
+    reconcileProperty<CornerRadius>("cornerRadius", newView.getCornerRadius(),   config);
+    reconcileProperty<float>("rotation",           newView.getRotation(),        config);
+    reconcileProperty<float>("scaleX",             newView.getScaleX(),          config);
+    reconcileProperty<float>("scaleY",             newView.getScaleY(),          config);
+    reconcileProperty<Point>("offset",             newView.getOffset(),          config);
+    reconcileProperty<EdgeInsets>("padding",        newView.getPadding(),         config);
+    reconcileProperty<Rect>("bounds",              newBounds,                    config);
+
+    if (!hadAnimations && !activeAnimations.empty()) {
+        AnimationEngine::instance().registerElement(this);
     }
 }
 

@@ -2,6 +2,7 @@
 
 #include <Flux/Core/View.hpp>
 #include <Flux/Core/Types.hpp>
+#include <Flux/Core/Element.hpp>
 #include <Flux/Graphics/RenderContext.hpp>
 
 namespace flux {
@@ -23,57 +24,44 @@ template<typename V> auto hasRotation(int) -> decltype(V::rotation, std::true_ty
 template<typename V> auto hasRotation(...) -> std::false_type;
 template<typename V> auto hasScaleX(int) -> decltype(V::scaleX, std::true_type{});
 template<typename V> auto hasScaleX(...) -> std::false_type;
+template<typename V> auto hasScaleY(int) -> decltype(V::scaleY, std::true_type{});
+template<typename V> auto hasScaleY(...) -> std::false_type;
 }
 
 template<typename ViewType>
 inline void renderView(const ViewType& view, RenderContext& ctx, const Rect& bounds) {
-    ctx.save();
+    Element* el = ctx.currentElement();
+    bool animated = el && el->hasActiveAnimations();
 
-    if constexpr (decltype(detail::hasOffset<ViewType>(0))::value) {
-        Point offsetPt = view.offset;
-        ctx.translate(offsetPt.x, offsetPt.y);
-    }
+    Color bgColor = animated
+        ? el->getAnimatedValue<Color>("backgroundColor", view.backgroundColor)
+        : static_cast<Color>(view.backgroundColor);
+    CornerRadius cr = animated
+        ? el->getAnimatedValue<CornerRadius>("cornerRadius", view.cornerRadius)
+        : static_cast<CornerRadius>(view.cornerRadius);
 
-    if constexpr (decltype(detail::hasRotation<ViewType>(0))::value) {
-        float rot = view.rotation;
-        if (rot != 0) ctx.rotate(rot);
-    }
-
-    if constexpr (decltype(detail::hasScaleX<ViewType>(0))::value) {
-        float sx = view.scaleX, sy = view.scaleY;
-        if (sx != 1.0f || sy != 1.0f) ctx.scale(sx, sy);
-    }
-
-    float opacityVal = view.opacity;
-    if (opacityVal < 1.0f) {
-        ctx.setOpacity(opacityVal);
-    }
-
-    // Draw background
-    Color bgColor = view.backgroundColor;
     if (bgColor.a > 0) {
         ctx.setFillStyle(FillStyle::solid(bgColor));
         ctx.setStrokeStyle(StrokeStyle::none());
-        ctx.drawRect(bounds, view.cornerRadius);
+        ctx.drawRect(bounds, cr);
     }
 
-    // // Draw background image if present
     BackgroundImage bgImage = view.backgroundImage;
     if (bgImage.isValid()) {
-        // Draw the background image with proper sizing
         drawBackgroundImageWithSizing(ctx, bgImage, bounds);
     }
 
-    // Draw border
-    float borderWidth = view.borderWidth;
-    Color borderColor = view.borderColor;
-    if (borderWidth > 0 && borderColor.a > 0) {
+    float bw = animated
+        ? el->getAnimatedValue<float>("borderWidth", view.borderWidth)
+        : static_cast<float>(view.borderWidth);
+    Color bc = animated
+        ? el->getAnimatedValue<Color>("borderColor", view.borderColor)
+        : static_cast<Color>(view.borderColor);
+    if (bw > 0 && bc.a > 0) {
         ctx.setFillStyle(FillStyle::none());
-        ctx.setStrokeStyle(StrokeStyle::solid(borderColor, borderWidth));
-        ctx.drawRect(bounds, view.cornerRadius);
+        ctx.setStrokeStyle(StrokeStyle::solid(bc, bw));
+        ctx.drawRect(bounds, cr);
     }
-
-    ctx.restore();
 }
 
 // Helper function to draw background image with proper CSS-like sizing

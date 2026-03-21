@@ -1,0 +1,68 @@
+#include <Flux/Animation/AnimationEngine.hpp>
+#include <Flux/Animation/Animation.hpp>
+#include <Flux/Core/Element.hpp>
+#include <vector>
+
+namespace flux {
+
+static thread_local std::optional<Animation> g_animationContext;
+static std::optional<Animation> g_pendingAnimationConfig;
+
+void setCurrentAnimationContext(std::optional<Animation> anim) {
+    g_animationContext = anim;
+    if (anim.has_value()) {
+        g_pendingAnimationConfig = anim;
+    }
+}
+
+std::optional<Animation> currentAnimationContext() {
+    return g_animationContext;
+}
+
+std::optional<Animation> consumePendingAnimationConfig() {
+    auto result = g_pendingAnimationConfig;
+    g_pendingAnimationConfig = std::nullopt;
+    return result;
+}
+
+AnimationEngine& AnimationEngine::instance() {
+    static AnimationEngine engine;
+    return engine;
+}
+
+void AnimationEngine::registerElement(Element* el) {
+    elements_.insert(el);
+}
+
+void AnimationEngine::unregisterElement(Element* el) {
+    elements_.erase(el);
+}
+
+void AnimationEngine::tick(float dt) {
+    std::vector<Element*> finished;
+
+    for (Element* el : elements_) {
+        auto it = el->activeAnimations.begin();
+        while (it != el->activeAnimations.end()) {
+            bool stillRunning = it->second->tick(dt);
+            if (!stillRunning) {
+                it = el->activeAnimations.erase(it);
+            } else {
+                ++it;
+            }
+        }
+        if (el->activeAnimations.empty()) {
+            finished.push_back(el);
+        }
+    }
+
+    for (Element* el : finished) {
+        elements_.erase(el);
+    }
+}
+
+bool AnimationEngine::hasActiveAnimations() const {
+    return !elements_.empty();
+}
+
+} // namespace flux

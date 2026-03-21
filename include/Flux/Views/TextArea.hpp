@@ -132,6 +132,7 @@ struct TextArea {
         float rad = areaCornerRadius;
         bool isFocused = ctx.isCurrentViewFocused();
         bool isHovered = ctx.isCurrentViewHovered();
+        Element* el = ctx.currentElement();
 
         ctx.setFillStyle(FillStyle::solid(bgColor));
         ctx.setStrokeStyle(StrokeStyle::none());
@@ -140,6 +141,7 @@ struct TextArea {
         Color bc = isFocused ? static_cast<Color>(focusBorderColor)
                  : isHovered ? static_cast<Color>(borderCol).lighten(0.3f)
                  : static_cast<Color>(borderCol);
+        if (el) bc = el->animateValue<Color>("_hover_bc", bc);
         float bw = isFocused ? 2.0f : 1.0f;
         Path border;
         border.rect(bounds, CornerRadius(rad));

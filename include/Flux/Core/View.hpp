@@ -6,6 +6,8 @@
 #include <Flux/Core/ViewHelpers.hpp>
 #include <Flux/Core/KeyEvent.hpp>
 #include <Flux/Core/EventTypes.hpp>
+#include <Flux/Animation/Animation.hpp>
+#include <Flux/Animation/AnimatedProperty.hpp>
 #include <Flux/Graphics/RenderContext.hpp>
 #include <memory>
 #include <optional>
@@ -26,14 +28,17 @@ std::string demangleTypeName(const char* mangledName);
 
 
 // Tier 1: Visual + layout essentials (every component gets these)
+// Animatable properties use AnimatedProperty<T> (constrained to types with lerp()).
+// All views animate by default via Animation::defaultImplicit().
+// Use .animation = Animation::none() to opt out.
 #define FLUX_VIEW_PROPERTIES \
-    Property<EdgeInsets> padding = {}; \
-    Property<Color> backgroundColor = Colors::transparent; \
+    AnimatedProperty<EdgeInsets> padding = {}; \
+    AnimatedProperty<Color> backgroundColor = Colors::transparent; \
     Property<BackgroundImage> backgroundImage = BackgroundImage{}; \
-    Property<Color> borderColor = Colors::transparent; \
-    Property<float> borderWidth = 0; \
-    Property<CornerRadius> cornerRadius = CornerRadius{0, 0, 0, 0}; \
-    Property<float> opacity = 1.0; \
+    AnimatedProperty<Color> borderColor = Colors::transparent; \
+    AnimatedProperty<float> borderWidth = 0; \
+    AnimatedProperty<CornerRadius> cornerRadius = CornerRadius{0, 0, 0, 0}; \
+    AnimatedProperty<float> opacity = 1.0; \
     Property<bool> visible = true; \
     Property<bool> clip = false; \
     Property<float> expansionBias = 0.0f; \
@@ -47,7 +52,8 @@ std::string demangleTypeName(const char* mangledName);
     Property<std::optional<CursorType>> cursor = std::nullopt; \
     Property<bool> focusable = false; \
     Property<std::string> focusKey = ""; \
-    Property<std::string> key = ""
+    Property<std::string> key = ""; \
+    std::optional<Animation> animation = Animation::defaultImplicit()
 
 // Tier 2: Interactive components add these event callbacks
 #define FLUX_INTERACTIVE_PROPERTIES \
@@ -68,10 +74,10 @@ std::string demangleTypeName(const char* mangledName);
 
 // Tier 3: Transform properties (most components don't need these)
 #define FLUX_TRANSFORM_PROPERTIES \
-    Property<float> rotation = 0; \
-    Property<float> scaleX = 1.0; \
-    Property<float> scaleY = 1.0; \
-    Property<Point> offset = Point{0, 0}
+    AnimatedProperty<float> rotation = 0; \
+    AnimatedProperty<float> scaleX = 1.0; \
+    AnimatedProperty<float> scaleY = 1.0; \
+    AnimatedProperty<Point> offset = Point{0, 0}
 
 // Concept for what makes a View component
 // All methods are now optional - if not defined, default implementations will be used
@@ -163,6 +169,21 @@ public:
     // Testing/accessibility introspection
     virtual std::string getTextContent() const { return ""; }
     virtual std::string getAccessibleValue() const { return ""; }
+
+    // Animation config
+    virtual std::optional<Animation> getAnimation() const { return std::nullopt; }
+
+    // Read animatable property values for reconciliation comparison
+    virtual float getOpacity() const { return 1.0f; }
+    virtual Color getBackgroundColor() const { return Colors::transparent; }
+    virtual Color getBorderColor() const { return Colors::transparent; }
+    virtual float getBorderWidth() const { return 0.0f; }
+    virtual CornerRadius getCornerRadius() const { return CornerRadius{0, 0, 0, 0}; }
+    virtual float getRotation() const { return 0.0f; }
+    virtual float getScaleX() const { return 1.0f; }
+    virtual float getScaleY() const { return 1.0f; }
+    virtual Point getOffset() const { return Point{0, 0}; }
+    virtual EdgeInsets getPadding() const { return EdgeInsets{}; }
 };
 
 // SFINAE helpers to detect if methods exist
@@ -465,6 +486,32 @@ public:
     // Testing/accessibility introspection
     std::string getTextContent() const override;
     std::string getAccessibleValue() const override;
+
+    // Animation
+    std::optional<Animation> getAnimation() const override { return component.animation; }
+    float getOpacity() const override { return component.opacity; }
+    Color getBackgroundColor() const override { return component.backgroundColor; }
+    Color getBorderColor() const override { return component.borderColor; }
+    float getBorderWidth() const override { return component.borderWidth; }
+    CornerRadius getCornerRadius() const override { return component.cornerRadius; }
+    EdgeInsets getPadding() const override { return component.padding; }
+
+    float getRotation() const override {
+        if constexpr (decltype(ViewHelpers::detail::hasRotation<T>(0))::value) return component.rotation;
+        else return 0.0f;
+    }
+    float getScaleX() const override {
+        if constexpr (decltype(ViewHelpers::detail::hasScaleX<T>(0))::value) return component.scaleX;
+        else return 1.0f;
+    }
+    float getScaleY() const override {
+        if constexpr (decltype(ViewHelpers::detail::hasScaleY<T>(0))::value) return component.scaleY;
+        else return 1.0f;
+    }
+    Point getOffset() const override {
+        if constexpr (decltype(ViewHelpers::detail::hasOffset<T>(0))::value) return component.offset;
+        else return Point{0, 0};
+    }
 };
 
 // Type-erased view container that supports any component type
@@ -649,6 +696,41 @@ public:
 
     std::string getAccessibleValue() const {
         return component_ ? component_->getAccessibleValue() : "";
+    }
+
+    // Animation
+    std::optional<Animation> getAnimation() const {
+        return component_ ? component_->getAnimation() : std::nullopt;
+    }
+    float getOpacity() const {
+        return component_ ? component_->getOpacity() : 1.0f;
+    }
+    Color getBackgroundColor() const {
+        return component_ ? component_->getBackgroundColor() : Colors::transparent;
+    }
+    Color getBorderColor() const {
+        return component_ ? component_->getBorderColor() : Colors::transparent;
+    }
+    float getBorderWidth() const {
+        return component_ ? component_->getBorderWidth() : 0.0f;
+    }
+    CornerRadius getCornerRadius() const {
+        return component_ ? component_->getCornerRadius() : CornerRadius{0, 0, 0, 0};
+    }
+    float getRotation() const {
+        return component_ ? component_->getRotation() : 0.0f;
+    }
+    float getScaleX() const {
+        return component_ ? component_->getScaleX() : 1.0f;
+    }
+    float getScaleY() const {
+        return component_ ? component_->getScaleY() : 1.0f;
+    }
+    Point getOffset() const {
+        return component_ ? component_->getOffset() : Point{0, 0};
+    }
+    EdgeInsets getPadding() const {
+        return component_ ? component_->getPadding() : EdgeInsets{};
     }
 
     ViewInterface* operator->() { return component_.get(); }

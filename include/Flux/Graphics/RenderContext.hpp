@@ -515,6 +515,10 @@ public:
     /** Shorthand for `environment().theme`. */
     const Theme& theme() const { return environment().theme; }
 
+    // Current Element pointer for animation value lookups during render
+    void setCurrentElement(class Element* el) { currentElement_ = el; }
+    class Element* currentElement() const { return currentElement_; }
+
 protected:
     // Focus / hover / pressed state (shared across all backends)
     std::string globalFocusedKey_;
@@ -527,6 +531,7 @@ protected:
     bool hasPressed_ = false;
 
     class RenderCommandBuffer* recordingBuffer_ = nullptr;
+    class Element* currentElement_ = nullptr;
 
     std::vector<Environment> environmentStack_;
 };

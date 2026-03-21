@@ -25,14 +25,13 @@ struct Button {
         bool hasFocus = ctx.isCurrentViewFocused();
         bool isHovered = ctx.isCurrentViewHovered();
         bool isPressed = ctx.isCurrentViewPressed();
+        Element* el = ctx.currentElement();
 
         Color bgColor = static_cast<Color>(backgroundColor);
+        if (isPressed) bgColor = bgColor.darken(0.15f);
+        else if (isHovered) bgColor = bgColor.lighten(0.12f);
 
-        if (isPressed) {
-            bgColor = bgColor.darken(0.15f);
-        } else if (isHovered) {
-            bgColor = bgColor.lighten(0.12f);
-        }
+        if (el) bgColor = el->animateValue<Color>("_hover_bg", bgColor);
 
         ctx.setFillStyle(FillStyle::solid(bgColor));
         ctx.setStrokeStyle(StrokeStyle::none());
@@ -40,11 +39,14 @@ struct Button {
 
         float bw = static_cast<float>(borderWidth);
         if (bw > 0) {
-            Color bcVal = borderColor;
+            Color bcVal = isHovered
+                ? static_cast<Color>(borderColor).lighten(0.2f)
+                : static_cast<Color>(borderColor);
+            if (el) bcVal = el->animateValue<Color>("_hover_bc", bcVal);
             Path border;
             border.rect(bounds, cornerRadius);
             ctx.setFillStyle(FillStyle::none());
-            ctx.setStrokeStyle(StrokeStyle::solid(isHovered ? bcVal.lighten(0.2f) : bcVal, bw));
+            ctx.setStrokeStyle(StrokeStyle::solid(bcVal, bw));
             ctx.drawPath(border);
         }
 
