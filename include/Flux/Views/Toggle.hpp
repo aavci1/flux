@@ -5,8 +5,7 @@
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/Property.hpp>
 #include <Flux/Core/KeyEvent.hpp>
-#include <Flux/Views/HStack.hpp>
-#include <Flux/Views/Text.hpp>
+#include <Flux/Views/LabeledControl.hpp>
 #include <Flux/Core/Typography.hpp>
 #include <string>
 
@@ -101,74 +100,16 @@ struct Toggle {
     }
 
     View body() const {
-        std::string labelText = label;
-        
-        // If no label, just render the toggle accessory
-        if (labelText.empty()) {
-            return View(ToggleAccessory {
-                .isOn = isOn,
-                .width = width,
-                .height = height,
-                .onColor = onColor,
-                .offColor = offColor
-            });
-        }
-        
-        // Create label
-        Text labelView {
-            .value = labelText,
-            .fontSize = labelFontSize,
-            .color = labelColor,
-            .verticalAlignment = VerticalAlignment::center,
-            .horizontalAlignment = HorizontalAlignment::leading
-        };
-        
-        // Create accessory
-        ToggleAccessory accessory {
-            .isOn = isOn,
-            .width = width,
-            .height = height,
-            .onColor = onColor,
-            .offColor = offColor
-        };
-        
-        // Create HStack with appropriate order
-        LabelPosition pos = labelPosition;
-        return View(HStack {
-            .spacing = spacing,
-            .justifyContent = justifyContent,
-            .alignItems = AlignItems::center,
-            .padding = padding,
-            .children = pos == LabelPosition::leading 
-                ? std::vector<View>{View(labelView), View(accessory)}
-                : std::vector<View>{View(accessory), View(labelView)}
-        });
+        return LabeledControl::build(
+            View(ToggleAccessory{.isOn = isOn, .width = width, .height = height,
+                                 .onColor = onColor, .offColor = offColor}),
+            label, labelPosition, justifyContent,
+            spacing, padding, labelFontSize, labelColor);
     }
 
     Size preferredSize(TextMeasurement& textMeasurer) const {
-        std::string labelText = label;
-        EdgeInsets paddingVal = padding;
-        
-        // If no label, just return toggle size
-        if (labelText.empty()) {
-            return {
-                static_cast<float>(width) + paddingVal.horizontal(),
-                static_cast<float>(height) + paddingVal.vertical()
-            };
-        }
-        
-        // Calculate combined size
-        float toggleWidth = width;
-        float toggleHeight = height;
-        
-        float lf = labelFontSize;
-        Size textSize = textMeasurer.measureText(labelText,
-            makeTextStyle("default", FontWeight::regular, lf, Typography::lineHeightTight,
-                Typography::trackingFor(lf, FontWeight::regular)));
-        float totalWidth = toggleWidth + static_cast<float>(spacing) + textSize.width + paddingVal.horizontal();
-        float totalHeight = std::max(toggleHeight, textSize.height) + paddingVal.vertical();
-        
-        return {totalWidth, totalHeight};
+        return LabeledControl::measure(
+            width, height, label, labelFontSize, spacing, padding, textMeasurer);
     }
 
     bool handleKeyDown(const KeyEvent& event) {
