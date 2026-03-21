@@ -5,8 +5,7 @@
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/Property.hpp>
 #include <Flux/Core/KeyEvent.hpp>
-#include <Flux/Views/HStack.hpp>
-#include <Flux/Views/Text.hpp>
+#include <Flux/Views/LabeledControl.hpp>
 #include <Flux/Core/Typography.hpp>
 #include <string>
 
@@ -105,61 +104,15 @@ struct Checkbox {
     }
 
     View body() const {
-        std::string labelText = label;
-        
-        // If no label, just render the checkbox accessory
-        if (labelText.empty()) {
-            return View(CheckboxAccessory {
-                .checked = checked,
-                .size = size
-            });
-        }
-        
-        // Create label
-        Text labelView {
-            .value = labelText,
-            .fontSize = labelFontSize,
-            .color = labelColor,
-            .verticalAlignment = VerticalAlignment::center,
-            .horizontalAlignment = HorizontalAlignment::leading
-        };
-        
-        // Create accessory
-        CheckboxAccessory accessory {
-            .checked = checked,
-            .size = size
-        };
-        
-        // Create HStack with appropriate order
-        LabelPosition pos = labelPosition;
-        return View(HStack {
-            .spacing = spacing,
-            .justifyContent = justifyContent,
-            .alignItems = AlignItems::center,
-            .padding = padding,
-            .children = pos == LabelPosition::leading 
-                ? std::vector<View>{View(labelView), View(accessory)}
-                : std::vector<View>{View(accessory), View(labelView)}
-        });
+        return LabeledControl::build(
+            View(CheckboxAccessory{.checked = checked, .size = size}),
+            label, labelPosition, justifyContent,
+            spacing, padding, labelFontSize, labelColor);
     }
 
     Size preferredSize(TextMeasurement& textMeasurer) const {
-        EdgeInsets paddingVal = padding;
-        float boxSize = size;
-        
-        std::string labelText = label;
-        if (labelText.empty()) {
-            return {boxSize + paddingVal.horizontal(), boxSize + paddingVal.vertical()};
-        }
-
-        float lf = labelFontSize;
-        Size textSize = textMeasurer.measureText(labelText,
-            makeTextStyle("default", FontWeight::regular, lf, Typography::lineHeightTight,
-                Typography::trackingFor(lf, FontWeight::regular)));
-        float totalWidth = boxSize + static_cast<float>(spacing) + textSize.width + paddingVal.horizontal();
-        float totalHeight = std::max(boxSize, textSize.height) + paddingVal.vertical();
-
-        return {totalWidth, totalHeight};
+        return LabeledControl::measure(
+            size, size, label, labelFontSize, spacing, padding, textMeasurer);
     }
 
     bool handleKeyDown(const KeyEvent& event) {

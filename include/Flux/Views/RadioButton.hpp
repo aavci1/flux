@@ -5,8 +5,7 @@
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/Property.hpp>
 #include <Flux/Core/KeyEvent.hpp>
-#include <Flux/Views/HStack.hpp>
-#include <Flux/Views/Text.hpp>
+#include <Flux/Views/LabeledControl.hpp>
 #include <Flux/Core/Typography.hpp>
 #include <string>
 
@@ -73,56 +72,16 @@ struct RadioButton {
     }
 
     View body() const {
-        std::string labelText = label;
-        
-        // If no label, just render the radio button accessory
-        if (labelText.empty()) {
-            return RadioButtonAccessory {
-                .selected = selected
-            };
-        }
-
-        std::vector<View> children = {
-            RadioButtonAccessory {
-                .selected = selected
-            },
-            Text {
-                .value = labelText,
-                .fontSize = labelFontSize,
-                .color = labelColor
-            }
-        };
-
-        if (labelPosition == LabelPosition::leading) {
-            std::reverse(children.begin(), children.end());
-        }
-
-        return HStack {
-            .spacing = spacing,
-            .justifyContent = justifyContent,
-            .alignItems = AlignItems::center,
-            .padding = padding,
-            .children = children
-        };
+        return LabeledControl::build(
+            View(RadioButtonAccessory{.selected = selected}),
+            label, labelPosition, justifyContent,
+            spacing, padding, labelFontSize, labelColor);
     }
 
     Size preferredSize(TextMeasurement& textMeasurer) const {
-        EdgeInsets paddingVal = padding;
         float radioSize = size;
-        
-        std::string labelText = label;
-        if (labelText.empty()) {
-            return {radioSize + paddingVal.horizontal(), radioSize + paddingVal.vertical()};
-        }
-
-        float lf = labelFontSize;
-        Size textSize = textMeasurer.measureText(labelText,
-            makeTextStyle("default", FontWeight::regular, lf, Typography::lineHeightTight,
-                Typography::trackingFor(lf, FontWeight::regular)));
-        float totalWidth = radioSize + static_cast<float>(spacing) + textSize.width + paddingVal.horizontal();
-        float totalHeight = std::max(radioSize, textSize.height) + paddingVal.vertical();
-
-        return {totalWidth, totalHeight};
+        return LabeledControl::measure(
+            radioSize, radioSize, label, labelFontSize, spacing, padding, textMeasurer);
     }
 
     bool handleKeyDown(const KeyEvent& event) {
