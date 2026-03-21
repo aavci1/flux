@@ -12,6 +12,7 @@ Path::~Path() = default;
 
 Path::Path(const Path& other)
     : commands_(other.commands_)
+    , data_(other.data_)
     , cachedBounds_(other.cachedBounds_)
     , boundsDirty_(other.boundsDirty_) {
 }
@@ -19,6 +20,7 @@ Path::Path(const Path& other)
 Path& Path::operator=(const Path& other) {
     if (this != &other) {
         commands_ = other.commands_;
+        data_ = other.data_;
         cachedBounds_ = other.cachedBounds_;
         boundsDirty_ = other.boundsDirty_;
     }
@@ -27,6 +29,7 @@ Path& Path::operator=(const Path& other) {
 
 Path::Path(Path&& other) noexcept
     : commands_(std::move(other.commands_))
+    , data_(std::move(other.data_))
     , cachedBounds_(other.cachedBounds_)
     , boundsDirty_(other.boundsDirty_) {
 }
@@ -34,58 +37,59 @@ Path::Path(Path&& other) noexcept
 Path& Path::operator=(Path&& other) noexcept {
     if (this != &other) {
         commands_ = std::move(other.commands_);
+        data_ = std::move(other.data_);
         cachedBounds_ = other.cachedBounds_;
         boundsDirty_ = other.boundsDirty_;
     }
     return *this;
 }
 
+void Path::pushCommand(CommandType type, PathWinding w, std::initializer_list<float> params) {
+    Command cmd;
+    cmd.type = type;
+    cmd.winding = w;
+    cmd.dataOffset = static_cast<uint32_t>(data_.size());
+    cmd.dataCount = static_cast<uint8_t>(params.size());
+    data_.insert(data_.end(), params);
+    commands_.push_back(cmd);
+}
+
 void Path::setWinding(PathWinding winding) {
-    Command cmd(CommandType::SetWinding);
-    cmd.winding = winding;
-    commands_.push_back(std::move(cmd));
+    pushCommand(CommandType::SetWinding, winding, {});
     invalidateBounds();
 }
 
 void Path::moveTo(const Point& point) {
-    Command cmd(CommandType::MoveTo);
-    cmd.data = {point.x, point.y};
-    commands_.push_back(std::move(cmd));
+    pushCommand(CommandType::MoveTo, PathWinding::CounterClockwise, {point.x, point.y});
     invalidateBounds();
 }
 
 void Path::lineTo(const Point& point) {
-    Command cmd(CommandType::LineTo);
-    cmd.data = {point.x, point.y};
-    commands_.push_back(std::move(cmd));
+    pushCommand(CommandType::LineTo, PathWinding::CounterClockwise, {point.x, point.y});
     invalidateBounds();
 }
 
 void Path::quadTo(const Point& control, const Point& end) {
-    Command cmd(CommandType::QuadTo);
-    cmd.data = {control.x, control.y, end.x, end.y};
-    commands_.push_back(std::move(cmd));
+    pushCommand(CommandType::QuadTo, PathWinding::CounterClockwise,
+                {control.x, control.y, end.x, end.y});
     invalidateBounds();
 }
 
 void Path::bezierTo(const Point& c1, const Point& c2, const Point& end) {
-    Command cmd(CommandType::BezierTo);
-    cmd.data = {c1.x, c1.y, c2.x, c2.y, end.x, end.y};
-    commands_.push_back(std::move(cmd));
+    pushCommand(CommandType::BezierTo, PathWinding::CounterClockwise,
+                {c1.x, c1.y, c2.x, c2.y, end.x, end.y});
     invalidateBounds();
 }
 
 void Path::arcTo(const Point& p1, const Point& p2, float radius) {
-    Command cmd(CommandType::ArcTo);
-    cmd.data = {p1.x, p1.y, p2.x, p2.y, radius};
-    commands_.push_back(std::move(cmd));
+    pushCommand(CommandType::ArcTo, PathWinding::CounterClockwise,
+                {p1.x, p1.y, p2.x, p2.y, radius});
     invalidateBounds();
 }
 
 void Path::arc(const Point& center, float radius, float startAngle, float endAngle, bool clockwise) {
-    Command cmd(CommandType::Arc);
-    cmd.data = {center.x, center.y, radius, startAngle, endAngle, clockwise ? 1.0f : 0.0f};
-    commands_.push_back(std::move(cmd));
+    pushCommand(CommandType::Arc, PathWinding::CounterClockwise,
+                {center.x, center.y, radius, startAngle, endAngle, clockwise ? 1.0f : 0.0f});
     invalidateBounds();
 }
 
@@ -114,7 +118,6 @@ static void clampCornerRadii(float w, float h, CornerRadius& r) {
     fixEdge(r.topRight, r.bottomRight, h);
 }
 
-/** Quarter-circle arc as line segments; angles in radians (0 = +X, +pi/2 = +Y). */
 static void appendArc(Path& path, float cx, float cy, float r, float a0, float a1, int segments) {
     if (r <= 0.0f)
         return;
@@ -145,7 +148,6 @@ void Path::rect(const Rect& rect, const CornerRadius& cornerRadius) {
     CornerRadius cr = cornerRadius;
     clampCornerRadii(w, h, cr);
 
-    // Explicit closed outline: move → edges → close (flatten + stroke see a closed ring).
     if (cr.isZero()) {
         moveTo({x, y});
         lineTo({x + w, y});
@@ -179,26 +181,24 @@ void Path::rect(const Rect& rect, const CornerRadius& cornerRadius) {
 }
 
 void Path::circle(const Point& center, float radius) {
-    Command cmd(CommandType::Circle);
-    cmd.data = {center.x, center.y, radius};
-    commands_.push_back(std::move(cmd));
+    pushCommand(CommandType::Circle, PathWinding::CounterClockwise,
+                {center.x, center.y, radius});
     invalidateBounds();
 }
 
 void Path::ellipse(const Point& center, float radiusX, float radiusY) {
-    Command cmd(CommandType::Ellipse);
-    cmd.data = {center.x, center.y, radiusX, radiusY};
-    commands_.push_back(std::move(cmd));
+    pushCommand(CommandType::Ellipse, PathWinding::CounterClockwise,
+                {center.x, center.y, radiusX, radiusY});
     invalidateBounds();
 }
 
 void Path::close() {
-    Command cmd(CommandType::Close);
-    commands_.push_back(std::move(cmd));
+    pushCommand(CommandType::Close, PathWinding::CounterClockwise, {});
 }
 
 void Path::reset() {
     commands_.clear();
+    data_.clear();
     invalidateBounds();
 }
 
@@ -237,80 +237,56 @@ void Path::updateBounds() const {
     };
     
     for (const auto& cmd : commands_) {
+        const float* d = data_.data() + cmd.dataOffset;
         switch (cmd.type) {
             case CommandType::MoveTo:
             case CommandType::LineTo:
-                if (cmd.data.size() >= 2) {
-                    updateMinMax(cmd.data[0], cmd.data[1]);
-                }
+                if (cmd.dataCount >= 2) updateMinMax(d[0], d[1]);
                 break;
-                
             case CommandType::QuadTo:
-                if (cmd.data.size() >= 4) {
-                    updateMinMax(cmd.data[0], cmd.data[1]);
-                    updateMinMax(cmd.data[2], cmd.data[3]);
+                if (cmd.dataCount >= 4) {
+                    updateMinMax(d[0], d[1]);
+                    updateMinMax(d[2], d[3]);
                 }
                 break;
-                
             case CommandType::BezierTo:
-                if (cmd.data.size() >= 6) {
-                    updateMinMax(cmd.data[0], cmd.data[1]);
-                    updateMinMax(cmd.data[2], cmd.data[3]);
-                    updateMinMax(cmd.data[4], cmd.data[5]);
+                if (cmd.dataCount >= 6) {
+                    updateMinMax(d[0], d[1]);
+                    updateMinMax(d[2], d[3]);
+                    updateMinMax(d[4], d[5]);
                 }
                 break;
-                
             case CommandType::ArcTo:
-                if (cmd.data.size() >= 5) {
-                    updateMinMax(cmd.data[0], cmd.data[1]);
-                    updateMinMax(cmd.data[2], cmd.data[3]);
+                if (cmd.dataCount >= 5) {
+                    updateMinMax(d[0], d[1]);
+                    updateMinMax(d[2], d[3]);
                 }
                 break;
-                
             case CommandType::Arc:
-                if (cmd.data.size() >= 3) {
-                    float cx = cmd.data[0];
-                    float cy = cmd.data[1];
-                    float r = cmd.data[2];
-                    updateMinMax(cx - r, cy - r);
-                    updateMinMax(cx + r, cy + r);
+                if (cmd.dataCount >= 3) {
+                    updateMinMax(d[0] - d[2], d[1] - d[2]);
+                    updateMinMax(d[0] + d[2], d[1] + d[2]);
                 }
                 break;
-                
             case CommandType::Rect:
-                if (cmd.data.size() >= 4) {
-                    float x = cmd.data[0];
-                    float y = cmd.data[1];
-                    float w = cmd.data[2];
-                    float h = cmd.data[3];
-                    updateMinMax(x, y);
-                    updateMinMax(x + w, y + h);
+                if (cmd.dataCount >= 4) {
+                    updateMinMax(d[0], d[1]);
+                    updateMinMax(d[0] + d[2], d[1] + d[3]);
                 }
                 break;
-                
             case CommandType::Circle:
-                if (cmd.data.size() >= 3) {
-                    float cx = cmd.data[0];
-                    float cy = cmd.data[1];
-                    float r = cmd.data[2];
-                    updateMinMax(cx - r, cy - r);
-                    updateMinMax(cx + r, cy + r);
+                if (cmd.dataCount >= 3) {
+                    updateMinMax(d[0] - d[2], d[1] - d[2]);
+                    updateMinMax(d[0] + d[2], d[1] + d[2]);
                 }
                 break;
-                
             case CommandType::Ellipse:
-                if (cmd.data.size() >= 4) {
-                    float cx = cmd.data[0];
-                    float cy = cmd.data[1];
-                    float rx = cmd.data[2];
-                    float ry = cmd.data[3];
-                    updateMinMax(cx - rx, cy - ry);
-                    updateMinMax(cx + rx, cy + ry);
+                if (cmd.dataCount >= 4) {
+                    updateMinMax(d[0] - d[2], d[1] - d[3]);
+                    updateMinMax(d[0] + d[2], d[1] + d[3]);
                 }
                 break;
-                
-            case CommandType::Close:
-                // No bounds impact
+            default:
                 break;
         }
     }
@@ -326,11 +302,12 @@ static void hashCombineU64(uint64_t& h, uint64_t v) {
 uint64_t Path::contentHash() const {
     uint64_t h = 14695981039346656037ULL;
     for (const auto& cmd : commands_) {
-        hashCombineU64(h, static_cast<uint64_t>(static_cast<int>(cmd.type)));
-        hashCombineU64(h, static_cast<uint64_t>(static_cast<int>(cmd.winding)));
-        for (float f : cmd.data) {
+        hashCombineU64(h, static_cast<uint64_t>(static_cast<uint8_t>(cmd.type)));
+        hashCombineU64(h, static_cast<uint64_t>(static_cast<uint8_t>(cmd.winding)));
+        const float* d = data_.data() + cmd.dataOffset;
+        for (uint8_t i = 0; i < cmd.dataCount; ++i) {
             uint32_t bits = 0;
-            std::memcpy(&bits, &f, sizeof(bits));
+            std::memcpy(&bits, &d[i], sizeof(bits));
             hashCombineU64(h, bits);
         }
     }
@@ -338,4 +315,3 @@ uint64_t Path::contentHash() const {
 }
 
 } // namespace flux
-

@@ -136,50 +136,51 @@ void NanoVGBackend::dispatch(const CmdDrawLine& c) {
 void NanoVGBackend::dispatch(const CmdDrawPath& c) {
     if (c.path.isEmpty()) return;
     nvgBeginPath(nvg_);
-    for (const auto& cmd : c.path.commands_) {
-        switch (cmd.type) {
+    for (size_t ci = 0; ci < c.path.commandCount(); ++ci) {
+        auto cv = c.path.command(ci);
+        switch (cv.type) {
             case Path::CommandType::SetWinding: {
-                int w = (cmd.winding == PathWinding::Clockwise) ? NVG_CW : NVG_CCW;
+                int w = (cv.winding == PathWinding::Clockwise) ? NVG_CW : NVG_CCW;
                 nvgPathWinding(nvg_, w);
                 break;
             }
             case Path::CommandType::MoveTo:
-                if (cmd.data.size() >= 2) nvgMoveTo(nvg_, cmd.data[0], cmd.data[1]);
+                if (cv.dataCount >= 2) nvgMoveTo(nvg_, cv.data[0], cv.data[1]);
                 break;
             case Path::CommandType::LineTo:
-                if (cmd.data.size() >= 2) nvgLineTo(nvg_, cmd.data[0], cmd.data[1]);
+                if (cv.dataCount >= 2) nvgLineTo(nvg_, cv.data[0], cv.data[1]);
                 break;
             case Path::CommandType::QuadTo:
-                if (cmd.data.size() >= 4) nvgQuadTo(nvg_, cmd.data[0], cmd.data[1], cmd.data[2], cmd.data[3]);
+                if (cv.dataCount >= 4) nvgQuadTo(nvg_, cv.data[0], cv.data[1], cv.data[2], cv.data[3]);
                 break;
             case Path::CommandType::BezierTo:
-                if (cmd.data.size() >= 6)
-                    nvgBezierTo(nvg_, cmd.data[0], cmd.data[1], cmd.data[2], cmd.data[3], cmd.data[4], cmd.data[5]);
+                if (cv.dataCount >= 6)
+                    nvgBezierTo(nvg_, cv.data[0], cv.data[1], cv.data[2], cv.data[3], cv.data[4], cv.data[5]);
                 break;
             case Path::CommandType::ArcTo:
-                if (cmd.data.size() >= 5)
-                    nvgArcTo(nvg_, cmd.data[0], cmd.data[1], cmd.data[2], cmd.data[3], cmd.data[4]);
+                if (cv.dataCount >= 5)
+                    nvgArcTo(nvg_, cv.data[0], cv.data[1], cv.data[2], cv.data[3], cv.data[4]);
                 break;
             case Path::CommandType::Arc:
-                if (cmd.data.size() >= 6) {
-                    bool cw = cmd.data[5] > 0.5f;
-                    nvgArc(nvg_, cmd.data[0], cmd.data[1], cmd.data[2], cmd.data[3], cmd.data[4], cw ? NVG_CW : NVG_CCW);
+                if (cv.dataCount >= 6) {
+                    bool cw = cv.data[5] > 0.5f;
+                    nvgArc(nvg_, cv.data[0], cv.data[1], cv.data[2], cv.data[3], cv.data[4], cw ? NVG_CW : NVG_CCW);
                 }
                 break;
             case Path::CommandType::Rect:
-                if (cmd.data.size() >= 8) {
-                    CornerRadius cr(cmd.data[4], cmd.data[5], cmd.data[6], cmd.data[7]);
-                    if (cr.isZero()) nvgRect(nvg_, cmd.data[0], cmd.data[1], cmd.data[2], cmd.data[3]);
-                    else if (cr.isUniform()) nvgRoundedRect(nvg_, cmd.data[0], cmd.data[1], cmd.data[2], cmd.data[3], cr.topLeft);
-                    else nvgRoundedRectVarying(nvg_, cmd.data[0], cmd.data[1], cmd.data[2], cmd.data[3],
+                if (cv.dataCount >= 8) {
+                    CornerRadius cr(cv.data[4], cv.data[5], cv.data[6], cv.data[7]);
+                    if (cr.isZero()) nvgRect(nvg_, cv.data[0], cv.data[1], cv.data[2], cv.data[3]);
+                    else if (cr.isUniform()) nvgRoundedRect(nvg_, cv.data[0], cv.data[1], cv.data[2], cv.data[3], cr.topLeft);
+                    else nvgRoundedRectVarying(nvg_, cv.data[0], cv.data[1], cv.data[2], cv.data[3],
                              cr.topLeft, cr.topRight, cr.bottomRight, cr.bottomLeft);
                 }
                 break;
             case Path::CommandType::Circle:
-                if (cmd.data.size() >= 3) nvgCircle(nvg_, cmd.data[0], cmd.data[1], cmd.data[2]);
+                if (cv.dataCount >= 3) nvgCircle(nvg_, cv.data[0], cv.data[1], cv.data[2]);
                 break;
             case Path::CommandType::Ellipse:
-                if (cmd.data.size() >= 4) nvgEllipse(nvg_, cmd.data[0], cmd.data[1], cmd.data[2], cmd.data[3]);
+                if (cv.dataCount >= 4) nvgEllipse(nvg_, cv.data[0], cv.data[1], cv.data[2], cv.data[3]);
                 break;
             case Path::CommandType::Close:
                 nvgClosePath(nvg_);

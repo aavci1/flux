@@ -229,82 +229,53 @@ void NanoVGRenderContext::drawPath(const Path& path) {
 
     nvgBeginPath(nvgContext_);
     
-    // Replay path commands to NanoVG
-    for (const auto& cmd : path.commands_) {
-        switch (cmd.type) {
+    for (size_t ci = 0; ci < path.commandCount(); ++ci) {
+        auto cv = path.command(ci);
+        switch (cv.type) {
             case Path::CommandType::SetWinding:
-                nvgPathWinding(nvgContext_, getNVGPathWinding(cmd.winding));
+                nvgPathWinding(nvgContext_, getNVGPathWinding(cv.winding));
                 break;
             case Path::CommandType::MoveTo:
-                if (cmd.data.size() >= 2) {
-                    nvgMoveTo(nvgContext_, cmd.data[0], cmd.data[1]);
-                }
+                if (cv.dataCount >= 2) nvgMoveTo(nvgContext_, cv.data[0], cv.data[1]);
                 break;
-                
             case Path::CommandType::LineTo:
-                if (cmd.data.size() >= 2) {
-                    nvgLineTo(nvgContext_, cmd.data[0], cmd.data[1]);
-                }
+                if (cv.dataCount >= 2) nvgLineTo(nvgContext_, cv.data[0], cv.data[1]);
                 break;
-                
             case Path::CommandType::QuadTo:
-                if (cmd.data.size() >= 4) {
-                    nvgQuadTo(nvgContext_, cmd.data[0], cmd.data[1], cmd.data[2], cmd.data[3]);
-                }
+                if (cv.dataCount >= 4)
+                    nvgQuadTo(nvgContext_, cv.data[0], cv.data[1], cv.data[2], cv.data[3]);
                 break;
-                
             case Path::CommandType::BezierTo:
-                if (cmd.data.size() >= 6) {
-                    nvgBezierTo(nvgContext_, cmd.data[0], cmd.data[1], cmd.data[2], 
-                               cmd.data[3], cmd.data[4], cmd.data[5]);
-                }
+                if (cv.dataCount >= 6)
+                    nvgBezierTo(nvgContext_, cv.data[0], cv.data[1], cv.data[2],
+                               cv.data[3], cv.data[4], cv.data[5]);
                 break;
-                
             case Path::CommandType::ArcTo:
-                if (cmd.data.size() >= 5) {
-                    nvgArcTo(nvgContext_, cmd.data[0], cmd.data[1], cmd.data[2], cmd.data[3], cmd.data[4]);
-                }
+                if (cv.dataCount >= 5)
+                    nvgArcTo(nvgContext_, cv.data[0], cv.data[1], cv.data[2], cv.data[3], cv.data[4]);
                 break;
-                
             case Path::CommandType::Arc:
-                if (cmd.data.size() >= 6) {
-                    bool clockwise = cmd.data[5] > 0.5f;
-                    nvgArc(nvgContext_, cmd.data[0], cmd.data[1], cmd.data[2], 
-                          cmd.data[3], cmd.data[4], clockwise ? NVG_CW : NVG_CCW);
+                if (cv.dataCount >= 6) {
+                    bool clockwise = cv.data[5] > 0.5f;
+                    nvgArc(nvgContext_, cv.data[0], cv.data[1], cv.data[2],
+                          cv.data[3], cv.data[4], clockwise ? NVG_CW : NVG_CCW);
                 }
                 break;
-                
             case Path::CommandType::Rect:
-                if (cmd.data.size() >= 8) {
-                    float x = cmd.data[0];
-                    float y = cmd.data[1];
-                    float w = cmd.data[2];
-                    float h = cmd.data[3];
-                    CornerRadius cr(cmd.data[4], cmd.data[5], cmd.data[6], cmd.data[7]);
-                    
-                    if (cr.isZero()) {
-                        nvgRect(nvgContext_, x, y, w, h);
-                    } else if (cr.isUniform()) {
-                        nvgRoundedRect(nvgContext_, x, y, w, h, cr.topLeft);
-                    } else {
-                        nvgRoundedRectVarying(nvgContext_, x, y, w, h,
+                if (cv.dataCount >= 8) {
+                    CornerRadius cr(cv.data[4], cv.data[5], cv.data[6], cv.data[7]);
+                    if (cr.isZero()) nvgRect(nvgContext_, cv.data[0], cv.data[1], cv.data[2], cv.data[3]);
+                    else if (cr.isUniform()) nvgRoundedRect(nvgContext_, cv.data[0], cv.data[1], cv.data[2], cv.data[3], cr.topLeft);
+                    else nvgRoundedRectVarying(nvgContext_, cv.data[0], cv.data[1], cv.data[2], cv.data[3],
                                             cr.topLeft, cr.topRight, cr.bottomRight, cr.bottomLeft);
-                    }
                 }
                 break;
-                
             case Path::CommandType::Circle:
-                if (cmd.data.size() >= 3) {
-                    nvgCircle(nvgContext_, cmd.data[0], cmd.data[1], cmd.data[2]);
-                }
+                if (cv.dataCount >= 3) nvgCircle(nvgContext_, cv.data[0], cv.data[1], cv.data[2]);
                 break;
-                
             case Path::CommandType::Ellipse:
-                if (cmd.data.size() >= 4) {
-                    nvgEllipse(nvgContext_, cmd.data[0], cmd.data[1], cmd.data[2], cmd.data[3]);
-                }
+                if (cv.dataCount >= 4) nvgEllipse(nvgContext_, cv.data[0], cv.data[1], cv.data[2], cv.data[3]);
                 break;
-                
             case Path::CommandType::Close:
                 nvgClosePath(nvgContext_);
                 break;

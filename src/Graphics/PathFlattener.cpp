@@ -272,24 +272,25 @@ std::vector<std::vector<Point>> PathFlattener::flattenSubpaths(const Path& path,
         current.push_back({x, y});
     };
 
-    for (const auto& cmd : path.commands_) {
-        switch (cmd.type) {
+    for (size_t ci = 0; ci < path.commandCount(); ++ci) {
+        auto cv = path.command(ci);
+        switch (cv.type) {
             case Path::CommandType::SetWinding:
                 break;
 
             case Path::CommandType::MoveTo:
-                startSubpath(cmd.data[0], cmd.data[1]);
+                startSubpath(cv.data[0], cv.data[1]);
                 break;
 
             case Path::CommandType::LineTo:
-                curX = cmd.data[0];
-                curY = cmd.data[1];
+                curX = cv.data[0];
+                curY = cv.data[1];
                 current.push_back({curX, curY});
                 break;
 
             case Path::CommandType::QuadTo: {
-                float cx = cmd.data[0], cy = cmd.data[1];
-                float ex = cmd.data[2], ey = cmd.data[3];
+                float cx = cv.data[0], cy = cv.data[1];
+                float ex = cv.data[2], ey = cv.data[3];
                 flattenQuad(current, curX, curY, cx, cy, ex, ey, tolerance, 0);
                 curX = ex;
                 curY = ey;
@@ -297,9 +298,9 @@ std::vector<std::vector<Point>> PathFlattener::flattenSubpaths(const Path& path,
             }
 
             case Path::CommandType::BezierTo: {
-                float c1x = cmd.data[0], c1y = cmd.data[1];
-                float c2x = cmd.data[2], c2y = cmd.data[3];
-                float ex = cmd.data[4], ey = cmd.data[5];
+                float c1x = cv.data[0], c1y = cv.data[1];
+                float c2x = cv.data[2], c2y = cv.data[3];
+                float ex = cv.data[4], ey = cv.data[5];
                 flattenCubic(current, curX, curY, c1x, c1y, c2x, c2y, ex, ey, tolerance, 0);
                 curX = ex;
                 curY = ey;
@@ -307,17 +308,17 @@ std::vector<std::vector<Point>> PathFlattener::flattenSubpaths(const Path& path,
             }
 
             case Path::CommandType::ArcTo: {
-                if (cmd.data.size() < 5) break;
-                flattenArcTo(current, curX, curY, cmd.data[0], cmd.data[1], cmd.data[2], cmd.data[3],
-                             cmd.data[4]);
+                if (cv.dataCount < 5) break;
+                flattenArcTo(current, curX, curY, cv.data[0], cv.data[1], cv.data[2], cv.data[3],
+                             cv.data[4]);
                 break;
             }
 
             case Path::CommandType::Arc: {
-                if (cmd.data.size() < 6) break;
-                float cx = cmd.data[0], cy = cmd.data[1], r = cmd.data[2];
-                float a0 = cmd.data[3], a1 = cmd.data[4];
-                bool cw = cmd.data[5] > 0.5f;
+                if (cv.dataCount < 6) break;
+                float cx = cv.data[0], cy = cv.data[1], r = cv.data[2];
+                float a0 = cv.data[3], a1 = cv.data[4];
+                bool cw = cv.data[5] > 0.5f;
                 if (r <= 0.f) break;
 
                 float sx = cx + std::cos(a0) * r;
@@ -341,13 +342,13 @@ std::vector<std::vector<Point>> PathFlattener::flattenSubpaths(const Path& path,
             }
 
             case Path::CommandType::Rect: {
-                if (cmd.data.size() >= 8) {
+                if (cv.dataCount >= 8) {
                     if (!current.empty()) {
                         result.push_back(std::move(current));
                         current.clear();
                     }
-                    Rect r{cmd.data[0], cmd.data[1], cmd.data[2], cmd.data[3]};
-                    CornerRadius cr{cmd.data[4], cmd.data[5], cmd.data[6], cmd.data[7]};
+                    Rect r{cv.data[0], cv.data[1], cv.data[2], cv.data[3]};
+                    CornerRadius cr{cv.data[4], cv.data[5], cv.data[6], cv.data[7]};
                     Path expanded;
                     expanded.rect(r, cr);
                     auto subs = flattenSubpaths(expanded, tolerance);
@@ -360,7 +361,7 @@ std::vector<std::vector<Point>> PathFlattener::flattenSubpaths(const Path& path,
             }
 
             case Path::CommandType::Circle: {
-                float cx = cmd.data[0], cy = cmd.data[1], r = cmd.data[2];
+                float cx = cv.data[0], cy = cv.data[1], r = cv.data[2];
                 int segments = std::max(16, static_cast<int>(r * 2));
                 for (int i = 0; i <= segments; i++) {
                     float a = static_cast<float>(i) / static_cast<float>(segments) * kTwoPi;
@@ -372,8 +373,8 @@ std::vector<std::vector<Point>> PathFlattener::flattenSubpaths(const Path& path,
             }
 
             case Path::CommandType::Ellipse: {
-                float cx = cmd.data[0], cy = cmd.data[1];
-                float rx = cmd.data[2], ry = cmd.data[3];
+                float cx = cv.data[0], cy = cv.data[1];
+                float rx = cv.data[2], ry = cv.data[3];
                 float maxR = std::max(rx, ry);
                 int segments = std::max(16, static_cast<int>(maxR * 2));
                 for (int i = 0; i <= segments; i++) {
