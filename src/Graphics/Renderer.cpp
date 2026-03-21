@@ -233,7 +233,7 @@ void Renderer::renderTree(LayoutNode& node, Element* element, Point parentOrigin
     bool animated = element && element->hasActiveAnimations();
 
     Rect visBounds = animated
-        ? element->getAnimatedValue<Rect>("bounds", node.bounds)
+        ? element->getAnimatedValue<Rect>(AnimPropID::Bounds, node.bounds)
         : node.bounds;
 
     std::string assignedFocusKey;
@@ -265,26 +265,26 @@ void Renderer::renderTree(LayoutNode& node, Element* element, Point parentOrigin
     renderContext_->setCurrentElement(element);
 
     Point offsetPt = animated
-        ? element->getAnimatedValue<Point>("offset", vs.offset)
+        ? element->getAnimatedValue<Point>(AnimPropID::Offset, vs.offset)
         : vs.offset;
     if (offsetPt.x != 0 || offsetPt.y != 0)
         renderContext_->translate(offsetPt.x, offsetPt.y);
 
     float rot = animated
-        ? element->getAnimatedValue<float>("rotation", vs.rotation)
+        ? element->getAnimatedValue<float>(AnimPropID::Rotation, vs.rotation)
         : vs.rotation;
     if (rot != 0) renderContext_->rotate(rot);
 
     float sx = animated
-        ? element->getAnimatedValue<float>("scaleX", vs.scaleX)
+        ? element->getAnimatedValue<float>(AnimPropID::ScaleX, vs.scaleX)
         : vs.scaleX;
     float sy = animated
-        ? element->getAnimatedValue<float>("scaleY", vs.scaleY)
+        ? element->getAnimatedValue<float>(AnimPropID::ScaleY, vs.scaleY)
         : vs.scaleY;
     if (sx != 1.0f || sy != 1.0f) renderContext_->scale(sx, sy);
 
     float opacityVal = animated
-        ? element->getAnimatedValue<float>("opacity", vs.opacity)
+        ? element->getAnimatedValue<float>(AnimPropID::Opacity, vs.opacity)
         : vs.opacity;
     if (opacityVal < 1.0f)
         renderContext_->setOpacity(opacityVal);

@@ -42,16 +42,14 @@ void AnimationEngine::tick(float dt) {
     std::vector<Element*> finished;
 
     for (Element* el : elements_) {
-        auto it = el->activeAnimations.begin();
-        while (it != el->activeAnimations.end()) {
-            bool stillRunning = it->second->tick(dt);
+        for (auto& slot : el->activeAnimations) {
+            if (!slot) continue;
+            bool stillRunning = slot->tick(dt);
             if (!stillRunning) {
-                it = el->activeAnimations.erase(it);
-            } else {
-                ++it;
+                slot.reset();
             }
         }
-        if (el->activeAnimations.empty()) {
+        if (!el->hasActiveAnimations()) {
             finished.push_back(el);
         }
     }

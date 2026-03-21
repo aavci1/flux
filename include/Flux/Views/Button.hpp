@@ -32,7 +32,7 @@ struct Button {
         if (isPressed) bgColor = bgColor.darken(0.15f);
         else if (isHovered) bgColor = bgColor.lighten(0.12f);
 
-        if (el) bgColor = el->animateValue<Color>("_hover_bg", bgColor);
+        if (el) bgColor = el->animateValue<Color>(AnimPropID::Custom0, bgColor);
 
         ctx.setFillStyle(FillStyle::solid(bgColor));
         ctx.setStrokeStyle(StrokeStyle::none());
@@ -43,7 +43,7 @@ struct Button {
             Color bcVal = isHovered
                 ? static_cast<Color>(borderColor).lighten(0.2f)
                 : static_cast<Color>(borderColor);
-            if (el) bcVal = el->animateValue<Color>("_hover_bc", bcVal);
+            if (el) bcVal = el->animateValue<Color>(AnimPropID::Custom1, bcVal);
             Path border;
             border.rect(bounds, cornerRadius);
             ctx.setFillStyle(FillStyle::none());
