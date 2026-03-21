@@ -5,7 +5,6 @@ project(flux VERSION 2.0.0 LANGUAGES CXX C OBJCXX)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-add_definitions(-w)
 
 # Dependencies
 find_package(Threads REQUIRED)
@@ -82,8 +81,14 @@ if(NOT TARGET libtess2)
         ${libtess2_SOURCE_DIR}/Source/sweep.c
         ${libtess2_SOURCE_DIR}/Source/tess.c
     )
-    target_include_directories(libtess2 PUBLIC ${libtess2_SOURCE_DIR}/Include)
 endif()
+set_target_properties(libtess2 PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES ""
+)
+target_include_directories(libtess2 PUBLIC
+    $<BUILD_INTERFACE:${libtess2_SOURCE_DIR}/Include>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
 
 # NanoVG includes <stb/stb_image.h>; nothings/stb ships headers as stb_*.h at repo root
 set(FLUX_STB_SHIM_DIR "${CMAKE_BINARY_DIR}/flux_stb_shim")
@@ -103,6 +108,9 @@ set(FLUX_SOURCES
     src/Core/MouseInputHandler.cpp
     src/Core/FocusState.cpp
     src/Core/ShortcutManager.cpp
+
+    # Layout
+    src/Layout/LayoutEngine.cpp
 )
 
 list(APPEND FLUX_SOURCES
@@ -209,6 +217,8 @@ add_library(flux STATIC ${FLUX_SOURCES})
 target_include_directories(flux PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
+)
+target_include_directories(flux SYSTEM PUBLIC
     $<BUILD_INTERFACE:${NANOSVG_SOURCE_DIR}>
     $<BUILD_INTERFACE:${STB_SOURCE_DIR}>
 )
@@ -237,12 +247,12 @@ endif()
 if(FLUX_VULKAN_AVAILABLE)
     target_compile_definitions(flux PUBLIC FLUX_HAS_VULKAN=1)
     if(TARGET VulkanMemoryAllocator)
-        target_include_directories(flux PRIVATE
+        target_include_directories(flux SYSTEM PRIVATE
             ${vulkanmemoryallocator_SOURCE_DIR}/include
         )
     endif()
     if(Vulkan_INCLUDE_DIR)
-        target_include_directories(flux PRIVATE ${Vulkan_INCLUDE_DIR})
+        target_include_directories(flux SYSTEM PRIVATE ${Vulkan_INCLUDE_DIR})
     endif()
     if(TARGET Vulkan::Vulkan)
         target_link_libraries(flux PRIVATE Vulkan::Vulkan)
@@ -417,16 +427,44 @@ if(BUILD_UI_TESTS)
 endif()
 
 # Installation rules
-install(TARGETS flux
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
-    RUNTIME DESTINATION bin
+include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
+
+install(TARGETS flux libtess2
+    EXPORT fluxTargets
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
 install(DIRECTORY include/Flux
-    DESTINATION include
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
 install(FILES include/Flux.hpp
-    DESTINATION include
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+install(EXPORT fluxTargets
+    FILE fluxTargets.cmake
+    NAMESPACE flux::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/flux
+)
+
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/fluxConfigVersion.cmake"
+    COMPATIBILITY SameMajorVersion
+)
+
+configure_package_config_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/fluxConfig.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/fluxConfig.cmake"
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/flux
+)
+
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/fluxConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/fluxConfigVersion.cmake"
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/flux
 )

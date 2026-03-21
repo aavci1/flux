@@ -79,6 +79,4 @@ function(compile_flux_shaders)
     target_sources(${CS_TARGET} PRIVATE ${EMBED_GEN_CPP})
     target_include_directories(${CS_TARGET} PRIVATE ${CMAKE_BINARY_DIR}/generated)
     target_compile_definitions(${CS_TARGET} PRIVATE FLUX_HAS_EMBEDDED_SHADERS=1)
-
-    target_include_directories(${CS_TARGET} PUBLIC ${CS_OUTPUT_DIR})
 endfunction()
