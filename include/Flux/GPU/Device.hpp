@@ -57,7 +57,11 @@ public:
 
 class Device {
 public:
+    static constexpr uint32_t kMaxFramesInFlight = 2;
+
     virtual ~Device() = default;
+
+    virtual uint32_t currentFrameIndex() const { return 0; }
 
     virtual std::unique_ptr<Buffer> createBuffer(const BufferDesc& desc) = 0;
     virtual std::unique_ptr<Texture> createTexture(const TextureDesc& desc) = 0;

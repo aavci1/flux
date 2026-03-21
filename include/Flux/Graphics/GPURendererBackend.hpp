@@ -42,21 +42,21 @@ private:
 
     std::unique_ptr<gpu::Buffer> quadVB_;
 
-    std::unique_ptr<gpu::Buffer> rectInstanceBuffer_;
-    std::unique_ptr<gpu::Buffer> circleInstanceBuffer_;
-    std::unique_ptr<gpu::Buffer> lineInstanceBuffer_;
-    std::unique_ptr<gpu::Buffer> glyphInstanceBuffer_;
-    std::unique_ptr<gpu::Buffer> pathVertexBuffer_;
-    std::unique_ptr<gpu::Buffer> imageInstanceBuffer_;
+    static constexpr uint32_t kFrames = gpu::Device::kMaxFramesInFlight;
+
+    struct FrameBuffers {
+        std::unique_ptr<gpu::Buffer> rect;
+        std::unique_ptr<gpu::Buffer> circle;
+        std::unique_ptr<gpu::Buffer> line;
+        std::unique_ptr<gpu::Buffer> glyph;
+        std::unique_ptr<gpu::Buffer> path;
+        std::unique_ptr<gpu::Buffer> image;
+        size_t rectCap = 0, circleCap = 0, lineCap = 0;
+        size_t glyphCap = 0, pathCap = 0, imageCap = 0;
+    };
+    FrameBuffers frameBuffers_[kFrames];
 
     CompiledBatches compiledBatches_;
-
-    size_t rectBufferCapacity_ = 0;
-    size_t circleBufferCapacity_ = 0;
-    size_t lineBufferCapacity_ = 0;
-    size_t glyphBufferCapacity_ = 0;
-    size_t pathBufferCapacity_ = 0;
-    size_t imageBufferCapacity_ = 0;
 
     std::unique_ptr<GlyphAtlas> glyphAtlas_;
     std::unique_ptr<ImageCache> imageCache_;

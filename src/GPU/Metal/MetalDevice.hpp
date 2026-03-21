@@ -89,6 +89,7 @@ public:
     RenderPassEncoder* beginRenderPass(const RenderPassDesc& desc) override;
     void endRenderPass() override;
     void endFrame() override;
+    uint32_t currentFrameIndex() const override { return frameIndex_; }
 
     void resize(uint32_t width, uint32_t height) override;
     PixelFormat swapchainFormat() const override;
@@ -105,6 +106,7 @@ private:
     id<MTLCommandBuffer> currentCommandBuffer_;
     std::unique_ptr<MetalRenderPassEncoder> currentEncoder_;
     dispatch_semaphore_t frameSemaphore_;
+    uint32_t frameIndex_ = 0;
 
     id<MTLTexture> readbackTexture_;
     uint32_t readbackWidth_ = 0;
