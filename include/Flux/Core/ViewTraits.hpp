@@ -15,7 +15,59 @@ namespace flux {
 
 class View;
 
-// Tier 1: Visual + layout essentials (every component gets these)
+// Tier 1: Visual + layout essentials (every component gets these).
+struct ViewProperties {
+    Property<EdgeInsets> padding = {};
+    Property<Color> backgroundColor = Colors::transparent;
+    Property<BackgroundImage> backgroundImage = BackgroundImage{};
+    Property<Color> borderColor = Colors::transparent;
+    Property<float> borderWidth = 0;
+    Property<CornerRadius> cornerRadius = CornerRadius{0, 0, 0, 0};
+    Property<float> opacity = 1.0;
+    Property<bool> visible = true;
+    Property<bool> clip = false;
+    Property<float> expansionBias = 0.0f;
+    Property<float> compressionBias = 1.0f;
+    Property<std::optional<float>> minWidth = std::nullopt;
+    Property<std::optional<float>> maxWidth = std::nullopt;
+    Property<std::optional<float>> minHeight = std::nullopt;
+    Property<std::optional<float>> maxHeight = std::nullopt;
+    Property<int> colspan = 1;
+    Property<int> rowspan = 1;
+    Property<std::optional<CursorType>> cursor = std::nullopt;
+    Property<bool> focusable = false;
+    Property<std::string> focusKey = "";
+    Property<std::string> key = "";
+};
+
+// Tier 2: Interactive components add these event callbacks.
+struct InteractiveProperties {
+    std::function<void()> onClick = nullptr;
+    std::function<void(float, float, int)> onMouseDown = nullptr;
+    std::function<void(float, float, int)> onMouseUp = nullptr;
+    std::function<void(float, float)> onMouseMove = nullptr;
+    std::function<void()> onMouseEnter = nullptr;
+    std::function<void()> onMouseLeave = nullptr;
+    std::function<void()> onDoubleClick = nullptr;
+    std::function<void()> onFocus = nullptr;
+    std::function<void()> onBlur = nullptr;
+    std::function<bool(const KeyEvent&)> onKeyDown = nullptr;
+    std::function<bool(const KeyEvent&)> onKeyUp = nullptr;
+    std::function<void(const std::string&)> onTextInput = nullptr;
+    std::function<void()> onChange = nullptr;
+    std::function<void(float, float, float, float)> onScroll = nullptr;
+};
+
+// Tier 3: Transform properties (most components don't need these).
+struct TransformProperties {
+    Property<float> rotation = 0;
+    Property<float> scaleX = 1.0;
+    Property<float> scaleY = 1.0;
+    Property<Point> offset = Point{0, 0};
+};
+
+// Legacy macros — kept for gradual migration. Prefer inheriting from the
+// mixin structs above.
 #define FLUX_VIEW_PROPERTIES \
     Property<EdgeInsets> padding = {}; \
     Property<Color> backgroundColor = Colors::transparent; \
@@ -39,7 +91,6 @@ class View;
     Property<std::string> focusKey = ""; \
     Property<std::string> key = ""
 
-// Tier 2: Interactive components add these event callbacks
 #define FLUX_INTERACTIVE_PROPERTIES \
     std::function<void()> onClick = nullptr; \
     std::function<void(float, float, int)> onMouseDown = nullptr; \
@@ -56,7 +107,6 @@ class View;
     std::function<void()> onChange = nullptr; \
     std::function<void(float, float, float, float)> onScroll = nullptr
 
-// Tier 3: Transform properties (most components don't need these)
 #define FLUX_TRANSFORM_PROPERTIES \
     Property<float> rotation = 0; \
     Property<float> scaleX = 1.0; \
