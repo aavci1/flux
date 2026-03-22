@@ -44,27 +44,19 @@ std::unique_ptr<Element> Element::buildTree(const LayoutNode& node, size_t index
 }
 
 void Element::reconcile(const LayoutNode& newNode) {
-    *description = newNode.view;
-    description->setPropertyOwner(this);
-    typeName = newNode.view.getTypeName();
-    key = newNode.view.getKey();
-
     bool boundsChanged = (cachedBounds.x != newNode.bounds.x ||
                           cachedBounds.y != newNode.bounds.y ||
                           cachedBounds.width != newNode.bounds.width ||
                           cachedBounds.height != newNode.bounds.height);
 
-    if (!bodyDirty && !boundsChanged && !subtreeDirty) {
-        return;
-    }
+    View oldView = *description;
+    *description = newNode.view;
+    (**description).transferStateFrom(*oldView);
+    description->setPropertyOwner(this);
+    typeName = newNode.view.getTypeName();
+    key = newNode.view.getKey();
 
     if (bodyDirty || boundsChanged) {
-        View oldView = *description;
-        *description = newNode.view;
-        (**description).transferStateFrom(*oldView);
-        description->setPropertyOwner(this);
-        typeName = newNode.view.getTypeName();
-        key = newNode.view.getKey();
         bumpRenderVersion();
     }
 
