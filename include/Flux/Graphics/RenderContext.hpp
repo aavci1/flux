@@ -270,7 +270,7 @@ public:
     virtual void beginFrame() = 0;
     virtual void clear(const Color& color = Color(1, 1, 1, 1)) = 0;
     virtual void present() = 0;
-    virtual void resize(int width, int height) {}
+    virtual void resize(int /*width*/, int /*height*/) {}
 
     // ============================================================================
     // STATE MANAGEMENT

@@ -820,6 +820,8 @@ ImageInstance CommandCompiler::makeImageInstance(const Rect& rect, float alpha) 
 
 void CommandCompiler::pushImage(CompiledBatches& out, int imageId, const Rect& rect,
                                 ImageFit fit, const CornerRadius& cr, float alpha) {
+    (void)fit;
+    (void)cr;
     const float cx = rect.x + rect.width * 0.5f;
     const float cy = rect.y + rect.height * 0.5f;
     float ox = cx, oy = cy;
@@ -844,6 +846,8 @@ void CommandCompiler::pushImage(CompiledBatches& out, int imageId, const Rect& r
 
 void CommandCompiler::pushImagePath(CompiledBatches& out, const std::string& imgPath, const Rect& rect,
                                     ImageFit fit, const CornerRadius& cr, float alpha) {
+    (void)fit;
+    (void)cr;
     const float cx = rect.x + rect.width * 0.5f;
     const float cy = rect.y + rect.height * 0.5f;
     float ox = cx, oy = cy;

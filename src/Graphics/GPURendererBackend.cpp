@@ -15,6 +15,7 @@
 
 namespace flux {
 
+#if !defined(FLUX_HAS_EMBEDDED_SHADERS)
 static std::string getExeDir() {
     if (auto* util = PlatformRegistry::instance().pathUtil()) {
         return util->executableDirectory();
@@ -48,6 +49,7 @@ static std::vector<uint8_t> readFileBin(const std::string& name) {
     }
     return {};
 }
+#endif
 
 // Unit quad: 6 vertices (2 triangles), each is float2
 static constexpr float kQuadVertices[] = {

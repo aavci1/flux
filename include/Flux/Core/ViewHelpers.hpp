@@ -110,7 +110,7 @@ inline void drawBackgroundImageWithSizing(RenderContext& ctx, const BackgroundIm
 
 // Helper function to draw background image at a specific position (Auto size)
 inline void drawBackgroundImageAtPosition(RenderContext& ctx, const std::string& imagePath, const Rect& bounds,
-                                        BackgroundPosition position, const Point& customPosition) {
+                                        BackgroundPosition /*position*/, const Point& /*customPosition*/) {
     // For Auto size, we need to get the actual image dimensions
     // For now, we'll assume the image is loaded and use a placeholder approach
     // In a real implementation, you would load the image and get its dimensions
@@ -122,14 +122,14 @@ inline void drawBackgroundImageAtPosition(RenderContext& ctx, const std::string&
 
 // Helper function to draw background image scaled to cover
 inline void drawBackgroundImageScaledToCover(RenderContext& ctx, const std::string& imagePath, const Rect& bounds,
-                                           BackgroundPosition position, const Point& customPosition) {
+                                           BackgroundPosition /*position*/, const Point& /*customPosition*/) {
     // Use the CSS-like Cover method that maintains aspect ratio
     ctx.drawImage(imagePath, bounds, ImageFit::Cover);
 }
 
 // Helper function to draw background image scaled to contain
 inline void drawBackgroundImageScaledToContain(RenderContext& ctx, const std::string& imagePath, const Rect& bounds,
-                                             BackgroundPosition position, const Point& customPosition) {
+                                             BackgroundPosition /*position*/, const Point& /*customPosition*/) {
     // Use the CSS-like Contain method that maintains aspect ratio
     ctx.drawImage(imagePath, bounds, ImageFit::Contain);
 }

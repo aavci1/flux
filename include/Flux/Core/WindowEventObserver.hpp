@@ -28,7 +28,7 @@ public:
     /**
      * @brief Called when window is resized
      */
-    virtual void onWindowResized(Window* window, float width, float height) {}
+    virtual void onWindowResized(Window* /*window*/, float /*width*/, float /*height*/) {}
 };
 
 } // namespace flux

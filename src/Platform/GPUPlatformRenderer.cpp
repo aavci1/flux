@@ -40,7 +40,7 @@ bool GPUPlatformRenderer::initialize(int width, int height, float dpiScaleX, flo
         if (atlas) {
             if (!atlas->ensureFontLoaded("Helvetica", FontWeight::regular)) {
                 if (!atlas->ensureFontLoaded("Arial", FontWeight::regular)) {
-                    atlas->ensureFontLoaded("DejaVu Sans", FontWeight::regular);
+                    (void)atlas->ensureFontLoaded("DejaVu Sans", FontWeight::regular);
                 }
             }
         }

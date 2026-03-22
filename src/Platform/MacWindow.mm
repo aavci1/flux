@@ -370,7 +370,8 @@ struct MacWindowImpl {
     if (!skipTextForShortcuts && !skipChars) {
         NSString* chars = [event characters];
         if (chars.length > 0) {
-            std::string utf8([chars UTF8String] ?: "");
+            const char* utf8c = [chars UTF8String];
+            std::string utf8(utf8c ? utf8c : "");
             if (!utf8.empty()) {
                 w->handleTextInput(utf8);
             }
@@ -408,12 +409,19 @@ struct MacWindowImpl {
     }
     NSString* s = string;
     if (s.length == 0) return;
-    std::string utf8([s UTF8String] ?: "");
+    const char* utf8c = [s UTF8String];
+    std::string utf8(utf8c ? utf8c : "");
     if (flux::Window* w = host->eventTarget()) w->handleTextInput(utf8);
 }
 
 - (NSRange)selectedRange {
     return NSMakeRange(NSNotFound, 0);
+}
+- (NSRange)markedRange {
+    return NSMakeRange(NSNotFound, 0);
+}
+- (BOOL)hasMarkedText {
+    return NO;
 }
 - (void)setMarkedText:(id)string selectedRange:(NSRange)selectedRange replacementRange:(NSRange)replacementRange {
     (void)string;
@@ -431,9 +439,9 @@ struct MacWindowImpl {
     (void)actualRange;
     return nil;
 }
-- (NSUInteger)characterIndexOfPoint:(NSPoint)point {
+- (NSUInteger)characterIndexForPoint:(NSPoint)point {
     (void)point;
-    return 0;
+    return NSNotFound;
 }
 - (NSRect)firstRectForCharacterRange:(NSRange)range actualRange:(NSRangePointer)actualRange {
     (void)range;
