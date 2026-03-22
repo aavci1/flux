@@ -23,6 +23,9 @@ struct Theme {
     Color error{};               // errorForeground
     Color inputBackground{};     // input.background
     Color inputForeground{};     // input.foreground
+    Color inputBorderColor{};    // input.borderColor
+    float inputBorderWidth{};    // input.borderWidth
+    CornerRadius inputCornerRadius{};   // input.borderRadius
     Color placeholder{};         // input.placeholderForeground
     Color link{};                // textLink.foreground
     Color codeBackground{};      // textCodeBlock.background
@@ -58,6 +61,7 @@ inline Theme Theme::light() {
     t.error = Color::hex(0xF85149);
     t.inputBackground = Color::hex(0xFFFFFF);
     t.inputForeground = t.foreground;
+    t.inputCornerRadius = CornerRadius(4.0f);
     t.placeholder = Color::hex(0x767676);
     t.link = Color::hex(0x006AB1);
     t.codeBackground = Color::hex(0xF5F5F5);
@@ -91,6 +95,9 @@ inline Theme Theme::dark() {
     t.error = Color::hex(0xF85149);           // errorForeground
     t.inputBackground = Color::hex(0x313131);  // input.background
     t.inputForeground = Color::hex(0xCCCCCC); // input.foreground
+    t.inputBorderColor = Color::hex(0x4A4A4A);     // input.borderColor
+    t.inputBorderWidth = 1.0f;
+    t.inputCornerRadius = CornerRadius(4.0f);
     t.placeholder = Color::hex(0x989898);     // input.placeholderForeground
     t.link = Color::hex(0x4daafc);            // textLink.foreground
     t.codeBackground = Color::hex(0x2B2B2B);  // textCodeBlock.background
