@@ -1,8 +1,11 @@
 #include <Flux/Core/Element.hpp>
 #include <Flux/Core/View.hpp>
 #include <Flux/Core/Log.hpp>
+#include <Flux/Animation/AnimationEngine.hpp>
 
 namespace flux {
+
+uint64_t Element::sNextRenderVersion_ = 1;
 
 Element::Element() = default;
 
@@ -17,7 +20,13 @@ Element& Element::operator=(Element&&) noexcept = default;
 
 void Element::markDirty() {
     bodyDirty = true;
-    requestApplicationRedraw();
+    if (description) {
+        description->markBodyDirty();
+    }
+    for (Element* p = this; p && !p->subtreeDirty; p = p->parent) {
+        p->subtreeDirty = true;
+    }
+    requestRedrawOnly();
 }
 
 std::unique_ptr<Element> Element::buildTree(const LayoutNode& node, size_t index) {
@@ -40,22 +49,38 @@ std::unique_ptr<Element> Element::buildTree(const LayoutNode& node, size_t index
 }
 
 void Element::reconcile(const LayoutNode& newNode) {
-    *description = newNode.view;
-    description->setPropertyOwner(this);
-    typeName = newNode.view.getTypeName();
-    key = newNode.view.getKey();
-
     bool boundsChanged = (cachedBounds.x != newNode.bounds.x ||
                           cachedBounds.y != newNode.bounds.y ||
                           cachedBounds.width != newNode.bounds.width ||
                           cachedBounds.height != newNode.bounds.height);
 
+    if (!bodyDirty && !boundsChanged && !subtreeDirty) {
+        return;
+    }
+
+    if (bodyDirty || boundsChanged) {
+        reconcileAnimations(newNode.view, newNode.bounds);
+        View oldView = *description;
+        *description = newNode.view;
+        (**description).transferStateFrom(*oldView);
+        description->setPropertyOwner(this);
+        typeName = newNode.view.getTypeName();
+        key = newNode.view.getKey();
+        bumpRenderVersion();
+    }
+
     cachedBounds = newNode.bounds;
     lastConstraints = newNode.bounds;
     bodyDirty = false;
     layoutDirty = boundsChanged;
+    subtreeDirty = false;
 
     reconcileChildren(newNode.children);
+
+    subtreeRenderVersion_ = renderVersion_;
+    for (auto& child : children) {
+        subtreeRenderVersion_ = std::max(subtreeRenderVersion_, child->subtreeRenderVersion_);
+    }
 }
 
 void Element::reconcileChildren(const std::vector<LayoutNode>& newChildren) {
@@ -120,6 +145,10 @@ void Element::reconcileChildren(const std::vector<LayoutNode>& newChildren) {
     }
 }
 
+void Element::bumpRenderVersion() {
+    renderVersion_ = sNextRenderVersion_++;
+}
+
 Element* Element::findByFocusKey(const std::string& key) {
     if (description && description->isValid() && description->getFocusKey() == key) {
         return this;
@@ -137,6 +166,19 @@ void Element::mountSubtree() {
         if (description && description->isValid()) {
             description->setPropertyOwner(this);
             description->onMounted();
+
+            auto vs = description->getVisualStyle();
+            reconcileProperty<float>(AnimPropID::Opacity,          vs.opacity,         nullptr);
+            reconcileProperty<Color>(AnimPropID::BackgroundColor,  vs.backgroundColor, nullptr);
+            reconcileProperty<Color>(AnimPropID::BorderColor,      vs.borderColor,     nullptr);
+            reconcileProperty<float>(AnimPropID::BorderWidth,      vs.borderWidth,     nullptr);
+            reconcileProperty<CornerRadius>(AnimPropID::CornerRadius, vs.cornerRadius, nullptr);
+            reconcileProperty<float>(AnimPropID::Rotation,         vs.rotation,        nullptr);
+            reconcileProperty<float>(AnimPropID::ScaleX,           vs.scaleX,          nullptr);
+            reconcileProperty<float>(AnimPropID::ScaleY,           vs.scaleY,          nullptr);
+            reconcileProperty<Point>(AnimPropID::Offset,           vs.offset,          nullptr);
+            reconcileProperty<EdgeInsets>(AnimPropID::Padding,      vs.padding,         nullptr);
+            reconcileProperty<Rect>(AnimPropID::Bounds,            cachedBounds,       nullptr);
         }
         FLUX_LOG_TRACE("[ELEMENT] Mounted %s", typeName.c_str());
     }
@@ -151,10 +193,48 @@ void Element::unmountSubtree() {
     }
     if (isMounted) {
         isMounted = false;
+        if (hasActiveAnimations()) {
+            for (auto& slot : activeAnimations) slot.reset();
+            AnimationEngine::instance().unregisterElement(this);
+        }
         if (description && description->isValid()) {
             description->onUnmounted();
         }
         FLUX_LOG_TRACE("[ELEMENT] Unmounted %s", typeName.c_str());
+    }
+}
+
+void Element::reconcileAnimations(const View& newView, const Rect& newBounds) {
+    if (!description || !description->isValid()) return;
+
+    auto vs = newView.getVisualStyle();
+    auto ctx = currentAnimationContext();
+    auto pending = consumePendingAnimationConfig();
+    std::optional<Animation> effectiveAnim = vs.animation ? vs.animation : (ctx ? ctx : pending);
+
+    const Animation* config = nullptr;
+    Animation resolved;
+    if (effectiveAnim && !effectiveAnim->isNone()) {
+        resolved = *effectiveAnim;
+        config = &resolved;
+    }
+
+    bool hadAnimations = hasActiveAnimations();
+
+    reconcileProperty<float>(AnimPropID::Opacity,            vs.opacity,         config);
+    reconcileProperty<Color>(AnimPropID::BackgroundColor,    vs.backgroundColor, config);
+    reconcileProperty<Color>(AnimPropID::BorderColor,        vs.borderColor,     config);
+    reconcileProperty<float>(AnimPropID::BorderWidth,        vs.borderWidth,     config);
+    reconcileProperty<CornerRadius>(AnimPropID::CornerRadius, vs.cornerRadius,   config);
+    reconcileProperty<float>(AnimPropID::Rotation,           vs.rotation,        config);
+    reconcileProperty<float>(AnimPropID::ScaleX,             vs.scaleX,          config);
+    reconcileProperty<float>(AnimPropID::ScaleY,             vs.scaleY,          config);
+    reconcileProperty<Point>(AnimPropID::Offset,             vs.offset,          config);
+    reconcileProperty<EdgeInsets>(AnimPropID::Padding,        vs.padding,         config);
+    reconcileProperty<Rect>(AnimPropID::Bounds,              newBounds,          config);
+
+    if (!hadAnimations && hasActiveAnimations()) {
+        AnimationEngine::instance().registerElement(this);
     }
 }
 

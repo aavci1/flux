@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Flux/Core/View.hpp>
+#include <Flux/Core/ViewHelpers.hpp>
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/Property.hpp>
 #include <Flux/Core/KeyEvent.hpp>
@@ -15,7 +16,7 @@ struct Button {
     FLUX_INTERACTIVE_PROPERTIES;
 
     Property<std::string> text;
-    Property<Color> textColor = Colors::white;
+    Property<Color> textColor = Colors::inherit;
 
     void init() {
         focusable = true;
@@ -25,14 +26,13 @@ struct Button {
         bool hasFocus = ctx.isCurrentViewFocused();
         bool isHovered = ctx.isCurrentViewHovered();
         bool isPressed = ctx.isCurrentViewPressed();
+        Element* el = ctx.currentElement();
 
         Color bgColor = static_cast<Color>(backgroundColor);
+        if (isPressed) bgColor = bgColor.darken(0.15f);
+        else if (isHovered) bgColor = bgColor.lighten(0.12f);
 
-        if (isPressed) {
-            bgColor = bgColor.darken(0.15f);
-        } else if (isHovered) {
-            bgColor = bgColor.lighten(0.12f);
-        }
+        if (el) bgColor = el->animateValue<Color>(AnimPropID::Custom0, bgColor);
 
         ctx.setFillStyle(FillStyle::solid(bgColor));
         ctx.setStrokeStyle(StrokeStyle::none());
@@ -40,11 +40,14 @@ struct Button {
 
         float bw = static_cast<float>(borderWidth);
         if (bw > 0) {
-            Color bcVal = borderColor;
+            Color bcVal = isHovered
+                ? static_cast<Color>(borderColor).lighten(0.2f)
+                : static_cast<Color>(borderColor);
+            if (el) bcVal = el->animateValue<Color>(AnimPropID::Custom1, bcVal);
             Path border;
             border.rect(bounds, cornerRadius);
             ctx.setFillStyle(FillStyle::none());
-            ctx.setStrokeStyle(StrokeStyle::solid(isHovered ? bcVal.lighten(0.2f) : bcVal, bw));
+            ctx.setStrokeStyle(StrokeStyle::solid(bcVal, bw));
             ctx.drawPath(border);
         }
 
@@ -53,14 +56,14 @@ struct Button {
             Rect focusRect = {bounds.x - 1, bounds.y - 1, bounds.width + 2, bounds.height + 2};
             focusRing.rect(focusRect, cornerRadius);
             ctx.setFillStyle(FillStyle::none());
-            ctx.setStrokeStyle(StrokeStyle::solid(Colors::blue, 2.0f));
+            ctx.setStrokeStyle(StrokeStyle::solid(ctx.theme().focusRing, 2.0f));
             ctx.drawPath(focusRing);
         }
 
         float labelSize = Typography::callout;
         ctx.setTextStyle(makeTextStyle("default", FontWeight::regular, labelSize, Typography::lineHeightTight,
             Typography::trackingFor(labelSize, FontWeight::regular)));
-        ctx.setFillStyle(FillStyle::solid(textColor));
+        ctx.setFillStyle(FillStyle::solid(resolveColor(textColor, ctx.theme().onAccent)));
         ctx.drawText(static_cast<std::string>(text), bounds.center(), HorizontalAlignment::center, VerticalAlignment::center);
     }
 

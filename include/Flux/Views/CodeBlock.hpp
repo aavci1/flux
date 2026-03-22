@@ -33,6 +33,10 @@ struct CodeBlock {
 
     mutable bool copied = false;
 
+    void transferState(const CodeBlock& old) {
+        copied = old.copied;
+    }
+
     void render(RenderContext& ctx, const Rect& bounds) const {
         float pad = codePadding;
         float rad = codeCornerRadius;

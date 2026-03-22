@@ -5,6 +5,7 @@
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/Property.hpp>
 #include <Flux/Core/KeyEvent.hpp>
+#include <Flux/Core/OverlayManager.hpp>
 #include <Flux/Views/VStack.hpp>
 #include <Flux/Views/HStack.hpp>
 #include <Flux/Views/Text.hpp>
@@ -33,13 +34,29 @@ struct SelectInput {
     Property<float> itemFontSize = Typography::callout;
 
     mutable bool isOpen = false;
+    mutable Rect lastBounds_{};
+    mutable std::string overlayId_;
+
+    void transferState(const SelectInput& old) {
+        isOpen = old.isOpen;
+        lastBounds_ = old.lastBounds_;
+        overlayId_ = old.overlayId_;
+    }
 
     void init() {
         focusable = true;
         cursor = CursorType::Pointer;
 
+        static int nextId = 0;
+        overlayId_ = "select-input-" + std::to_string(nextId++);
+
         onClick = [this]() {
             isOpen = !isOpen;
+            if (isOpen) {
+                showSelectOverlay();
+            } else {
+                hideOverlay(overlayId_);
+            }
             requestApplicationRedraw();
         };
     }
@@ -47,6 +64,7 @@ struct SelectInput {
     bool handleKeyDown(const KeyEvent& event) {
         if (event.key == Key::Escape && isOpen) {
             isOpen = false;
+            hideOverlay(overlayId_);
             requestApplicationRedraw();
             return true;
         }
@@ -70,6 +88,10 @@ struct SelectInput {
         return false;
     }
 
+    void render(RenderContext& ctx, const Rect& bounds) const {
+        lastBounds_ = ctx.getCurrentViewGlobalBounds();
+    }
+
     View body() const {
         std::vector<std::string> opts = options;
         int idx = selectedIndex;
@@ -78,9 +100,7 @@ struct SelectInput {
         std::string currentLabel = (idx >= 0 && idx < static_cast<int>(opts.size()))
             ? opts[idx] : "";
 
-        std::vector<View> children;
-
-        children.push_back(HStack{
+        return HStack{
             .spacing = 4.0f,
             .alignItems = AlignItems::center,
             .backgroundColor = bgColor,
@@ -103,61 +123,71 @@ struct SelectInput {
                     .color = mutedColor
                 }
             }
-        });
+        };
+    }
 
-        if (isOpen) {
-            std::vector<View> optViews;
-            for (int i = 0; i < static_cast<int>(opts.size()); i++) {
-                bool selected = (i == idx);
-                Color bg = selected ? static_cast<Color>(accentColor).opacity(0.15f) : static_cast<Color>(bgColor);
-                int capturedIdx = i;
-                std::string capturedLabel = opts[i];
+private:
+    void showSelectOverlay() const {
+        std::vector<std::string> opts = options;
+        int idx = selectedIndex;
+        float w = selectWidth;
 
-                std::vector<View> itemContent;
-                if (selected) {
-                    itemContent.push_back(Text{
-                        .value = std::string("\xE2\x9C\x93"),
-                        .fontSize = Typography::caption,
-                        .color = accentColor
-                    });
-                }
+        std::vector<View> optViews;
+        for (int i = 0; i < static_cast<int>(opts.size()); i++) {
+            bool selected = (i == idx);
+            Color bg = selected ? static_cast<Color>(accentColor).opacity(0.15f) : static_cast<Color>(bgColor);
+            int capturedIdx = i;
+            std::string capturedLabel = opts[i];
+
+            std::vector<View> itemContent;
+            if (selected) {
                 itemContent.push_back(Text{
-                    .value = capturedLabel,
-                    .fontSize = itemFontSize,
-                    .color = textColor_,
-                    .horizontalAlignment = HorizontalAlignment::leading
-                });
-
-                optViews.push_back(HStack{
-                    .spacing = 8.0f,
-                    .alignItems = AlignItems::center,
-                    .backgroundColor = bg,
-                    .padding = EdgeInsets(6, 10, 6, 10),
-                    .cursor = CursorType::Pointer,
-                    .onClick = [this, capturedIdx, capturedLabel]() {
-                        selectedIndex = capturedIdx;
-                        isOpen = false;
-                        if (onSelect) onSelect(capturedIdx, capturedLabel);
-                    },
-                    .children = std::move(itemContent)
+                    .value = std::string("\xE2\x9C\x93"),
+                    .fontSize = Typography::caption,
+                    .color = accentColor
                 });
             }
+            itemContent.push_back(Text{
+                .value = capturedLabel,
+                .fontSize = itemFontSize,
+                .color = textColor_,
+                .horizontalAlignment = HorizontalAlignment::leading
+            });
 
-            children.push_back(VStack{
-                .spacing = 1.0f,
-                .backgroundColor = dropdownBgColor,
-                .cornerRadius = 4.0f,
-                .borderColor = borderColor_,
-                .borderWidth = 1.0f,
-                .minWidth = w,
-                .children = std::move(optViews)
+            optViews.push_back(HStack{
+                .spacing = 8.0f,
+                .alignItems = AlignItems::center,
+                .backgroundColor = bg,
+                .padding = EdgeInsets(6, 10, 6, 10),
+                .cursor = CursorType::Pointer,
+                .onClick = [this, capturedIdx, capturedLabel]() {
+                    selectedIndex = capturedIdx;
+                    isOpen = false;
+                    hideOverlay(overlayId_);
+                    if (onSelect) onSelect(capturedIdx, capturedLabel);
+                },
+                .children = std::move(itemContent)
             });
         }
 
-        return VStack{
-            .spacing = 2.0f,
-            .children = std::move(children)
+        View dropdown = VStack{
+            .spacing = 1.0f,
+            .backgroundColor = dropdownBgColor,
+            .cornerRadius = 4.0f,
+            .borderColor = borderColor_,
+            .borderWidth = 1.0f,
+            .minWidth = w,
+            .children = std::move(optViews)
         };
+
+        flux::showOverlay(overlayId_, std::move(dropdown), lastBounds_, {
+            .position = OverlayPosition::Below,
+            .dismissOnClickOutside = true,
+            .onDismiss = [this]() {
+                isOpen = false;
+                requestApplicationRedraw();
+            }
+        });
     }
 };
 

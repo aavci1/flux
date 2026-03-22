@@ -8,6 +8,7 @@
 #include <Flux/Core/Property.hpp>
 #include <Flux/Core/EventTypes.hpp>
 #include <Flux/Core/Environment.hpp>
+#include <Flux/Core/OverlayManager.hpp>
 #include <optional>
 #include <vector>
 
@@ -42,12 +43,13 @@ void Renderer::renderFrame(const Rect& bounds) {
         Environment rootEnv = cachedLayoutTree_.environment.value_or(Environment::defaults());
         renderContext_->clear(rootEnv.theme.background);
 
-        // Reconcile persistent element tree
+        suppressRedrawRequests();
         if (!rootElement_) {
             rootElement_ = Element::buildTree(cachedLayoutTree_);
         } else {
             rootElement_->reconcile(cachedLayoutTree_);
         }
+        resumeRedrawRequests();
 
         // Set the global focused/hovered/pressed keys in the render context
         if (window_) {
@@ -70,6 +72,7 @@ void Renderer::renderFrame(const Rect& bounds) {
         commandBuffer_.reserve(512);
         renderContext_->setRecordingBuffer(&commandBuffer_);
         renderTree(cachedLayoutTree_, rootElement_.get());
+        renderOverlays(bounds);
         renderContext_->setRecordingBuffer(nullptr);
 
         // Dispatch deferred focus/blur notifications now that views are valid
@@ -121,32 +124,6 @@ std::optional<CursorType> Renderer::collectCursor(const LayoutNode& node, const 
     }
     
     return std::nullopt;  // Point not in this node
-}
-
-bool Renderer::findAndDispatchEvent(LayoutNode& node, const Event& event, const Point& point) {
-    for (size_t i = node.children.size(); i > 0; --i) {
-        size_t idx = i - 1;
-        if (node.children[idx].bounds.contains(point)) {
-            mouseCapture_.treePath.push_back(idx);
-            if (findAndDispatchEvent(node.children[idx], event, point)) {
-                return true;
-            }
-            mouseCapture_.treePath.pop_back();
-        }
-    }
-
-    if (node.bounds.contains(point) && node.view.isInteractive()) {
-        Point localPoint = {point.x - node.bounds.x, point.y - node.bounds.y};
-        bool handled = dispatchEventToView(node.view, event, localPoint);
-        if (handled && event.type == Event::MouseDown) {
-            mouseCapture_.active = true;
-            pressedBounds_ = node.bounds;
-            hasPressedView_ = true;
-        }
-        return handled;
-    }
-
-    return false;
 }
 
 LayoutNode* Renderer::findNodeByPath(LayoutNode& root, const std::vector<size_t>& path) {
@@ -253,22 +230,41 @@ bool Renderer::dispatchPointerEvent(LayoutNode& root, PointerEvent& event) {
 void Renderer::renderTree(LayoutNode& node, Element* element, Point parentOrigin) {
     renderContext_->pushEnvironment(node.environment.value_or(Environment::defaults()));
 
-    // Register focusable elements and capture the assigned key
+    bool animated = element && element->hasActiveAnimations();
+    if (animated) {
+        element->bumpRenderVersion();
+    }
+
+    // Emit element boundary marker into the command buffer (for incremental compilation)
+    uint32_t beginPatch = 0;
+    bool emittedMarker = false;
+    if (element) {
+        uint64_t stVer = element->subtreeRenderVersion_;
+        beginPatch = commandBuffer_.pushBeginElement(reinterpret_cast<uintptr_t>(element), stVer);
+        emittedMarker = true;
+    }
+
+    Rect visBounds = animated
+        ? element->getAnimatedValue<Rect>(AnimPropID::Bounds, node.bounds)
+        : node.bounds;
+
     std::string assignedFocusKey;
     if (window_ && node.view.canBeFocused() && element) {
         assignedFocusKey = window_->focus().registerFocusableElement(
             element,
-            node.bounds
+            visBounds
         );
     }
 
     renderContext_->save();
 
-    float relX = node.bounds.x - parentOrigin.x;
-    float relY = node.bounds.y - parentOrigin.y;
+    float relX = visBounds.x - parentOrigin.x;
+    float relY = visBounds.y - parentOrigin.y;
     renderContext_->translate(relX, relY);
 
-    Rect localBounds = {0, 0, node.bounds.width, node.bounds.height};
+    Rect localBounds = {0, 0, visBounds.width, visBounds.height};
+
+    auto vs = node.view.getVisualStyle();
 
     if (node.view.shouldClip()) {
         Path clipPath;
@@ -277,11 +273,37 @@ void Renderer::renderTree(LayoutNode& node, Element* element, Point parentOrigin
     }
 
     renderContext_->setCurrentFocusKey(assignedFocusKey.empty() ? node.view.getFocusKey() : assignedFocusKey);
-    renderContext_->setCurrentViewGlobalBounds(node.bounds);
+    renderContext_->setCurrentViewGlobalBounds(visBounds);
+    renderContext_->setCurrentElement(element);
+
+    Point offsetPt = animated
+        ? element->getAnimatedValue<Point>(AnimPropID::Offset, vs.offset)
+        : vs.offset;
+    if (offsetPt.x != 0 || offsetPt.y != 0)
+        renderContext_->translate(offsetPt.x, offsetPt.y);
+
+    float rot = animated
+        ? element->getAnimatedValue<float>(AnimPropID::Rotation, vs.rotation)
+        : vs.rotation;
+    if (rot != 0) renderContext_->rotate(rot);
+
+    float sx = animated
+        ? element->getAnimatedValue<float>(AnimPropID::ScaleX, vs.scaleX)
+        : vs.scaleX;
+    float sy = animated
+        ? element->getAnimatedValue<float>(AnimPropID::ScaleY, vs.scaleY)
+        : vs.scaleY;
+    if (sx != 1.0f || sy != 1.0f) renderContext_->scale(sx, sy);
+
+    float opacityVal = animated
+        ? element->getAnimatedValue<float>(AnimPropID::Opacity, vs.opacity)
+        : vs.opacity;
+    if (opacityVal < 1.0f)
+        renderContext_->setOpacity(opacityVal);
 
     node.view->render(*renderContext_, localBounds);
 
-    Point currentOrigin = {node.bounds.x, node.bounds.y};
+    Point currentOrigin = {visBounds.x, visBounds.y};
     size_t elemChildCount = element ? element->children.size() : 0;
     for (size_t i = 0; i < node.children.size(); ++i) {
         Element* childElement = (i < elemChildCount) ? element->children[i].get() : nullptr;
@@ -290,35 +312,24 @@ void Renderer::renderTree(LayoutNode& node, Element* element, Point parentOrigin
 
     renderContext_->restore();
     renderContext_->popEnvironment();
+
+    if (emittedMarker) {
+        commandBuffer_.pushEndElement(beginPatch);
+    }
 }
 
-void Renderer::handleEvent(const struct Event& event, const Rect& windowBounds) {
+void Renderer::handleEvent(const PointerEvent& event, const Rect& windowBounds) {
     if (!rootView_.isValid()) {
         return;
     }
 
-    Point eventPoint;
-    
-    switch (event.type) {
-        case Event::MouseMove:
-            eventPoint = {event.mouseMove.x, event.mouseMove.y};
-            break;
-        case Event::MouseDown:
-        case Event::MouseUp:
-            eventPoint = {event.mouseButton.x, event.mouseButton.y};
-            break;
-        case Event::MouseScroll:
-            eventPoint = {event.mouseScroll.x, event.mouseScroll.y};
-            break;
-        default:
-            return;
-    }
+    Point eventPoint = event.windowPosition;
 
     if (!windowBounds.contains(eventPoint)) {
         return;
     }
 
-    if (!layoutCacheValid_ || 
+    if (!layoutCacheValid_ ||
         cachedBounds_.x != windowBounds.x || cachedBounds_.y != windowBounds.y ||
         cachedBounds_.width != windowBounds.width || cachedBounds_.height != windowBounds.height) {
         suppressRedrawRequests();
@@ -330,8 +341,11 @@ void Renderer::handleEvent(const struct Event& event, const Rect& windowBounds) 
     }
 
     bool needsRedraw = false;
+    const bool isMove  = event.kind == PointerEvent::Kind::Move;
+    const bool isDown  = event.kind == PointerEvent::Kind::Down;
+    const bool isUp    = event.kind == PointerEvent::Kind::Up;
 
-    if (event.type == Event::MouseMove) {
+    if (isMove) {
         bool hoverChanged = updateHoverState(eventPoint);
         if (window_) {
             std::optional<CursorType> cursor = collectCursor(cachedLayoutTree_, eventPoint, CursorType::Default);
@@ -339,56 +353,53 @@ void Renderer::handleEvent(const struct Event& event, const Rect& windowBounds) 
         }
         needsRedraw = hoverChanged;
     }
-    
-    if (event.type == Event::MouseDown && window_) {
+
+    if (isDown && window_) {
         window_->focus().focusViewAtPoint(eventPoint);
         needsRedraw = true;
     }
 
-    if (event.type == Event::MouseUp) {
+    if (isUp) {
         hasPressedView_ = false;
         needsRedraw = true;
     }
 
-    // Build a PointerEvent for the unified pipeline
-    PointerEvent ptrEvent;
-    ptrEvent.windowPosition = eventPoint;
-    ptrEvent.localPosition = eventPoint;
-    switch (event.type) {
-        case Event::MouseDown:
-            ptrEvent.kind = PointerEvent::Kind::Down;
-            ptrEvent.button = event.mouseButton.button;
-            break;
-        case Event::MouseUp:
-            ptrEvent.kind = PointerEvent::Kind::Up;
-            ptrEvent.button = event.mouseButton.button;
-            break;
-        case Event::MouseMove:
-            ptrEvent.kind = PointerEvent::Kind::Move;
-            break;
-        case Event::MouseScroll:
-            ptrEvent.kind = PointerEvent::Kind::Scroll;
-            ptrEvent.scrollDeltaX = event.mouseScroll.deltaX;
-            ptrEvent.scrollDeltaY = event.mouseScroll.deltaY;
-            break;
-        default:
-            break;
+    PointerEvent ptrEvent = event;
+
+    if (!overlayManager_.empty() && (!mouseCapture_.active || mouseCapture_.fromOverlay)) {
+        if (mouseCapture_.active && mouseCapture_.fromOverlay && (isMove || isUp)) {
+            dispatchPointerEventToOverlays(ptrEvent);
+            needsRedraw = true;
+            if (isUp) {
+                mouseCapture_.active = false;
+                mouseCapture_.fromOverlay = false;
+            }
+            requestApplicationRedraw();
+            return;
+        }
+        if (dispatchPointerEventToOverlays(ptrEvent)) {
+            if (mouseCapture_.active) mouseCapture_.fromOverlay = true;
+            needsRedraw = true;
+            requestApplicationRedraw();
+            return;
+        }
     }
 
-    if (mouseCapture_.active && (event.type == Event::MouseMove || event.type == Event::MouseUp)) {
+    if (mouseCapture_.active && (isMove || isUp)) {
         LayoutNode* captured = findNodeByPath(cachedLayoutTree_, mouseCapture_.treePath);
         if (captured && captured->view.isInteractive()) {
-            if (event.type == Event::MouseMove) {
+            if (isMove) {
                 pressedBounds_ = captured->bounds;
                 hasPressedView_ = true;
             }
             dispatchPointerToView(captured->view, ptrEvent, captured->bounds);
             needsRedraw = true;
         }
-        if (event.type == Event::MouseUp) {
+        if (isUp) {
             mouseCapture_.active = false;
+            mouseCapture_.fromOverlay = false;
         }
-    } else if (event.type != Event::MouseMove) {
+    } else if (!isMove) {
         mouseCapture_.treePath.clear();
         if (dispatchPointerEvent(cachedLayoutTree_, ptrEvent)) {
             needsRedraw = true;
@@ -420,7 +431,18 @@ bool Renderer::updateHoverState(const Point& point) {
 
     hasHoveredView_ = false;
     std::vector<View> newPath;
-    collectHoverPath(cachedLayoutTree_, point, newPath);
+
+    // Check overlays first (reverse order — topmost overlay has priority)
+    for (auto it = overlayManager_.entries().rbegin(); it != overlayManager_.entries().rend(); ++it) {
+        if (it->layoutTree.bounds.contains(point)) {
+            collectHoverPath(it->layoutTree, point, newPath);
+            break;
+        }
+    }
+
+    if (newPath.empty()) {
+        collectHoverPath(cachedLayoutTree_, point, newPath);
+    }
 
     size_t commonLen = 0;
     size_t minLen = std::min(hoveredViews_.size(), newPath.size());
@@ -441,6 +463,46 @@ bool Renderer::updateHoverState(const Point& point) {
 
     hoveredViews_ = std::move(newPath);
     return changed;
+}
+
+void Renderer::renderOverlays(const Rect& viewport) {
+    if (overlayManager_.empty()) return;
+
+    suppressRedrawRequests();
+    overlayManager_.layoutOverlays(*renderContext_, viewport);
+    resumeRedrawRequests();
+
+    for (auto& entry : overlayManager_.entries()) {
+        // Draw backdrop if configured
+        if (entry.config.backdrop.a > 0.0f) {
+            renderContext_->save();
+            renderContext_->setFillColor(entry.config.backdrop);
+            renderContext_->drawRect(viewport);
+            renderContext_->restore();
+        }
+
+        renderTree(entry.layoutTree, entry.element.get());
+    }
+}
+
+bool Renderer::dispatchPointerEventToOverlays(PointerEvent& event) {
+    auto& entries = overlayManager_.entries();
+    for (auto it = entries.rbegin(); it != entries.rend(); ++it) {
+        if (it->layoutTree.bounds.contains(event.windowPosition)) {
+            return dispatchPointerEvent(it->layoutTree, event);
+        }
+
+        if (it->config.dismissOnClickOutside &&
+            event.kind == PointerEvent::Kind::Down) {
+            std::string id = it->id;
+            auto onDismiss = it->config.onDismiss;
+            bool modal = it->config.modal;
+            overlayManager_.hide(id);
+            if (onDismiss) onDismiss();
+            return modal;
+        }
+    }
+    return false;
 }
 
 } // namespace flux

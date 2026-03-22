@@ -25,24 +25,31 @@ struct TextInput {
     Property<int> maxLength = -1;
 
     Property<float> fontSize = Typography::body;
-    Property<Color> textColor = Color(0.92f, 0.92f, 0.92f);
-    Property<Color> placeholderColor = Color(0.48f, 0.48f, 0.48f);
-    Property<Color> bgColor = Color(0.12f, 0.12f, 0.12f);
-    Property<Color> borderCol = Color(0.22f, 0.22f, 0.22f);
-    Property<Color> focusBorderColor = Colors::blue;
-    Property<Color> selectionColor = Colors::blue;
+    Property<Color> textColor = Colors::inherit;
+    Property<Color> placeholderColor = Colors::inherit;
+    Property<Color> bgColor = Colors::inherit;
+    Property<Color> borderCol = Colors::inherit;
+    Property<Color> focusBorderColor = Colors::inherit;
+    Property<Color> selectionColor = Colors::inherit;
     Property<float> inputCornerRadius = 4.0f;
     Property<float> inputPadding = 8.0f;
     Property<float> inputWidth = 200.0f;
     Property<float> inputHeight = 36.0f;
 
-    std::function<void(const std::string&)> onValueChange;
-    std::function<void()> onReturn;
-
     mutable size_t caretPos = std::string::npos;
     mutable size_t selStart = std::string::npos;
     mutable size_t selEnd = std::string::npos;
     mutable float scrollOffset = 0.0f;
+
+    std::function<void(const std::string&)> onValueChange;
+    std::function<void()> onReturn;
+
+    void transferState(const TextInput& old) {
+        caretPos = old.caretPos;
+        selStart = old.selStart;
+        selEnd = old.selEnd;
+        scrollOffset = old.scrollOffset;
+    }
 
     void init() {
         focusable = true;
@@ -158,21 +165,16 @@ struct TextInput {
         float pad = inputPadding;
         float rad = inputCornerRadius;
         bool isFocused = ctx.isCurrentViewFocused();
-        bool isHovered = ctx.isCurrentViewHovered();
+        const auto& th = ctx.theme();
 
-        ctx.setFillStyle(FillStyle::solid(bgColor));
-        ctx.setStrokeStyle(StrokeStyle::none());
-        ctx.drawRect(bounds, CornerRadius(rad));
+        Color bg = resolveColor(bgColor, th.inputBackground);
+        Color border = resolveColor(borderCol, th.borderStrong);
+        Color focus = resolveColor(focusBorderColor, th.focusRing);
+        Color text = resolveColor(textColor, th.inputForeground);
+        Color ph = resolveColor(placeholderColor, th.placeholder);
+        Color sel = resolveColor(selectionColor, th.selection);
 
-        Color bc = isFocused ? static_cast<Color>(focusBorderColor)
-                 : isHovered ? static_cast<Color>(borderCol).lighten(0.3f)
-                 : static_cast<Color>(borderCol);
-        float bw = isFocused ? 2.0f : 1.0f;
-        Path border;
-        border.rect(bounds, CornerRadius(rad));
-        ctx.setFillStyle(FillStyle::none());
-        ctx.setStrokeStyle(StrokeStyle::solid(bc, bw));
-        ctx.drawPath(border);
+        ViewHelpers::drawInputFieldChrome(ctx, bounds, bg, border, focus, rad);
 
         Rect textArea = {bounds.x + pad, bounds.y, bounds.width - pad * 2, bounds.height};
         float fs = fontSize;
@@ -195,20 +197,20 @@ struct TextInput {
         ctx.setTextStyle(textStyle);
 
         if (val.empty() && !isFocused) {
-            std::string ph = placeholder;
-            if (!ph.empty()) {
-                ctx.setFillStyle(FillStyle::solid(placeholderColor));
-                ctx.drawText(ph, {textArea.x, bounds.center().y},
+            std::string phText = placeholder;
+            if (!phText.empty()) {
+                ctx.setFillStyle(FillStyle::solid(ph));
+                ctx.drawText(phText, {textArea.x, bounds.center().y},
                     HorizontalAlignment::leading, VerticalAlignment::center);
             }
             return;
         }
 
         if (val.empty() && isFocused) {
-            std::string ph = placeholder;
-            if (!ph.empty()) {
-                ctx.setFillStyle(FillStyle::solid(static_cast<Color>(placeholderColor).opacity(0.4f)));
-                ctx.drawText(ph, {textArea.x, bounds.center().y},
+            std::string phText = placeholder;
+            if (!phText.empty()) {
+                ctx.setFillStyle(FillStyle::solid(ph.opacity(0.4f)));
+                ctx.drawText(phText, {textArea.x, bounds.center().y},
                     HorizontalAlignment::leading, VerticalAlignment::center);
             }
         }
@@ -222,12 +224,12 @@ struct TextInput {
             Size selSize = ctx.measureText(selText, textStyle);
             Rect selRect = {textArea.x + beforeSize.width, bounds.y + 4,
                            selSize.width, bounds.height - 8};
-            ctx.setFillStyle(FillStyle::solid(static_cast<Color>(selectionColor).opacity(0.3f)));
+            ctx.setFillStyle(FillStyle::solid(sel));
             ctx.setStrokeStyle(StrokeStyle::none());
             ctx.drawRect(selRect, CornerRadius(2));
         }
 
-        ctx.setFillStyle(FillStyle::solid(textColor));
+        ctx.setFillStyle(FillStyle::solid(text));
         ctx.drawText(displayText, {textArea.x, bounds.center().y},
             HorizontalAlignment::leading, VerticalAlignment::center);
 
@@ -240,7 +242,7 @@ struct TextInput {
                 Size caretSize = ctx.measureText(beforeCaret, textStyle);
                 float cx = textArea.x + caretSize.width;
                 ctx.setFillStyle(FillStyle::none());
-                ctx.setStrokeStyle(StrokeStyle::solid(static_cast<Color>(textColor), 1.5f));
+                ctx.setStrokeStyle(StrokeStyle::solid(text, 1.5f));
                 ctx.drawLine({cx, bounds.y + 6}, {cx, bounds.y + bounds.height - 6});
             }
         }

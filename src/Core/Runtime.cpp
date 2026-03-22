@@ -1,12 +1,15 @@
 #include <Flux/Core/Runtime.hpp>
 #include <Flux/Core/Window.hpp>
+#include <Flux/Core/OverlayManager.hpp>
 #include <Flux/Platform/EventLoopWake.hpp>
 #include <Flux/Platform/PlatformRegistry.hpp>
 #include <Flux/Platform/PlatformWindowFactory.hpp>
 #include <Flux/Platform/PlatformWindow.hpp>
 #include <Flux/Platform/MemoryFootprint.hpp>
+#include <Flux/Animation/AnimationEngine.hpp>
 #include <Flux/Core/Log.hpp>
 #include <algorithm>
+#include <chrono>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
@@ -15,8 +18,6 @@ namespace flux {
 
 Runtime* Runtime::current_ = nullptr;
 
-static std::atomic<uint64_t> bodyGeneration_{0};
-
 static thread_local int suppressRedrawRequests_ = 0;
 
 void suppressRedrawRequests() { ++suppressRedrawRequests_; }
@@ -24,14 +25,48 @@ void resumeRedrawRequests()   { --suppressRedrawRequests_; }
 
 void requestApplicationRedraw() {
     if (suppressRedrawRequests_ > 0) return;
-    bodyGeneration_.fetch_add(1, std::memory_order_relaxed);
+    if (Runtime::current_) {
+        Runtime::current_->bumpBodyGeneration();
+        Runtime::current_->requestRedraw();
+    }
+}
+
+void requestRedrawOnly() {
+    if (suppressRedrawRequests_ > 0) return;
     if (Runtime::current_) {
         Runtime::current_->requestRedraw();
     }
 }
 
 uint64_t currentBodyGeneration() {
-    return bodyGeneration_.load(std::memory_order_relaxed);
+    if (!Runtime::hasInstance()) return 0;
+    return Runtime::instance().bodyGeneration();
+}
+
+OverlayManager* Runtime::findOverlayManager() {
+    if (windows_.empty()) return nullptr;
+    return windows_.front()->overlayManager();
+}
+
+void showOverlay(const std::string& id, View content, Rect anchor, OverlayConfig config) {
+    if (!Runtime::hasInstance()) return;
+    if (auto* mgr = Runtime::instance().findOverlayManager()) {
+        mgr->show(id, std::move(content), anchor, std::move(config));
+    }
+}
+
+void hideOverlay(const std::string& id) {
+    if (!Runtime::hasInstance()) return;
+    if (auto* mgr = Runtime::instance().findOverlayManager()) {
+        mgr->hide(id);
+    }
+}
+
+void hideAllOverlays() {
+    if (!Runtime::hasInstance()) return;
+    if (auto* mgr = Runtime::instance().findOverlayManager()) {
+        mgr->hideAll();
+    }
 }
 
 void Runtime::requestRedraw() {
@@ -131,10 +166,23 @@ int Runtime::run() {
         return 1;
     }
     bool memoryReportAfterFirstFrame = false;
+    auto lastFrameTime = std::chrono::steady_clock::now();
+
     while (running_) {
+        bool animating = animationEngine_.hasActiveAnimations();
         bool redrawPending = needsRedraw_.load(std::memory_order_relaxed);
 
-        if (redrawPending) {
+        if (animating) {
+            auto now = std::chrono::steady_clock::now();
+            float dt = std::chrono::duration<float>(now - lastFrameTime).count();
+            lastFrameTime = now;
+            animationEngine_.tick(dt);
+            needsRedraw_.store(true, std::memory_order_relaxed);
+            redrawPending = true;
+
+            processEvents();
+        } else if (redrawPending) {
+            lastFrameTime = std::chrono::steady_clock::now();
             processEvents();
         } else {
             bool blinkActive = false;
@@ -147,6 +195,7 @@ int Runtime::run() {
             } else {
                 waitForEvents();
             }
+            lastFrameTime = std::chrono::steady_clock::now();
         }
 
         for (auto& window : windows_) {
@@ -163,6 +212,12 @@ int Runtime::run() {
                     programName_.empty() ? std::string("flux") : programName_;
                 logMemoryFootprintIfRequested((tag + ": first frame").c_str());
             }
+        }
+
+        // If animations are still running, keep the event loop awake
+        if (animationEngine_.hasActiveAnimations()) {
+            needsRedraw_.store(true, std::memory_order_relaxed);
+            wakePlatformEventLoop();
         }
     }
     return 0;

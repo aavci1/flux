@@ -27,11 +27,11 @@ struct TextArea {
     Property<float> areaMinHeight = 72.0f;
     Property<float> areaMaxHeight = 200.0f;
     Property<bool> autoExpand = true;
-    Property<Color> textColor = Color(0.92f, 0.92f, 0.92f);
-    Property<Color> bgColor = Color(0.12f, 0.12f, 0.12f);
-    Property<Color> borderCol = Color(0.22f, 0.22f, 0.22f);
-    Property<Color> focusBorderColor = Colors::blue;
-    Property<Color> placeholderColor = Color(0.48f, 0.48f, 0.48f);
+    Property<Color> textColor = Colors::inherit;
+    Property<Color> bgColor = Colors::inherit;
+    Property<Color> borderCol = Colors::inherit;
+    Property<Color> focusBorderColor = Colors::inherit;
+    Property<Color> placeholderColor = Colors::inherit;
     Property<float> areaCornerRadius = 4.0f;
     Property<float> areaPadding = 10.0f;
     Property<float> areaWidth = 400.0f;
@@ -41,6 +41,11 @@ struct TextArea {
 
     mutable size_t caretPos = std::string::npos;
     mutable float scrollY = 0.0f;
+
+    void transferState(const TextArea& old) {
+        caretPos = old.caretPos;
+        scrollY = old.scrollY;
+    }
 
     void init() {
         focusable = true;
@@ -131,21 +136,15 @@ struct TextArea {
         float pad = areaPadding;
         float rad = areaCornerRadius;
         bool isFocused = ctx.isCurrentViewFocused();
-        bool isHovered = ctx.isCurrentViewHovered();
+        const auto& th = ctx.theme();
 
-        ctx.setFillStyle(FillStyle::solid(bgColor));
-        ctx.setStrokeStyle(StrokeStyle::none());
-        ctx.drawRect(bounds, CornerRadius(rad));
+        Color bg = resolveColor(bgColor, th.inputBackground);
+        Color border = resolveColor(borderCol, th.borderStrong);
+        Color focus = resolveColor(focusBorderColor, th.focusRing);
+        Color text = resolveColor(textColor, th.inputForeground);
+        Color ph = resolveColor(placeholderColor, th.placeholder);
 
-        Color bc = isFocused ? static_cast<Color>(focusBorderColor)
-                 : isHovered ? static_cast<Color>(borderCol).lighten(0.3f)
-                 : static_cast<Color>(borderCol);
-        float bw = isFocused ? 2.0f : 1.0f;
-        Path border;
-        border.rect(bounds, CornerRadius(rad));
-        ctx.setFillStyle(FillStyle::none());
-        ctx.setStrokeStyle(StrokeStyle::solid(bc, bw));
-        ctx.drawPath(border);
+        ViewHelpers::drawInputFieldChrome(ctx, bounds, bg, border, focus, rad);
 
         float fs = fontSize;
         std::string val = value;
@@ -159,17 +158,17 @@ struct TextArea {
         float lineHeight = fs * Typography::lineHeightBody;
 
         if (val.empty()) {
-            std::string ph = placeholder;
-            if (!ph.empty()) {
-                ctx.setFillStyle(FillStyle::solid(placeholderColor));
-                ctx.drawText(ph, {textX, textY},
+            std::string phText = placeholder;
+            if (!phText.empty()) {
+                ctx.setFillStyle(FillStyle::solid(ph));
+                ctx.drawText(phText, {textX, textY},
                     HorizontalAlignment::leading, VerticalAlignment::bottom);
             }
             if (isFocused) {
                 auto now = std::chrono::steady_clock::now();
                 float secs = std::chrono::duration<float>(now.time_since_epoch()).count();
                 if (std::fmod(secs, 1.0f) < 0.5f) {
-                    ctx.setStrokeStyle(StrokeStyle::solid(static_cast<Color>(textColor), 1.5f));
+                    ctx.setStrokeStyle(StrokeStyle::solid(text, 1.5f));
                     ctx.drawLine({textX, bounds.y + pad}, {textX, bounds.y + pad + fs});
                 }
             }
@@ -182,7 +181,7 @@ struct TextArea {
         while (std::getline(stream, line)) lines.push_back(line);
         if (val.back() == '\n') lines.push_back("");
 
-        ctx.setFillStyle(FillStyle::solid(textColor));
+        ctx.setFillStyle(FillStyle::solid(text));
         for (size_t i = 0; i < lines.size(); i++) {
             float y = textY + i * lineHeight - scrollY;
             if (y < bounds.y - lineHeight || y > bounds.y + bounds.height + lineHeight) continue;
@@ -201,7 +200,7 @@ struct TextArea {
                 Size cs = ctx.measureText(beforeCaret, textStyle);
                 float cx = textX + cs.width;
                 float cy = bounds.y + pad + lineIdx * lineHeight - scrollY;
-                ctx.setStrokeStyle(StrokeStyle::solid(static_cast<Color>(textColor), 1.0f));
+                ctx.setStrokeStyle(StrokeStyle::solid(text, 1.0f));
                 ctx.drawLine({cx, cy}, {cx, cy + fs});
             }
         }

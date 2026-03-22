@@ -5,6 +5,7 @@
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/Property.hpp>
 #include <Flux/Core/KeyEvent.hpp>
+#include <Flux/Core/OverlayManager.hpp>
 #include <Flux/Views/VStack.hpp>
 #include <Flux/Views/HStack.hpp>
 #include <Flux/Views/Text.hpp>
@@ -45,9 +46,20 @@ struct Dialog {
     Property<float> titleFontSize = Typography::body;
     Property<float> messageFontSize = Typography::body;
 
+    mutable std::string overlayId_;
+    mutable bool overlayShown_ = false;
+
+    void transferState(const Dialog& old) {
+        overlayId_ = old.overlayId_;
+        overlayShown_ = old.overlayShown_;
+    }
+
     void init() {
         focusable = true;
         onMouseDown = [](float, float, int) {};
+
+        static int nextId = 0;
+        overlayId_ = "dialog-" + std::to_string(nextId++);
     }
 
     bool handleKeyDown(const KeyEvent& event) const {
@@ -68,11 +80,23 @@ struct Dialog {
         return true;
     }
 
-    View body() const {
-        if (!static_cast<bool>(isVisible)) {
-            return VStack{.visible = false};
+    void render(RenderContext& ctx, const Rect& bounds) const {
+        bool vis = static_cast<bool>(isVisible);
+        if (vis && !overlayShown_) {
+            showDialogOverlay();
+            overlayShown_ = true;
+        } else if (!vis && overlayShown_) {
+            hideOverlay(overlayId_);
+            overlayShown_ = false;
         }
+    }
 
+    View body() const {
+        return VStack{.visible = static_cast<bool>(isVisible)};
+    }
+
+private:
+    void showDialogOverlay() const {
         std::vector<View> btnViews;
         btnViews.push_back(Spacer{});
         for (const auto& btn : buttons) {
@@ -118,8 +142,7 @@ struct Dialog {
             .children = std::move(btnViews)
         });
 
-        return VStack{
-            .backgroundColor = overlayColor,
+        View dialogContent = VStack{
             .children = {
                 Spacer{},
                 HStack{
@@ -143,6 +166,13 @@ struct Dialog {
                 Spacer{}
             }
         };
+
+        flux::showOverlay(overlayId_, std::move(dialogContent), {}, {
+            .position = OverlayPosition::Center,
+            .dismissOnClickOutside = false,
+            .modal = true,
+            .backdrop = overlayColor
+        });
     }
 };
 

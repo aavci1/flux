@@ -10,6 +10,7 @@
 #include <Flux/Platform/PlatformWindowFactory.hpp>
 #include <Flux/Graphics/Renderer.hpp>
 #include <Flux/Graphics/RenderContext.hpp>
+#include <Flux/Core/OverlayManager.hpp>
 #include <Flux/Platform/PlatformWindow.hpp>
 #include "../Testing/TestServer.hpp"
 #include "../Testing/ScreenCapture.hpp"
@@ -125,17 +126,21 @@ void Window::render() {
             impl_->testServer->notifyScreenshotCaptured();
         }
         if (impl_->renderer->hasValidLayout()) {
+            std::string json;
             if (std::getenv("FLUX_TEST_PROFILE")) {
                 auto t0 = std::chrono::steady_clock::now();
-                std::string json = TestServer::serializeUITree(impl_->renderer->getCachedLayoutTree());
+                json = TestServer::serializeUITree(
+                    impl_->renderer->getCachedLayoutTree(),
+                    impl_->renderer->getOverlayManager());
                 auto ms = std::chrono::duration<double, std::milli>(
                     std::chrono::steady_clock::now() - t0).count();
                 std::cerr << "[FLUX_TEST_PROFILE] serializeUITree " << ms << " ms\n";
-                impl_->testServer->updateUITreeJSON(std::move(json));
             } else {
-                std::string json = TestServer::serializeUITree(impl_->renderer->getCachedLayoutTree());
-                impl_->testServer->updateUITreeJSON(std::move(json));
+                json = TestServer::serializeUITree(
+                    impl_->renderer->getCachedLayoutTree(),
+                    impl_->renderer->getOverlayManager());
             }
+            impl_->testServer->updateUITreeJSON(std::move(json));
         }
         impl_->testServer->signalFrameComplete();
     }
@@ -351,6 +356,10 @@ bool Window::isCursorBlinkActive() const {
     return impl_->renderer && impl_->renderer->isCursorBlinkActive();
 }
 
+OverlayManager* Window::overlayManager() {
+    return impl_->renderer ? &impl_->renderer->overlayManager() : nullptr;
+}
+
 // Hooks
 
 void Window::setPostRenderCallback(std::function<void()> callback) {
@@ -434,6 +443,69 @@ void Window::processSyntheticEvents() {
         impl_->testServer->markEventsProcessed(events);
         requestRedraw();
     }
+}
+
+std::string TestServer::serializeUITree(const LayoutNode& root, const OverlayManager& overlays) {
+    std::string out;
+    out.reserve(4096);
+
+    if (overlays.entries().empty()) {
+        serializeNode(root, "0", out);
+    } else {
+        out += '{';
+        out += "\"id\":\"0\",\"type\":\"";
+        out += escapeJson(root.view.getTypeName());
+        out += "\",\"bounds\":{\"x\":";
+        appendFloat(out, root.bounds.x);
+        out += ",\"y\":";
+        appendFloat(out, root.bounds.y);
+        out += ",\"w\":";
+        appendFloat(out, root.bounds.width);
+        out += ",\"h\":";
+        appendFloat(out, root.bounds.height);
+        out += '}';
+
+        std::string text = root.view.getTextContent();
+        if (!text.empty()) {
+            out += ",\"text\":\"";
+            out += escapeJson(text);
+            out += '"';
+        }
+
+        std::string value = root.view.getAccessibleValue();
+        if (!value.empty()) {
+            out += ",\"value\":\"";
+            out += escapeJson(value);
+            out += '"';
+        }
+
+        if (root.view.isInteractive()) out += ",\"interactive\":true";
+        if (root.view.canBeFocused()) {
+            out += ",\"focusable\":true";
+            std::string fk = root.view.getFocusKey();
+            if (!fk.empty()) {
+                out += ",\"focusKey\":\"";
+                out += escapeJson(fk);
+                out += '"';
+            }
+        }
+
+        out += ",\"children\":[";
+        for (size_t i = 0; i < root.children.size(); i++) {
+            if (i > 0) out += ',';
+            serializeNode(root.children[i], "0/" + std::to_string(i), out);
+        }
+
+        size_t overlayIdx = root.children.size();
+        for (const auto& entry : overlays.entries()) {
+            out += ',';
+            serializeNode(entry.layoutTree, "0/" + std::to_string(overlayIdx++), out);
+        }
+
+        out += "]}";
+    }
+
+    return out;
 }
 
 } // namespace flux

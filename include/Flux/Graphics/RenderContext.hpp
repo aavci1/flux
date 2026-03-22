@@ -469,6 +469,11 @@ public:
     virtual void setCurrentViewGlobalBounds(const Rect& bounds) = 0;
 
     /**
+     * Get the global bounds of the view currently being rendered
+     */
+    Rect getCurrentViewGlobalBounds() const { return currentViewBounds_; }
+
+    /**
      * Check if the currently rendering view is hovered
      */
     virtual bool isCurrentViewHovered() const = 0;
@@ -515,6 +520,10 @@ public:
     /** Shorthand for `environment().theme`. */
     const Theme& theme() const { return environment().theme; }
 
+    // Current Element pointer for animation value lookups during render
+    void setCurrentElement(class Element* el) { currentElement_ = el; }
+    class Element* currentElement() const { return currentElement_; }
+
 protected:
     // Focus / hover / pressed state (shared across all backends)
     std::string globalFocusedKey_;
@@ -527,6 +536,7 @@ protected:
     bool hasPressed_ = false;
 
     class RenderCommandBuffer* recordingBuffer_ = nullptr;
+    class Element* currentElement_ = nullptr;
 
     std::vector<Environment> environmentStack_;
 };
