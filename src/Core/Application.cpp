@@ -2,6 +2,13 @@
 #include <Flux/Core/Window.hpp>
 #include <Flux/Core/OverlayManager.hpp>
 #include <Flux/Platform/EventLoopWake.hpp>
+#if defined(__APPLE__)
+// Public libobjc entry points (used by Swift/clang); not always declared in <objc/runtime.h>.
+extern "C" {
+void* objc_autoreleasePoolPush(void);
+void objc_autoreleasePoolPop(void* pool);
+}
+#endif
 #include <Flux/Platform/PlatformRegistry.hpp>
 #include <Flux/Platform/PlatformWindowFactory.hpp>
 #include <Flux/Platform/PlatformWindow.hpp>
@@ -11,6 +18,17 @@
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
+
+#if defined(__APPLE__)
+namespace {
+/// One AppKit/Metal frame can create many autoreleased objects; drain each turn of the
+/// manual event loop (same role as @autoreleasepool in an NSRunLoop-driven app).
+struct MacAutoreleasePoolFrame {
+    void* token = objc_autoreleasePoolPush();
+    ~MacAutoreleasePoolFrame() { objc_autoreleasePoolPop(token); }
+};
+} // namespace
+#endif
 
 namespace flux {
 
@@ -158,6 +176,9 @@ int Application::exec() {
     }
     bool memoryReportAfterFirstFrame = false;
     while (running_) {
+#if defined(__APPLE__)
+        MacAutoreleasePoolFrame macAutoreleasePoolFrame;
+#endif
         bool redrawPending = needsRedraw_.load(std::memory_order_relaxed);
 
         if (redrawPending) {
