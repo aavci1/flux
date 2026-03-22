@@ -4,12 +4,12 @@
 using namespace flux;
 
 int main(int argc, char* argv[]) {
-    Runtime runtime(argc, argv);
+    Application app(argc, argv);
 
     auto sliderVal = Property<float>::shared(0.5f);
     auto steppedVal = Property<float>::shared(50.0f);
 
-    auto& window = runtime.createWindow({
+    auto& window = app.createWindow({
         .size = {600, 400},
         .title = "Test: Slider"
     });
@@ -73,5 +73,5 @@ int main(int argc, char* argv[]) {
         }
     );
 
-    return runtime.run();
+    return app.exec();
 }

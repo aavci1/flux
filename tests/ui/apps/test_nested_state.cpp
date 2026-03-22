@@ -4,12 +4,12 @@
 using namespace flux;
 
 int main(int argc, char* argv[]) {
-    Runtime runtime(argc, argv);
+    Application app(argc, argv);
 
     Property<int> counter = 0;
     Property<std::string> history = "";
 
-    auto& window = runtime.createWindow({
+    auto& window = app.createWindow({
         .size = {600, 500},
         .title = "Test: Nested State"
     });
@@ -149,5 +149,5 @@ int main(int argc, char* argv[]) {
         }
     );
 
-    return runtime.run();
+    return app.exec();
 }

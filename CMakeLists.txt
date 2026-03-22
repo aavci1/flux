@@ -102,7 +102,7 @@ endforeach()
 # Flux library sources
 set(FLUX_SOURCES
     # Core
-    src/Core/Runtime.cpp
+    src/Core/Application.cpp
     src/Core/Window.cpp
     src/Core/KeyboardInputHandler.cpp
     src/Core/MouseInputHandler.cpp
@@ -303,6 +303,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(BUILD_EXAMPLES "Build example applications" ON)
 
 if(BUILD_EXAMPLES)
+    add_executable(hello_world examples/hello-world/main.cpp)
+    target_link_libraries(hello_world PRIVATE flux)
+
     add_executable(clock examples/clock/main.cpp)
     target_link_libraries(clock PRIVATE flux)
 

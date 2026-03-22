@@ -21,9 +21,9 @@ void timeout(std::function<void()> func, int interval) {
 
 
 int main(int argc, char* argv[]) {
-    Runtime runtime(argc, argv);
+    Application app(argc, argv);
 
-    auto& window = runtime.createWindow({
+    auto& window = app.createWindow({
         .size = {800, 800},
         .title = "Clock"
     });
@@ -54,5 +54,5 @@ int main(int argc, char* argv[]) {
         seconds = local_time->tm_sec;    // 0-59
     }, 1000);
 
-    return runtime.run();
+    return app.exec();
 }

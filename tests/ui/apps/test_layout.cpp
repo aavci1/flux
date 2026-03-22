@@ -4,9 +4,9 @@
 using namespace flux;
 
 int main(int argc, char* argv[]) {
-    Runtime runtime(argc, argv);
+    Application app(argc, argv);
 
-    auto& window = runtime.createWindow({
+    auto& window = app.createWindow({
         .size = {1200, 900},
         .title = "Test: Layout System"
     });
@@ -266,5 +266,5 @@ int main(int argc, char* argv[]) {
         }
     );
 
-    return runtime.run();
+    return app.exec();
 }

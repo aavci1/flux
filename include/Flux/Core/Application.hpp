@@ -13,24 +13,23 @@ class Window;
 class OverlayManager;
 struct WindowConfig;
 
-class Runtime : public WindowEventObserver {
+class Application : public WindowEventObserver {
 public:
-    explicit Runtime(int argc = 0, char** argv = nullptr);
-    ~Runtime();
+    explicit Application(int argc = 0, char** argv = nullptr);
+    ~Application();
 
-    Runtime(const Runtime&) = delete;
-    Runtime& operator=(const Runtime&) = delete;
-    Runtime(Runtime&&) = delete;
-    Runtime& operator=(Runtime&&) = delete;
+    Application(const Application&) = delete;
+    Application& operator=(const Application&) = delete;
+    Application(Application&&) = delete;
+    Application& operator=(Application&&) = delete;
 
     Window& createWindow(const WindowConfig& config);
 
-    int run();
-    int exec() { return run(); }
+    int exec();
     void quit() { running_ = false; }
 
-    static Runtime& instance() {
-        if (!current_) throw std::runtime_error("Runtime not initialized");
+    static Application& instance() {
+        if (!current_) throw std::runtime_error("Application not initialized");
         return *current_;
     }
 
@@ -65,7 +64,7 @@ private:
 
     ResourceManager resourceManager_;
 
-    static Runtime* current_;
+    static Application* current_;
     friend void requestApplicationRedraw();
     friend void requestRedrawOnly();
 
@@ -80,7 +79,5 @@ public:
 
     static bool hasInstance() { return current_ != nullptr; }
 };
-
-using Application = Runtime;
 
 } // namespace flux

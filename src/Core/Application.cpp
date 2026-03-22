@@ -1,4 +1,4 @@
-#include <Flux/Core/Runtime.hpp>
+#include <Flux/Core/Application.hpp>
 #include <Flux/Core/Window.hpp>
 #include <Flux/Core/OverlayManager.hpp>
 #include <Flux/Platform/EventLoopWake.hpp>
@@ -14,7 +14,7 @@
 
 namespace flux {
 
-Runtime* Runtime::current_ = nullptr;
+Application* Application::current_ = nullptr;
 
 static thread_local int suppressRedrawRequests_ = 0;
 
@@ -23,51 +23,51 @@ void resumeRedrawRequests()   { --suppressRedrawRequests_; }
 
 void requestApplicationRedraw() {
     if (suppressRedrawRequests_ > 0) return;
-    if (Runtime::current_) {
-        Runtime::current_->bumpBodyGeneration();
-        Runtime::current_->requestRedraw();
+    if (Application::current_) {
+        Application::current_->bumpBodyGeneration();
+        Application::current_->requestRedraw();
     }
 }
 
 uint64_t currentBodyGeneration() {
-    if (!Runtime::hasInstance()) return 0;
-    return Runtime::instance().bodyGeneration();
+    if (!Application::hasInstance()) return 0;
+    return Application::instance().bodyGeneration();
 }
 
-OverlayManager* Runtime::findOverlayManager() {
+OverlayManager* Application::findOverlayManager() {
     if (windows_.empty()) return nullptr;
     return windows_.front()->overlayManager();
 }
 
 void showOverlay(const std::string& id, View content, Rect anchor, OverlayConfig config) {
-    if (!Runtime::hasInstance()) return;
-    if (auto* mgr = Runtime::instance().findOverlayManager()) {
+    if (!Application::hasInstance()) return;
+    if (auto* mgr = Application::instance().findOverlayManager()) {
         mgr->show(id, std::move(content), anchor, std::move(config));
     }
 }
 
 void hideOverlay(const std::string& id) {
-    if (!Runtime::hasInstance()) return;
-    if (auto* mgr = Runtime::instance().findOverlayManager()) {
+    if (!Application::hasInstance()) return;
+    if (auto* mgr = Application::instance().findOverlayManager()) {
         mgr->hide(id);
     }
 }
 
 void hideAllOverlays() {
-    if (!Runtime::hasInstance()) return;
-    if (auto* mgr = Runtime::instance().findOverlayManager()) {
+    if (!Application::hasInstance()) return;
+    if (auto* mgr = Application::instance().findOverlayManager()) {
         mgr->hideAll();
     }
 }
 
-void Runtime::requestRedraw() {
+void Application::requestRedraw() {
     needsRedraw_.store(true, std::memory_order_relaxed);
     wakePlatformEventLoop();
 }
 
-Runtime::Runtime(int argc, char** argv) {
+Application::Application(int argc, char** argv) {
     if (current_) {
-        throw std::runtime_error("Only one Runtime instance allowed");
+        throw std::runtime_error("Only one Application instance allowed");
     }
     current_ = this;
 
@@ -130,12 +130,12 @@ Runtime::Runtime(int argc, char** argv) {
     }
 }
 
-Runtime::~Runtime() {
+Application::~Application() {
     windows_.clear();
     current_ = nullptr;
 }
 
-Window& Runtime::createWindow(const WindowConfig& config) {
+Window& Application::createWindow(const WindowConfig& config) {
     if (backendArgInvalid_) {
         std::exit(1);
     }
@@ -152,7 +152,7 @@ Window& Runtime::createWindow(const WindowConfig& config) {
     return ref;
 }
 
-int Runtime::run() {
+int Application::exec() {
     if (backendArgInvalid_) {
         return 1;
     }
@@ -194,12 +194,12 @@ int Runtime::run() {
     return 0;
 }
 
-void Runtime::onRedrawRequested(Window* window) {
+void Application::onRedrawRequested(Window* window) {
     (void)window;
     requestRedraw();
 }
 
-void Runtime::onWindowClosing(Window* window) {
+void Application::onWindowClosing(Window* window) {
     auto it = std::find_if(windows_.begin(), windows_.end(),
         [window](const auto& w) { return w.get() == window; });
     if (it != windows_.end()) {
@@ -211,7 +211,7 @@ void Runtime::onWindowClosing(Window* window) {
     }
 }
 
-void Runtime::processEvents() {
+void Application::processEvents() {
     for (auto& window : windows_) {
         if (auto* platformWindow = static_cast<PlatformWindow*>(window->platformWindow())) {
             platformWindow->processEvents();
@@ -223,15 +223,15 @@ void Runtime::processEvents() {
     }
 }
 
-void Runtime::waitForEvents() {
+void Application::waitForEvents() {
     waitForEventsImpl(-1);
 }
 
-void Runtime::waitForEventsTimeout(int timeoutMs) {
+void Application::waitForEventsTimeout(int timeoutMs) {
     waitForEventsImpl(timeoutMs);
 }
 
-void Runtime::waitForEventsImpl(int timeoutMs) {
+void Application::waitForEventsImpl(int timeoutMs) {
     if (windows_.empty()) return;
     if (auto* platformWindow = static_cast<PlatformWindow*>(windows_.front()->platformWindow())) {
         platformWindow->waitForEvents(timeoutMs);

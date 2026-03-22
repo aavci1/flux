@@ -66,7 +66,7 @@ struct AppRoot {
 };
 
 int main(int argc, char* argv[]) {
-    Runtime runtime(argc, argv);
+    Application app(argc, argv);
 
     AppState state;
 
@@ -100,7 +100,7 @@ int main(int argc, char* argv[]) {
     state.activeModel = state.installedModels.get()[0];
     state.loadState = ModelLoadState::READY;
 
-    auto& window = runtime.createWindow({
+    auto& window = app.createWindow({
         .size = {1280, 800},
         .title = "LLM Studio"
     });
@@ -109,5 +109,5 @@ int main(int argc, char* argv[]) {
         AppRoot{.state = &state, .expansionBias = 1.0f}
     );
 
-    return runtime.run();
+    return app.exec();
 }

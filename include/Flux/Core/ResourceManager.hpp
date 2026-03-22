@@ -56,7 +56,7 @@ private:
     uint64_t currentFrame_ = 0;
     size_t maxCacheBytes_ = 256 * 1024 * 1024;
 
-    friend class Runtime;
+    friend class Application;
     void advanceFrame() { ++currentFrame_; }
 };
 

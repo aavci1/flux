@@ -211,7 +211,7 @@ FreeType-based glyph rasterization packed into a GPU texture atlas. Instanced gl
 - `GPUPlatformRenderer`: `PlatformRenderer` implementation owning `Device`, `GPURendererBackend`, `GPURenderContext`, `ImageCache`.
 - `SDLWindow` constructor accepts `RenderBackendType` enum: `NanoVG` (default, OpenGL window), `GPU_Metal` (Metal window), `GPU_Vulkan` (Vulkan window), `GPU_Auto` (platform default).
 - `SDLWindowFactory::setRenderBackend()` for programmatic selection.
-- Runtime CLI flag `--backend metal|vulkan|gpu|nanovg` parsed in `Runtime` constructor.
+- Application CLI flag `--backend metal|vulkan|gpu|nanovg` parsed in `Application` constructor.
 - Text measurement cache in `GPURenderContext`: `unordered_map<{text, font, size}, Size>` cleared every 300 frames.
 - NanoVG remains as compile-time fallback (default when no `--backend` specified).
 

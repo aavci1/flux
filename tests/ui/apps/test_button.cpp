@@ -4,14 +4,14 @@
 using namespace flux;
 
 int main(int argc, char* argv[]) {
-    Runtime runtime(argc, argv);
+    Application app(argc, argv);
 
     Property<int> clickCountA = 0;
     Property<int> clickCountB = 0;
     Property<int> clickCountC = 0;
     Property<std::string> lastActivated = "none";
 
-    auto& window = runtime.createWindow({
+    auto& window = app.createWindow({
         .size = {600, 400},
         .title = "Test: Button Interactivity"
     });
@@ -111,5 +111,5 @@ int main(int argc, char* argv[]) {
         }
     );
 
-    return runtime.run();
+    return app.exec();
 }

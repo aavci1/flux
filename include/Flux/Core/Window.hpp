@@ -218,7 +218,7 @@ public:
 
     /**
      * @brief Process queued synthetic events from the test server.
-     * Called automatically by Runtime in the main loop.
+     * Called automatically by Application in the main loop.
      */
     void processSyntheticEvents();
 

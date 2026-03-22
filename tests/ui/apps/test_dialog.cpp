@@ -4,14 +4,14 @@
 using namespace flux;
 
 int main(int argc, char* argv[]) {
-    Runtime runtime(argc, argv);
+    Application app(argc, argv);
 
     auto dialogVisible = Property<bool>::shared(false);
     auto dialogResult = Property<std::string>::shared(std::string("none"));
     auto dropdownOpen = Property<bool>::shared(false);
     auto dropdownResult = Property<std::string>::shared(std::string("none"));
 
-    auto& window = runtime.createWindow({
+    auto& window = app.createWindow({
         .size = {700, 500},
         .title = "Test: Dialog & Dropdown"
     });
@@ -120,5 +120,5 @@ int main(int argc, char* argv[]) {
         }
     );
 
-    return runtime.run();
+    return app.exec();
 }

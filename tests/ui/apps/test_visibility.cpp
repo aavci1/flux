@@ -4,13 +4,13 @@
 using namespace flux;
 
 int main(int argc, char* argv[]) {
-    Runtime runtime(argc, argv);
+    Application app(argc, argv);
 
     auto showBox = Property<bool>::shared(true);
     auto boxOpacity = Property<float>::shared(1.0f);
     auto toggleCount = Property<int>::shared(0);
 
-    auto& window = runtime.createWindow({
+    auto& window = app.createWindow({
         .size = {600, 400},
         .title = "Test: Visibility & Opacity"
     });
@@ -113,5 +113,5 @@ int main(int argc, char* argv[]) {
         }
     );
 
-    return runtime.run();
+    return app.exec();
 }

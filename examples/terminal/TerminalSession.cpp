@@ -1,7 +1,7 @@
 #include "TerminalSession.hpp"
 
 #include <Flux/Core/Property.hpp>
-#include <Flux/Core/Runtime.hpp>
+#include <Flux/Core/Application.hpp>
 #include <Flux/Core/Typography.hpp>
 #include <Flux/Platform/EventLoopWake.hpp>
 

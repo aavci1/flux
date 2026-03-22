@@ -4,13 +4,13 @@
 using namespace flux;
 
 int main(int argc, char* argv[]) {
-    Runtime runtime(argc, argv);
+    Application app(argc, argv);
 
     Property<std::string> focusLog = "none";
     Property<int> focusCount = 0;
     Property<int> blurCount = 0;
 
-    auto& window = runtime.createWindow({
+    auto& window = app.createWindow({
         .size = {600, 500},
         .title = "Test: Focus Navigation"
     });
@@ -84,5 +84,5 @@ int main(int argc, char* argv[]) {
         }
     );
 
-    return runtime.run();
+    return app.exec();
 }

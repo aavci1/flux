@@ -4,11 +4,11 @@
 using namespace flux;
 
 int main(int argc, char* argv[]) {
-    Runtime runtime(argc, argv);
+    Application app(argc, argv);
 
     Property<float> scrollPos = 0.0f;
 
-    auto& window = runtime.createWindow({
+    auto& window = app.createWindow({
         .size = {500, 500},
         .title = "Test: ScrollArea"
     });
@@ -60,5 +60,5 @@ int main(int argc, char* argv[]) {
         }
     );
 
-    return runtime.run();
+    return app.exec();
 }

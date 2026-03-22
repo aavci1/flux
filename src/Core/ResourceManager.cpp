@@ -1,12 +1,12 @@
 #include <Flux/Core/ResourceManager.hpp>
-#include <Flux/Core/Runtime.hpp>
+#include <Flux/Core/Application.hpp>
 #include <algorithm>
 #include <vector>
 
 namespace flux {
 
 ResourceManager& ResourceManager::instance() {
-    return Runtime::instance().resourceManager();
+    return Application::instance().resourceManager();
 }
 
 void ResourceManager::registerFont(const std::string& key, FontHandle handle) {

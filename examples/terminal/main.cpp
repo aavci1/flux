@@ -12,19 +12,19 @@
 using namespace flux;
 
 int main(int argc, char* argv[]) {
-    Runtime runtime(argc, argv);
+    Application app(argc, argv);
 
     auto session = std::make_shared<flux::term::TerminalSession>();
     if (!session->start()) {
         return 1;
     }
 
-    auto& window = runtime.createWindow({
+    auto& window = app.createWindow({
         .size = {920, 640},
         .title = "Flux Terminal",
     });
 
-    session->setOnShellExit([&runtime] { runtime.quit(); });
+    session->setOnShellExit([&app] { app.quit(); });
 
     flux::term::TerminalView terminalView;
     terminalView.session = session;
@@ -43,5 +43,5 @@ int main(int argc, char* argv[]) {
         }
     });
 
-    return runtime.run();
+    return app.exec();
 }

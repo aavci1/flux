@@ -4,7 +4,7 @@
 using namespace flux;
 
 int main(int argc, char* argv[]) {
-    Runtime runtime(argc, argv);
+    Application app(argc, argv);
 
     auto inputValue = Property<std::string>::shared(std::string(""));
     auto passwordValue = Property<std::string>::shared(std::string(""));
@@ -12,7 +12,7 @@ int main(int argc, char* argv[]) {
     auto areaValue = Property<std::string>::shared(std::string(""));
     auto returnStatus = Property<std::string>::shared(std::string("no-return"));
 
-    auto& window = runtime.createWindow({
+    auto& window = app.createWindow({
         .size = {700, 600},
         .title = "Test: Text Input"
     });
@@ -146,5 +146,5 @@ int main(int argc, char* argv[]) {
         }
     );
 
-    return runtime.run();
+    return app.exec();
 }

@@ -4,7 +4,7 @@
 using namespace flux;
 
 int main(int argc, char* argv[]) {
-    Runtime runtime(argc, argv);
+    Application app(argc, argv);
 
     auto cb1 = Property<bool>::shared(false);
     auto cb2 = Property<bool>::shared(true);
@@ -12,7 +12,7 @@ int main(int argc, char* argv[]) {
     auto tg1 = Property<bool>::shared(false);
     auto tg2 = Property<bool>::shared(true);
 
-    auto& window = runtime.createWindow({
+    auto& window = app.createWindow({
         .size = {600, 500},
         .title = "Test: Checkbox & Toggle"
     });
@@ -117,5 +117,5 @@ int main(int argc, char* argv[]) {
         }
     );
 
-    return runtime.run();
+    return app.exec();
 }

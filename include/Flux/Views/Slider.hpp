@@ -5,7 +5,7 @@
 #include <Flux/Core/Types.hpp>
 #include <Flux/Core/Property.hpp>
 #include <Flux/Core/KeyEvent.hpp>
-#include <Flux/Core/Runtime.hpp>
+#include <Flux/Core/Application.hpp>
 
 namespace flux {
 

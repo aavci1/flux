@@ -2,7 +2,7 @@
 #include <Flux/Core/ClipboardUtil.hpp>
 #include <Flux/Core/Window.hpp>
 #include <Flux/Core/FocusState.hpp>
-#include <Flux/Core/Runtime.hpp>
+#include <Flux/Core/Application.hpp>
 #include <Flux/Core/Log.hpp>
 
 namespace flux {

@@ -4,13 +4,13 @@
 using namespace flux;
 
 int main(int argc, char* argv[]) {
-    Runtime runtime(argc, argv);
+    Application app(argc, argv);
 
     auto selectedRadio = Property<std::string>::shared(std::string("opt1"));
     auto selectedSelectIdx = Property<int>::shared(0);
     auto selectedSelectLabel = Property<std::string>::shared(std::string("Apple"));
 
-    auto& window = runtime.createWindow({
+    auto& window = app.createWindow({
         .size = {600, 500},
         .title = "Test: RadioButton & SelectInput"
     });
@@ -97,5 +97,5 @@ int main(int argc, char* argv[]) {
         }
     );
 
-    return runtime.run();
+    return app.exec();
 }
