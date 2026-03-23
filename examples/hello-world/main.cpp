@@ -44,7 +44,6 @@ struct ChatBubble {
                     .children = {
                         DropdownMenu {
                             .label = std::string("Agent"),
-                            .menuWidth = 200.0f,
                             .bgColor = theme.inputBackground,
                             .dropdownBgColor = theme.surfaceElevated,
                             .borderColor_ = theme.borderStrong,
@@ -54,7 +53,6 @@ struct ChatBubble {
                         },
                         DropdownMenu {
                             .label = std::string("Model"),
-                            .menuWidth = 200.0f,
                             .bgColor = theme.inputBackground,
                             .dropdownBgColor = theme.surfaceElevated,
                             .borderColor_ = theme.borderStrong,
@@ -65,23 +63,20 @@ struct ChatBubble {
                         Spacer {},
                         Text {
                             .value = std::string("\u25D4"),
-                            .fontSize = 18.0f,
+                            .fontSize = 24.0f,
                             .color = theme.secondaryForeground,
-                            .minWidth = 24.0f,
                             .horizontalAlignment = HorizontalAlignment::center,
                         },
                         Text {
                             .value = std::string("\u25A4"),
-                            .fontSize = 18.0f,
+                            .fontSize = 24.0f,
                             .color = theme.secondaryForeground,
-                            .minWidth = 24.0f,
                             .horizontalAlignment = HorizontalAlignment::center,
                         },
                         Text {
                             .value = std::string("\u2191"),
-                            .fontSize = 18.0f,
+                            .fontSize = 24.0f,
                             .color = theme.secondaryForeground,
-                            .minWidth = 24.0f,
                             .horizontalAlignment = HorizontalAlignment::center,
                         },
                     }
