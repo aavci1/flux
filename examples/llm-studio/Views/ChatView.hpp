@@ -226,7 +226,6 @@ struct ChatView {
                                             .children = {
                                                 DropdownMenu{
                                                     .label = std::string("\xE2\x88\x9E  Agent"),
-                                                    .menuWidth = 200.0f,
                                                     .bgColor = d.inputBackground,
                                                     .dropdownBgColor = d.surfaceElevated,
                                                     .borderColor_ = d.borderStrong,
@@ -236,7 +235,6 @@ struct ChatView {
                                                 },
                                                 DropdownMenu{
                                                     .label = std::string("Auto"),
-                                                    .menuWidth = 220.0f,
                                                     .bgColor = composerBg,
                                                     .dropdownBgColor = d.surfaceElevated,
                                                     .borderColor_ = composerBg,

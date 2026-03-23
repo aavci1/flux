@@ -10,6 +10,7 @@
 #include <Flux/Core/View.hpp>
 #include <Flux/Core/ViewHelpers.hpp>
 #include <Flux/Core/Utilities.hpp>
+#include <Flux/Core/ControlMetrics.hpp>
 #include <Flux/Core/Application.hpp>
 #include <Flux/Core/Window.hpp>
 
@@ -23,6 +24,8 @@
 #include <Flux/Views/Dialog.hpp>
 #include <Flux/Views/Divider.hpp>
 #include <Flux/Views/EnvironmentProvider.hpp>
+#include <Flux/Views/MenuView.hpp>
+#include <Flux/Views/MenuRow.hpp>
 #include <Flux/Views/DropdownMenu.hpp>
 #include <Flux/Views/Grid.hpp>
 #include <Flux/Views/HStack.hpp>

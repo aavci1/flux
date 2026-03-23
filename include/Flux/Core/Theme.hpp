@@ -43,6 +43,7 @@ struct Theme {
     float focusRingWidth{};      // Stroke width for focus rings where applicable
     Color selection{};           // Text selection highlight
     Color controlBackground{};   // Dropdown/select trigger surface
+    Color menuItemHoverBackground{}; // Fallback when `MenuRow.hoverBackground` is set (non-inherit)
     Color shadow{};              // Drop shadows
 
     // --- Typography & spacing (application-wide) ---------------------------
@@ -99,6 +100,7 @@ inline Theme Theme::light() {
     t.focusRingWidth = 2.0f;
     t.selection = Color(0.0f, 0.47f, 0.83f, 0.3f);
     t.controlBackground = Color::hex(0xF0F0F0);
+    t.menuItemHoverBackground = Color::hex(0xE8E8E8);
     t.shadow = Color(0, 0, 0, 0.15f);
 
     t.uiFontFamily = "default";
@@ -145,6 +147,7 @@ inline Theme Theme::dark() {
     t.focusRingWidth = 2.0f;
     t.selection = Color(0.0f, 0.47f, 0.83f, 0.3f);
     t.controlBackground = Color::hex(0x2D2D2D);
+    t.menuItemHoverBackground = Color::hex(0x3C3C3C);
     t.shadow = Color(0, 0, 0, 0.35f);
 
     t.uiFontFamily = "default";
@@ -176,7 +179,8 @@ inline bool operator==(const Theme& a, const Theme& b) {
            a.destructive == b.destructive && a.focusRing == b.focusRing &&
            a.focusRingWidth == b.focusRingWidth &&
            a.selection == b.selection && a.controlBackground == b.controlBackground &&
-           a.shadow == b.shadow && a.uiFontFamily == b.uiFontFamily &&
+           a.menuItemHoverBackground == b.menuItemHoverBackground && a.shadow == b.shadow &&
+           a.uiFontFamily == b.uiFontFamily &&
            a.fontSizeBody == b.fontSizeBody && a.fontSizeCallout == b.fontSizeCallout &&
            a.fontSizeCaption == b.fontSizeCaption && a.spacingUnit == b.spacingUnit &&
            a.inputPadding == b.inputPadding &&

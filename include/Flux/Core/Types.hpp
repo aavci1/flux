@@ -134,6 +134,16 @@ struct Color {
     constexpr bool operator!=(const Color& other) const = default;
 };
 
+/** Opaque RGB blend (t=0 → a, t=1 → b). Use instead of transparent fills over overlays. */
+constexpr Color lerpColor(const Color& a, const Color& b, float t) {
+    return Color(
+        a.r + (b.r - a.r) * t,
+        a.g + (b.g - a.g) * t,
+        a.b + (b.b - a.b) * t,
+        1.0f
+    );
+}
+
 // Predefined colors namespace
 namespace Colors {
     constexpr Color white = Color(1, 1, 1, 1);

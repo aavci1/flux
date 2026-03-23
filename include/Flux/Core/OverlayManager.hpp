@@ -115,21 +115,26 @@ private:
         }
 
         Size pref = entry.content.preferredSize(ctx);
-        float w = pref.width > 0 ? pref.width : entry.anchor.width;
+        float anchorW = entry.anchor.width;
+        // Prefer the anchor width when known so popups (dropdowns, menus) match their trigger control.
+        // Content preferred width alone can be smaller than the laid-out control (e.g. truncated labels).
+        float w = (anchorW > 0.5f) ? anchorW : (pref.width > 0.0f ? pref.width : 200.0f);
         float h = pref.height > 0 ? pref.height : 200.0f;
 
         float x = entry.anchor.x;
         float y;
 
+        constexpr float kMenuAnchorGap = 6.0f; // space between trigger and menu (e.g. below dropdown)
+
         if (entry.config.position == OverlayPosition::Below) {
-            y = entry.anchor.y + entry.anchor.height + 2.0f;
+            y = entry.anchor.y + entry.anchor.height + kMenuAnchorGap;
             if (y + h > viewport.y + viewport.height) {
-                y = entry.anchor.y - h - 2.0f;
+                y = entry.anchor.y - h - kMenuAnchorGap;
             }
         } else {
-            y = entry.anchor.y - h - 2.0f;
+            y = entry.anchor.y - h - kMenuAnchorGap;
             if (y < viewport.y) {
-                y = entry.anchor.y + entry.anchor.height + 2.0f;
+                y = entry.anchor.y + entry.anchor.height + kMenuAnchorGap;
             }
         }
 
@@ -149,6 +154,14 @@ private:
 };
 
 void showOverlay(const std::string& id, View content, Rect anchor, OverlayConfig config = {});
+/** Menu-style overlay: dismiss on outside click; wraps showOverlay. */
+void showMenuOverlay(
+    const std::string& id,
+    View content,
+    Rect anchor,
+    OverlayPosition position = OverlayPosition::Below,
+    std::function<void()> onDismiss = nullptr
+);
 void hideOverlay(const std::string& id);
 void hideAllOverlays();
 

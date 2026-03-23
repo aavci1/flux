@@ -15,6 +15,7 @@ void objc_autoreleasePoolPop(void* pool);
 #include <Flux/Platform/MemoryFootprint.hpp>
 #include <Flux/Core/Log.hpp>
 #include <algorithm>
+#include <functional>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
@@ -62,6 +63,20 @@ void showOverlay(const std::string& id, View content, Rect anchor, OverlayConfig
     if (auto* mgr = Application::instance().findOverlayManager()) {
         mgr->show(id, std::move(content), anchor, std::move(config));
     }
+}
+
+void showMenuOverlay(
+    const std::string& id,
+    View content,
+    Rect anchor,
+    OverlayPosition position,
+    std::function<void()> onDismiss
+) {
+    showOverlay(id, std::move(content), anchor, {
+        .position = position,
+        .dismissOnClickOutside = true,
+        .onDismiss = std::move(onDismiss)
+    });
 }
 
 void hideOverlay(const std::string& id) {

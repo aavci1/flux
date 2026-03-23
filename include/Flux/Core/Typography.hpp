@@ -14,6 +14,8 @@ namespace Typography {
 inline constexpr float body = 17.0f;           // Primary reading & UI text
 inline constexpr float subheadline = 14.0f;      // Secondary labels, section headers
 inline constexpr float callout = 15.0f;         // Control labels, emphasized secondary
+/** Single-line inputs: TextInput, SelectInput, DropdownMenu trigger (matches callout size). */
+inline constexpr float input = 15.0f;
 inline constexpr float caption = 12.0f;          // Minimum functional UI size (avoid going smaller)
 
 // --- Line height multipliers (NanoVG text line height) ----------------------

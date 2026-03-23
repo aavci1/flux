@@ -24,7 +24,7 @@ struct TextInput {
     Property<bool> readOnly = false;
     Property<int> maxLength = -1;
 
-    Property<float> fontSize = Typography::body;
+    Property<float> fontSize = Typography::input;
     Property<Color> textColor = Colors::inherit;
     Property<Color> placeholderColor = Colors::inherit;
     Property<Color> bgColor = Colors::inherit;
