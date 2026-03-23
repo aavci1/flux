@@ -135,6 +135,9 @@ list(APPEND FLUX_SOURCES
     # Testing
     src/Testing/ScreenCaptureImpl.cpp
 
+    # Utils
+    src/Utils/SVGUtils.cpp
+
     # Views
     src/Views/SVG.cpp
     src/Views/NanoSVG.cpp
@@ -305,6 +308,11 @@ option(BUILD_EXAMPLES "Build example applications" ON)
 if(BUILD_EXAMPLES)
     add_executable(hello_world examples/hello-world/main.cpp)
     target_link_libraries(hello_world PRIVATE flux)
+
+    add_executable(svg_demo examples/svg-demo/main.cpp)
+    target_compile_definitions(svg_demo PRIVATE
+        "FLUX_SVG_DEMO_TIGER_PATH=\"${CMAKE_SOURCE_DIR}/examples/svg-demo/tiger.svg\"")
+    target_link_libraries(svg_demo PRIVATE flux)
 
     add_executable(clock examples/clock/main.cpp)
     target_link_libraries(clock PRIVATE flux)
