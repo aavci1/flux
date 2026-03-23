@@ -35,10 +35,26 @@ ImageHandle ResourceManager::findImage(const std::string& path) const {
     return -1;
 }
 
+void ResourceManager::registerSVG(const std::string& content, size_t estimatedBytes) {
+    svgs_[content] = {estimatedBytes, currentFrame_};
+}
+
+bool ResourceManager::hasSVG(const std::string& content) const {
+    auto it = svgs_.find(content);
+    if (it != svgs_.end()) {
+        const_cast<TrackedSVG&>(it->second).lastUsedFrame = currentFrame_;
+        return true;
+    }
+    return false;
+}
+
 size_t ResourceManager::memoryUsage() const {
     size_t total = 0;
     for (const auto& [_, img] : images_) {
         total += img.estimatedBytes;
+    }
+    for (const auto& [_, svg] : svgs_) {
+        total += svg.estimatedBytes;
     }
     total += fonts_.size() * 64 * 1024;
     return total;
@@ -56,11 +72,19 @@ void ResourceManager::collectUnused() {
         }
     }
 
+    for (auto it = svgs_.begin(); it != svgs_.end();) {
+        if (it->second.lastUsedFrame < threshold) {
+            it = svgs_.erase(it);
+        } else {
+            ++it;
+        }
+    }
 }
 
 void ResourceManager::clear() {
     fonts_.clear();
     images_.clear();
+    svgs_.clear();
 }
 
 } // namespace flux

@@ -31,8 +31,24 @@ if(NOT APPLE)
 endif()
 
 # Pin commits match former submodules; override with -DFLUX_*_GIT_TAG=...
+set(FLUX_NANOSVG_GIT_REPOSITORY "https://github.com/memononen/nanosvg.git" CACHE STRING "NanoSVG Git repository")
+set(FLUX_NANOSVG_GIT_TAG "66579081d84b613daa49a64f76357ce65925e13b" CACHE STRING "NanoSVG Git tag or commit")
 set(FLUX_STB_GIT_REPOSITORY "https://github.com/nothings/stb.git" CACHE STRING "stb Git repository")
 set(FLUX_STB_GIT_TAG "fede005abaf93d9d7f3a679d1999b2db341b360f" CACHE STRING "stb Git tag or commit")
+
+if(EXISTS "${CMAKE_SOURCE_DIR}/third_party/nanosvg/src/nanosvg.h")
+    set(NANOSVG_SOURCE_DIR "${CMAKE_SOURCE_DIR}/third_party/nanosvg/src")
+    message(STATUS "NanoSVG: using local third_party/nanosvg")
+else()
+    FetchContent_Declare(flux_nanosvg
+        GIT_REPOSITORY ${FLUX_NANOSVG_GIT_REPOSITORY}
+        GIT_TAG ${FLUX_NANOSVG_GIT_TAG}
+        GIT_SUBMODULES ""
+    )
+    message(STATUS "NanoSVG: fetching ${FLUX_NANOSVG_GIT_TAG}")
+    FetchContent_MakeAvailable(flux_nanosvg)
+    set(NANOSVG_SOURCE_DIR "${flux_nanosvg_SOURCE_DIR}/src")
+endif()
 
 if(EXISTS "${CMAKE_SOURCE_DIR}/third_party/stb/stb_truetype.h")
     set(STB_SOURCE_DIR "${CMAKE_SOURCE_DIR}/third_party/stb")
@@ -118,6 +134,10 @@ list(APPEND FLUX_SOURCES
 
     # Testing
     src/Testing/ScreenCaptureImpl.cpp
+
+    # Views
+    src/Views/SVG.cpp
+    src/Views/NanoSVG.cpp
 )
 
 if(APPLE)
@@ -199,6 +219,7 @@ target_include_directories(flux PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 target_include_directories(flux SYSTEM PUBLIC
+    $<BUILD_INTERFACE:${NANOSVG_SOURCE_DIR}>
     $<BUILD_INTERFACE:${STB_SOURCE_DIR}>
 )
 
