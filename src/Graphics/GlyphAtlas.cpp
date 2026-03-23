@@ -1,4 +1,5 @@
 #include <Flux/Graphics/GlyphAtlas.hpp>
+#include <Flux/GPU/Types.hpp>
 #include <cmath>
 #include <cstring>
 #include <algorithm>
@@ -9,6 +10,7 @@ namespace flux {
 
 namespace {
 
+// File-local UTF-8 decoder; promote to shared utils if other modules need the same walk.
 template<typename Fn>
 void utf8ForEach(const std::string& text, Fn&& fn) {
     for (size_t i = 0; i < text.size();) {
@@ -35,34 +37,28 @@ void utf8ForEach(const std::string& text, Fn&& fn) {
 } // namespace
 
 GlyphAtlas::GlyphAtlas(gpu::Device* device, uint32_t atlasSize)
-    : device_(device), atlasSize_(atlasSize)
+    : atlas_(device,
+             AtlasDesc{.pageWidth = atlasSize,
+                       .pageHeight = atlasSize,
+                       .maxPages = kDefaultMaxPages,
+                       .format = gpu::PixelFormat::R8})
 {
     FT_Init_FreeType(&ftLib_);
-    allocNewPage();
 }
 
-uint8_t GlyphAtlas::allocNewPage() {
-    AtlasPage page;
-    page.data.resize(atlasSize_ * atlasSize_, 0);
-    gpu::TextureDesc td;
-    td.width = atlasSize_;
-    td.height = atlasSize_;
-    td.format = gpu::PixelFormat::R8;
-    page.texture = device_->createTexture(td);
-    auto idx = static_cast<uint8_t>(pages_.size());
-    pages_.push_back(std::move(page));
-    return idx;
+float GlyphAtlas::advanceWhenGlyphMissing(uint16_t fsz, uint16_t fontIndex, float fontSize) {
+    if (const auto* sp = getGlyph(static_cast<uint32_t>(' '), fsz, fontIndex)) {
+        return sp->advance;
+    }
+    return fontSize * 0.5f;
 }
 
 gpu::Texture* GlyphAtlas::texture(uint8_t page) const {
-    if (page >= pages_.size()) return nullptr;
-    return pages_[page].texture.get();
+    return atlas_.texture(page);
 }
 
 bool GlyphAtlas::dirty() const {
-    for (auto& p : pages_)
-        if (p.dirty) return true;
-    return false;
+    return atlas_.dirty();
 }
 
 GlyphAtlas::~GlyphAtlas() {
@@ -119,13 +115,11 @@ std::optional<uint16_t> GlyphAtlas::ensureFontLoaded(const std::string& name, Fo
     }
 
     auto tryLoad = [&](const std::string& family) -> bool {
-        const uint16_t idx = nextFontIndex_++;
+        const uint16_t idx = nextFontIndex_;
         if (loadFontByName(family, weight, idx)) {
             fontKeyToIndex_[key] = idx;
+            ++nextFontIndex_;
             return true;
-        }
-        if (nextFontIndex_ > 0) {
-            --nextFontIndex_;
         }
         return false;
     };
@@ -194,12 +188,12 @@ std::optional<uint16_t> GlyphAtlas::loadFallbackForCodepoint(uint32_t codepoint,
         return std::nullopt;
     }
 
-    uint16_t idx = nextFontIndex_++;
+    const uint16_t idx = nextFontIndex_;
     if (!loadFont(resolved.value(), idx)) {
-        --nextFontIndex_;
         codepointMisses_.insert(codepoint);
         return std::nullopt;
     }
+    ++nextFontIndex_;
     fallbackPathToIndex_[resolved.value()] = idx;
 
     if (FT_Get_Char_Index(faces_[idx], codepoint) == 0) {
@@ -210,8 +204,6 @@ std::optional<uint16_t> GlyphAtlas::loadFallbackForCodepoint(uint32_t codepoint,
 }
 
 bool GlyphAtlas::rasterizeGlyph(const GlyphKey& key, GlyphInfo& out) {
-    static constexpr uint8_t kMaxPages = 8;
-
     auto tryRender = [&](uint16_t fi) -> bool {
         auto it = faces_.find(fi);
         if (it == faces_.end()) return false;
@@ -239,43 +231,28 @@ bool GlyphAtlas::rasterizeGlyph(const GlyphKey& key, GlyphInfo& out) {
             return true;
         }
 
-        uint8_t pageIdx = static_cast<uint8_t>(pages_.size() - 1);
-        AtlasPage* page = &pages_[pageIdx];
+        const uint32_t pad = 1;
+        auto slot = atlas_.allocate(gw, gh, pad);
+        if (!slot) return false;
 
-        uint32_t pad = 1;
-        if (page->cursorX + gw + pad > atlasSize_) {
-            page->cursorX = 0;
-            page->cursorY += page->rowHeight + pad;
-            page->rowHeight = 0;
-        }
-        if (page->cursorY + gh + pad > atlasSize_) {
-            if (pages_.size() >= kMaxPages) return false;
-            pageIdx = allocNewPage();
-            page = &pages_[pageIdx];
-        }
-
+        const uint32_t bpp = gpu::bytesPerPixel(atlas_.format());
         for (uint32_t row = 0; row < gh; row++) {
-            uint32_t dstY = page->cursorY + row;
-            std::memcpy(&page->data[dstY * atlasSize_ + page->cursorX],
-                     &g->bitmap.buffer[row * g->bitmap.pitch], gw);
+            uint8_t* dst = atlas_.rowData(slot->pageIndex, slot->y + row);
+            if (!dst) return false;
+            dst += static_cast<size_t>(slot->x) * bpp;
+            std::memcpy(dst, &g->bitmap.buffer[row * g->bitmap.pitch], gw);
         }
 
-        expandDirtyRect(*page, page->cursorX, page->cursorY, gw, gh);
-
-        float inv = 1.0f / static_cast<float>(atlasSize_);
-        out.u0 = static_cast<float>(page->cursorX) * inv;
-        out.v0 = static_cast<float>(page->cursorY) * inv;
-        out.u1 = static_cast<float>(page->cursorX + gw) * inv;
-        out.v1 = static_cast<float>(page->cursorY + gh) * inv;
+        out.u0 = slot->u0;
+        out.v0 = slot->v0;
+        out.u1 = slot->u1;
+        out.v1 = slot->v1;
         out.width = static_cast<float>(gw);
         out.height = static_cast<float>(gh);
         out.bearingX = static_cast<float>(g->bitmap_left);
         out.bearingY = static_cast<float>(g->bitmap_top);
         out.advance = static_cast<float>(g->advance.x >> 6);
-        out.pageIndex = pageIdx;
-
-        page->cursorX += gw + pad;
-        page->rowHeight = std::max(page->rowHeight, gh);
+        out.pageIndex = slot->pageIndex;
         return true;
     };
 
@@ -299,44 +276,7 @@ const GlyphInfo* GlyphAtlas::getGlyph(uint32_t codepoint, uint16_t fontSize, uin
 }
 
 void GlyphAtlas::uploadIfDirty() {
-    lastGpuUploadBytes_ = 0;
-    for (auto& page : pages_) {
-        if (!page.dirty || !page.texture) continue;
-
-        if (!page.dirtyRectValid) {
-            page.texture->write(page.data.data(), 0, 0, atlasSize_, atlasSize_, atlasSize_);
-            lastGpuUploadBytes_ += static_cast<uint64_t>(atlasSize_) * atlasSize_;
-        } else {
-            const uint32_t w = page.dirtyX1 - page.dirtyX0;
-            const uint32_t h = page.dirtyY1 - page.dirtyY0;
-            if (w > 0 && h > 0) {
-                const uint8_t* src = &page.data[page.dirtyY0 * atlasSize_ + page.dirtyX0];
-                page.texture->write(src, page.dirtyX0, page.dirtyY0, w, h, atlasSize_);
-                lastGpuUploadBytes_ += static_cast<uint64_t>(w) * h;
-            }
-        }
-        page.dirty = false;
-        page.dirtyRectValid = false;
-    }
-}
-
-void GlyphAtlas::expandDirtyRect(AtlasPage& page, uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
-    if (w == 0 || h == 0) return;
-    const uint32_t x1 = x + w;
-    const uint32_t y1 = y + h;
-    if (!page.dirtyRectValid) {
-        page.dirtyX0 = x;
-        page.dirtyY0 = y;
-        page.dirtyX1 = x1;
-        page.dirtyY1 = y1;
-        page.dirtyRectValid = true;
-    } else {
-        page.dirtyX0 = std::min(page.dirtyX0, x);
-        page.dirtyY0 = std::min(page.dirtyY0, y);
-        page.dirtyX1 = std::max(page.dirtyX1, x1);
-        page.dirtyY1 = std::max(page.dirtyY1, y1);
-    }
-    page.dirty = true;
+    atlas_.uploadIfDirty();
 }
 
 void GlyphAtlas::clearTextLayoutCaches() {
@@ -347,14 +287,7 @@ void GlyphAtlas::clearTextLayoutCaches() {
 }
 
 void GlyphAtlas::markFullAtlasDirty() {
-    for (auto& page : pages_) {
-        page.dirty = true;
-        page.dirtyRectValid = true;
-        page.dirtyX0 = 0;
-        page.dirtyY0 = 0;
-        page.dirtyX1 = atlasSize_;
-        page.dirtyY1 = atlasSize_;
-    }
+    atlas_.markAllPagesDirty();
     clearTextLayoutCaches();
 }
 
@@ -374,10 +307,8 @@ Size GlyphAtlas::measureText(const std::string& text, float fontSize, uint16_t f
         if (g) {
             width += g->advance;
             maxH = std::max(maxH, g->height);
-        } else if (const auto* sp = getGlyph(static_cast<uint32_t>(' '), fsz, fontIndex)) {
-            width += sp->advance;
         } else {
-            width += fontSize * 0.5f;
+            width += advanceWhenGlyphMissing(fsz, fontIndex, fontSize);
         }
     });
     Size sz{width, std::max(maxH, fontSize)};
@@ -424,10 +355,8 @@ std::vector<std::string> GlyphAtlas::wrapText(const std::string& text, float fon
             auto* g = getGlyph(cp, fsz, fontIndex);
             if (g) {
                 ww += g->advance;
-            } else if (const auto* sp = getGlyph(static_cast<uint32_t>(' '), fsz, fontIndex)) {
-                ww += sp->advance;
             } else {
-                ww += fontSize * 0.5f;
+                ww += advanceWhenGlyphMissing(fsz, fontIndex, fontSize);
             }
         });
         return ww;
@@ -473,11 +402,7 @@ std::vector<GlyphInstance> GlyphAtlas::layoutText(const std::string& text, float
     utf8ForEach(text, [&](uint32_t cp) {
         auto* g = getGlyph(cp, fsz, fontIndex);
         if (!g) {
-            if (const auto* sp = getGlyph(static_cast<uint32_t>(' '), fsz, fontIndex)) {
-                penX += sp->advance;
-            } else {
-                penX += fontSize * 0.5f;
-            }
+            penX += advanceWhenGlyphMissing(fsz, fontIndex, fontSize);
             return;
         }
         if (g->width == 0 && g->height == 0) {

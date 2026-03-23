@@ -126,6 +126,7 @@ list(APPEND FLUX_SOURCES
     src/Graphics/Renderer.cpp
     src/Graphics/CommandCompiler.cpp
     src/Graphics/GPURendererBackend.cpp
+    src/Graphics/Atlas.cpp
     src/Graphics/GlyphAtlas.cpp
     src/Graphics/PathFlattener.cpp
     src/Graphics/ImageCache.cpp

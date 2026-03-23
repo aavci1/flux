@@ -18,6 +18,17 @@ enum class PixelFormat {
     Depth32F
 };
 
+/// Bytes per texel for formats that can be staged to a texture (not meaningful for Depth32F as color data).
+[[nodiscard]] constexpr uint32_t bytesPerPixel(PixelFormat fmt) noexcept {
+    switch (fmt) {
+    case PixelFormat::RGBA8: return 4;
+    case PixelFormat::BGRA8: return 4;
+    case PixelFormat::R8: return 1;
+    case PixelFormat::Depth32F: return 4;
+    }
+    return 0;
+}
+
 enum class BufferUsage {
     Vertex,
     Index,

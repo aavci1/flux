@@ -1,7 +1,7 @@
 #pragma once
 
+#include <Flux/Graphics/Atlas.hpp>
 #include <Flux/Graphics/FontProvider.hpp>
-#include <Flux/GPU/Device.hpp>
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include <list>
@@ -57,7 +57,10 @@ static_assert(sizeof(GlyphInstance) == 64);
 
 class GlyphAtlas final : public FontProvider {
 public:
-    GlyphAtlas(gpu::Device* device, uint32_t atlasSize = 1024);
+    static constexpr uint32_t kDefaultPageSize = 1024;
+    static constexpr uint32_t kDefaultMaxPages = 8;
+
+    GlyphAtlas(gpu::Device* device, uint32_t atlasSize = kDefaultPageSize);
     ~GlyphAtlas() override;
 
     // -- FontProvider interface ------------------------------------------------
@@ -90,33 +93,19 @@ public:
                                               uint16_t fontIndex = 0);
 
     gpu::Texture* texture(uint8_t page = 0) const;
-    uint8_t pageCount() const { return static_cast<uint8_t>(pages_.size()); }
+    uint8_t pageCount() const { return atlas_.pageCount(); }
     bool dirty() const;
     void uploadIfDirty();
 
-    uint64_t lastGpuUploadBytes() const { return lastGpuUploadBytes_; }
+    uint64_t lastGpuUploadBytes() const { return atlas_.lastGpuUploadBytes(); }
 
 private:
-    gpu::Device* device_;
+    Atlas atlas_;
     FT_Library ftLib_ = nullptr;
     std::unordered_map<uint16_t, FT_Face> faces_;
     std::unordered_map<GlyphKey, GlyphInfo, GlyphKeyHash> cache_;
     std::unordered_map<std::string, uint16_t> fontKeyToIndex_;
     uint16_t nextFontIndex_{0};
-
-    uint32_t atlasSize_;
-    uint64_t lastGpuUploadBytes_ = 0;
-
-    struct AtlasPage {
-        std::vector<uint8_t> data;
-        std::unique_ptr<gpu::Texture> texture;
-        uint32_t cursorX = 0, cursorY = 0, rowHeight = 0;
-        bool dirty = false;
-        bool dirtyRectValid = false;
-        uint32_t dirtyX0 = 0, dirtyY0 = 0, dirtyX1 = 0, dirtyY1 = 0;
-    };
-    std::vector<AtlasPage> pages_;
-    uint8_t allocNewPage();
 
     std::unordered_map<std::string, uint16_t> fallbackPathToIndex_;
     std::unordered_set<uint32_t> codepointMisses_;
@@ -128,9 +117,11 @@ private:
     std::vector<std::string> wrapText(const std::string& text, float fontSize,
                                        float maxWidth, uint16_t fontIndex);
 
-    void expandDirtyRect(AtlasPage& page, uint32_t x, uint32_t y, uint32_t w, uint32_t h);
     void markFullAtlasDirty();
     void clearTextLayoutCaches();
+
+    /// When getGlyph returns null, use space advance if available, else a fraction of fontSize.
+    float advanceWhenGlyphMissing(uint16_t fsz, uint16_t fontIndex, float fontSize);
 
     struct MeasureKey {
         std::string text;
