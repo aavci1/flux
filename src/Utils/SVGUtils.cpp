@@ -3,7 +3,92 @@
 #define NANOSVG_IMPLEMENTATION
 #include <nanosvg.h>
 
+#include <algorithm>
+#include <map>
+#include <regex>
+#include <string_view>
+
 namespace flux {
+
+namespace {
+
+std::string trimCssToken(std::string s) {
+    while (!s.empty() && static_cast<unsigned char>(s.front()) <= 32) s.erase(0, 1);
+    while (!s.empty() && static_cast<unsigned char>(s.back()) <= 32) s.pop_back();
+    return s;
+}
+
+/**
+ * NanoSVG does not apply rules from <style> or the `class` attribute. Illustrator / Figma often export
+ * fills as `.cls-N { fill: #... }` only, which parses as default black for every path.
+ * We extract simple `fill:` declarations and prepend `fill="..."` before matching `class="cls-N"`.
+ */
+std::string applyInlineCssClassFills(std::string svg) {
+    std::map<std::string, std::string> fillByClass;
+
+    try {
+        const std::regex styleBlock(R"(<style[^>]*>([\s\S]*?)</style>)", std::regex::icase);
+        std::smatch sm;
+        if (std::regex_search(svg, sm, styleBlock)) {
+            const std::string& css = sm[1].str();
+            const std::regex blockRule(R"(\.([a-zA-Z0-9_-]+)\s*\{([^}]*)\})");
+            for (std::sregex_iterator it(css.begin(), css.end(), blockRule), end; it != end; ++it) {
+                const std::string body = (*it)[2].str();
+                std::smatch fm;
+                const std::regex fillDecl(R"(\bfill:\s*([^;]+))", std::regex::icase);
+                if (!std::regex_search(body, fm, fillDecl)) {
+                    continue;
+                }
+                std::string fill = trimCssToken(std::string(fm[1]));
+                if (fill.find("url(") != std::string::npos) {
+                    continue;
+                }
+                fillByClass[std::string((*it)[1])] = std::move(fill);
+            }
+        }
+    } catch (...) {
+        return svg;
+    }
+
+    if (fillByClass.empty()) {
+        return svg;
+    }
+
+    std::vector<std::pair<std::string, std::string>> ordered(fillByClass.begin(), fillByClass.end());
+    std::sort(ordered.begin(), ordered.end(), [](const auto& a, const auto& b) {
+        return a.first.size() > b.first.size();
+    });
+
+    for (const auto& [cls, fill] : ordered) {
+        const std::string needle = "class=\"" + cls + "\"";
+        const std::string replacement = "fill=\"" + fill + "\" " + needle;
+        size_t pos = 0;
+        while ((pos = svg.find(needle, pos)) != std::string::npos) {
+            const size_t tagStart = svg.rfind('<', pos);
+            if (tagStart != std::string::npos) {
+                const size_t tagEnd = svg.find('>', pos);
+                if (tagEnd != std::string::npos) {
+                    const std::string_view openTag(svg.data() + tagStart, tagEnd - tagStart);
+                    if (openTag.find("fill=\"") != std::string_view::npos) {
+                        pos += needle.size();
+                        continue;
+                    }
+                }
+            }
+            svg.replace(pos, needle.size(), replacement);
+            pos += replacement.size();
+        }
+    }
+
+    try {
+        const std::regex stripStyle(R"(<style[^>]*>[\s\S]*?</style>)", std::regex::icase);
+        svg = std::regex_replace(svg, stripStyle, std::string());
+    } catch (...) {}
+
+    return svg;
+}
+
+} // namespace
 
 float calculatePathArea(NSVGpath* path) {
     if (!path || path->npts < 2) return 0.0f;
@@ -164,7 +249,7 @@ SVGData parseSVG(const std::string& svg) {
     }
 
     // NanoSVG mutates the buffer while parsing; use a writable copy.
-    std::string mutableSvg = svg;
+    std::string mutableSvg = applyInlineCssClassFills(svg);
 
     // Parse SVG using NanoSVG
     NSVGimage* image = nsvgParse(mutableSvg.data(), "px", 96.0f);

@@ -14,6 +14,25 @@
 
 namespace flux {
 
+namespace {
+
+struct OverlayHideDeferral {
+    OverlayManager& mgr;
+    explicit OverlayHideDeferral(OverlayManager& m) : mgr(m) { m.beginDeferHide(); }
+    ~OverlayHideDeferral() { mgr.endDeferHide(); }
+};
+
+} // namespace
+
+void Renderer::rebuildCachedLayoutTree(const Rect& windowBounds) {
+    suppressRedrawRequests();
+    renderContext_->clearEnvironmentStack();
+    cachedLayoutTree_ = rootView_->layout(*renderContext_, windowBounds);
+    resumeRedrawRequests();
+    cachedBounds_ = windowBounds;
+    layoutCacheValid_ = true;
+}
+
 void Renderer::renderFrame(const Rect& bounds) {
     if (!renderContext_) return;
 
@@ -41,7 +60,13 @@ void Renderer::renderFrame(const Rect& bounds) {
         renderContext_->pushEnvironment(layoutRootEnv);
 
         suppressRedrawRequests();
-        cachedLayoutTree_ = rootView_->layout(*renderContext_, bounds);
+        // While an overlay is visible, its item views may capture `this` pointers into the *previous*
+        // main-tree layout (e.g. SelectInput). Rebuilding the main layout here would destroy those
+        // views before overlay click handlers finish across frames. Skip the main relayout until the
+        // overlay layer is empty; overlay still lays out inside renderOverlays.
+        if (overlayManager_.empty()) {
+            cachedLayoutTree_ = rootView_->layout(*renderContext_, bounds);
+        }
         resumeRedrawRequests();
 
         renderContext_->popEnvironment();
@@ -317,85 +342,99 @@ void Renderer::handleEvent(const PointerEvent& event, const Rect& windowBounds) 
         return;
     }
 
-    if (!layoutCacheValid_ ||
+    const bool boundsMismatch =
         cachedBounds_.x != windowBounds.x || cachedBounds_.y != windowBounds.y ||
-        cachedBounds_.width != windowBounds.width || cachedBounds_.height != windowBounds.height) {
-        suppressRedrawRequests();
-        renderContext_->clearEnvironmentStack();
-        cachedLayoutTree_ = rootView_.layout(*renderContext_, windowBounds);
-        resumeRedrawRequests();
-        cachedBounds_ = windowBounds;
-        layoutCacheValid_ = true;
-    }
+        cachedBounds_.width != windowBounds.width || cachedBounds_.height != windowBounds.height;
+    const bool needLayoutRebuild = !layoutCacheValid_ || boundsMismatch;
 
-    bool needsRedraw = false;
-    const bool isMove  = event.kind == PointerEvent::Kind::Move;
-    const bool isDown  = event.kind == PointerEvent::Kind::Down;
-    const bool isUp    = event.kind == PointerEvent::Kind::Up;
-
-    if (isMove) {
-        bool hoverChanged = updateHoverState(eventPoint);
-        if (window_) {
-            std::optional<CursorType> cursor = collectCursor(cachedLayoutTree_, eventPoint, CursorType::Default);
-            window_->setCursor(cursor.value_or(CursorType::Default));
+    bool deferMainLayout = false;
+    if (needLayoutRebuild) {
+        if (overlayManager_.empty()) {
+            rebuildCachedLayoutTree(windowBounds);
+        } else {
+            // Rebuilding the main layout destroys views (e.g. SelectInput) that open overlays
+            // still reference via lambdas; refresh only once overlays are gone (see end of scope).
+            deferMainLayout = true;
         }
-        needsRedraw = hoverChanged;
     }
 
-    if (isDown && window_) {
-        window_->focus().focusViewAtPoint(eventPoint);
-        needsRedraw = true;
-    }
+    {
+        OverlayHideDeferral hideDeferral(overlayManager_);
 
-    if (isUp) {
-        hasPressedView_ = false;
-        needsRedraw = true;
-    }
+        bool needsRedraw = false;
+        const bool isMove  = event.kind == PointerEvent::Kind::Move;
+        const bool isDown  = event.kind == PointerEvent::Kind::Down;
+        const bool isUp    = event.kind == PointerEvent::Kind::Up;
 
-    PointerEvent ptrEvent = event;
+        if (isMove) {
+            bool hoverChanged = updateHoverState(eventPoint);
+            if (window_) {
+                std::optional<CursorType> cursor = collectCursor(cachedLayoutTree_, eventPoint, CursorType::Default);
+                window_->setCursor(cursor.value_or(CursorType::Default));
+            }
+            needsRedraw = hoverChanged;
+        }
 
-    if (!overlayManager_.empty() && (!mouseCapture_.active || mouseCapture_.fromOverlay)) {
-        if (mouseCapture_.active && mouseCapture_.fromOverlay && (isMove || isUp)) {
-            dispatchPointerEventToOverlays(ptrEvent);
+        if (isDown && window_) {
+            window_->focus().focusViewAtPoint(eventPoint);
             needsRedraw = true;
+        }
+
+        if (isUp) {
+            hasPressedView_ = false;
+            needsRedraw = true;
+        }
+
+        PointerEvent ptrEvent = event;
+
+        if (!overlayManager_.empty() && (!mouseCapture_.active || mouseCapture_.fromOverlay)) {
+            if (mouseCapture_.active && mouseCapture_.fromOverlay && (isMove || isUp)) {
+                dispatchPointerEventToOverlays(ptrEvent);
+                needsRedraw = true;
+                if (isUp) {
+                    mouseCapture_.active = false;
+                    mouseCapture_.fromOverlay = false;
+                }
+                requestApplicationRedraw();
+                goto after_pointer;
+            }
+            if (dispatchPointerEventToOverlays(ptrEvent)) {
+                if (mouseCapture_.active) mouseCapture_.fromOverlay = true;
+                needsRedraw = true;
+                requestApplicationRedraw();
+                goto after_pointer;
+            }
+        }
+
+        if (mouseCapture_.active && (isMove || isUp)) {
+            LayoutNode* captured = findNodeByPath(cachedLayoutTree_, mouseCapture_.treePath);
+            if (captured && captured->view.isInteractive()) {
+                if (isMove) {
+                    pressedBounds_ = captured->bounds;
+                    hasPressedView_ = true;
+                }
+                dispatchPointerToView(captured->view, ptrEvent, captured->bounds);
+                needsRedraw = true;
+            }
             if (isUp) {
                 mouseCapture_.active = false;
                 mouseCapture_.fromOverlay = false;
             }
-            requestApplicationRedraw();
-            return;
-        }
-        if (dispatchPointerEventToOverlays(ptrEvent)) {
-            if (mouseCapture_.active) mouseCapture_.fromOverlay = true;
-            needsRedraw = true;
-            requestApplicationRedraw();
-            return;
-        }
-    }
-
-    if (mouseCapture_.active && (isMove || isUp)) {
-        LayoutNode* captured = findNodeByPath(cachedLayoutTree_, mouseCapture_.treePath);
-        if (captured && captured->view.isInteractive()) {
-            if (isMove) {
-                pressedBounds_ = captured->bounds;
-                hasPressedView_ = true;
+        } else if (!isMove) {
+            mouseCapture_.treePath.clear();
+            if (dispatchPointerEvent(cachedLayoutTree_, ptrEvent)) {
+                needsRedraw = true;
             }
-            dispatchPointerToView(captured->view, ptrEvent, captured->bounds);
-            needsRedraw = true;
         }
-        if (isUp) {
-            mouseCapture_.active = false;
-            mouseCapture_.fromOverlay = false;
-        }
-    } else if (!isMove) {
-        mouseCapture_.treePath.clear();
-        if (dispatchPointerEvent(cachedLayoutTree_, ptrEvent)) {
-            needsRedraw = true;
-        }
-    }
 
-    if (needsRedraw) {
-        requestApplicationRedraw();
+    after_pointer:
+        if (needsRedraw) {
+            requestApplicationRedraw();
+        }
+    } // OverlayHideDeferral: flush deferred overlay hides before optional main layout rebuild
+
+    if (deferMainLayout && overlayManager_.empty()) {
+        rebuildCachedLayoutTree(windowBounds);
     }
 }
 

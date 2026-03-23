@@ -37,20 +37,34 @@ struct OverlayEntry {
 class OverlayManager {
 public:
     void show(const std::string& id, View content, Rect anchor, OverlayConfig config = {}) {
-        hide(id);
+        hideImmediate(id);
         entries_.push_back({id, std::move(content), anchor, std::move(config), {}, nullptr});
     }
 
     void hide(const std::string& id) {
-        entries_.erase(
-            std::remove_if(entries_.begin(), entries_.end(),
-                [&](const OverlayEntry& e) { return e.id == id; }),
-            entries_.end()
-        );
+        if (deferHideDepth_ > 0) {
+            pendingHides_.push_back(id);
+        } else {
+            hideImmediate(id);
+        }
     }
 
     void hideAll() {
-        entries_.clear();
+        if (deferHideDepth_ > 0) {
+            pendingHideAll_ = true;
+        } else {
+            entries_.clear();
+        }
+    }
+
+    void beginDeferHide() { ++deferHideDepth_; }
+
+    void endDeferHide() {
+        if (deferHideDepth_ == 0) return;
+        --deferHideDepth_;
+        if (deferHideDepth_ == 0) {
+            flushPendingHides();
+        }
     }
 
     bool empty() const { return entries_.empty(); }
@@ -74,6 +88,27 @@ public:
     const std::vector<OverlayEntry>& entries() const { return entries_; }
 
 private:
+    void hideImmediate(const std::string& id) {
+        entries_.erase(
+            std::remove_if(entries_.begin(), entries_.end(),
+                [&](const OverlayEntry& e) { return e.id == id; }),
+            entries_.end()
+        );
+    }
+
+    void flushPendingHides() {
+        if (pendingHideAll_) {
+            pendingHideAll_ = false;
+            pendingHides_.clear();
+            entries_.clear();
+            return;
+        }
+        for (const std::string& id : pendingHides_) {
+            hideImmediate(id);
+        }
+        pendingHides_.clear();
+    }
+
     Rect computeBounds(OverlayEntry& entry, RenderContext& ctx, const Rect& viewport) {
         if (entry.config.position == OverlayPosition::Center) {
             return viewport;
@@ -107,6 +142,10 @@ private:
     }
 
     std::vector<OverlayEntry> entries_;
+
+    int deferHideDepth_ = 0;
+    std::vector<std::string> pendingHides_;
+    bool pendingHideAll_ = false;
 };
 
 void showOverlay(const std::string& id, View content, Rect anchor, OverlayConfig config = {});

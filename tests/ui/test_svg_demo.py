@@ -26,12 +26,11 @@ class TestSvgDemo(unittest.TestCase):
 
     def test_headline_visible(self):
         tree = self.client.get_ui()
-        tiger = find_by_text_containing(tree, "Ghostscript Tiger")
-        embedded = find_by_text_containing(tree, "embedded sample")
+        title = find_by_text_containing(tree, "SVG component")
         self.assertGreaterEqual(
-            len(tiger) + len(embedded),
+            len(title),
             1,
-            "Expected title text for either tiger asset or embedded fallback",
+            "Expected main title text",
         )
 
     def test_screenshot_png(self):

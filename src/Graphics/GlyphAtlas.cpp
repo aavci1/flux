@@ -63,6 +63,7 @@ bool GlyphAtlas::dirty() const {
 
 GlyphAtlas::~GlyphAtlas() {
     for (auto& [idx, face] : faces_) FT_Done_Face(face);
+    facePaths_.clear();
     if (ftLib_) FT_Done_FreeType(ftLib_);
 }
 
@@ -73,6 +74,7 @@ bool GlyphAtlas::loadFont(const std::string& path, uint16_t fontIndex) {
     }
     if (auto it = faces_.find(fontIndex); it != faces_.end()) {
         FT_Done_Face(it->second);
+        facePaths_.erase(fontIndex);
         // Only drop glyphs for this slot — other faces keep valid UVs in the shared atlas.
         for (auto cit = cache_.begin(); cit != cache_.end();) {
             if (cit->first.fontIndex == fontIndex) {
@@ -83,6 +85,8 @@ bool GlyphAtlas::loadFont(const std::string& path, uint16_t fontIndex) {
         }
     }
     faces_[fontIndex] = face;
+    // FreeType may retain pathname.pointer without copying; keep path alive for loadFallbackForCodepoint.
+    facePaths_[fontIndex] = path;
     markFullAtlasDirty();
     return true;
 }
@@ -143,13 +147,6 @@ std::optional<uint16_t> GlyphAtlas::ensureFontLoaded(const std::string& name, Fo
     return std::nullopt;
 }
 
-std::string GlyphAtlas::faceFilePath(FT_Face face) const {
-    if (face && face->stream && face->stream->pathname.pointer) {
-        return std::string(static_cast<const char*>(face->stream->pathname.pointer));
-    }
-    return {};
-}
-
 std::optional<uint16_t> GlyphAtlas::loadFallbackForCodepoint(uint32_t codepoint,
                                                               uint16_t baseFontIndex) {
     if (codepointMisses_.count(codepoint)) {
@@ -167,8 +164,8 @@ std::optional<uint16_t> GlyphAtlas::loadFallbackForCodepoint(uint32_t codepoint,
 
     // Ask the OS for the best font covering this codepoint.
     std::string basePath;
-    if (auto it = faces_.find(baseFontIndex); it != faces_.end()) {
-        basePath = faceFilePath(it->second);
+    if (auto pit = facePaths_.find(baseFontIndex); pit != facePaths_.end()) {
+        basePath = pit->second;
     }
     auto resolved = FontProvider::findFontPathForCodepoint(codepoint, basePath);
     if (!resolved.has_value()) {

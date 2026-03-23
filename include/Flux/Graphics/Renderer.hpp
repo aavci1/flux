@@ -108,6 +108,8 @@ private:
     void collectHoverPath(const LayoutNode& node, const Point& point, std::vector<View>& path);
     bool updateHoverState(const Point& point);
 
+    /// Rebuilds cachedLayoutTree_ from rootView_ (used from handleEvent and internally).
+    void rebuildCachedLayoutTree(const Rect& windowBounds);
 };
 
 // Alias for clarity

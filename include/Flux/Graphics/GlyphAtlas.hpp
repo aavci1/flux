@@ -103,6 +103,8 @@ private:
     Atlas atlas_;
     FT_Library ftLib_ = nullptr;
     std::unordered_map<uint16_t, FT_Face> faces_;
+    /// Paths passed to FT_New_Face must outlive the face; FreeType may keep the pathname pointer.
+    std::unordered_map<uint16_t, std::string> facePaths_;
     std::unordered_map<GlyphKey, GlyphInfo, GlyphKeyHash> cache_;
     std::unordered_map<std::string, uint16_t> fontKeyToIndex_;
     uint16_t nextFontIndex_{0};
@@ -110,7 +112,6 @@ private:
     std::unordered_map<std::string, uint16_t> fallbackPathToIndex_;
     std::unordered_set<uint32_t> codepointMisses_;
 
-    std::string faceFilePath(FT_Face face) const;
     std::optional<uint16_t> loadFallbackForCodepoint(uint32_t codepoint, uint16_t baseFontIndex);
 
     bool rasterizeGlyph(const GlyphKey& key, GlyphInfo& out);
