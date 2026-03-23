@@ -38,9 +38,20 @@ ALL_TEST_MODULES = [
     "test_slider",
     "test_dialog",
     "test_nested_state",
+    "test_svg_demo",
 ]
 if _IS_UNIX:
     ALL_TEST_MODULES.append("test_terminal")
+
+# Maps unittest module name -> CMake executable name (default: "ui_" + module).
+UI_TEST_EXECUTABLE_OVERRIDES = {
+    "test_svg_demo": "svg_demo",
+}
+
+
+def executable_for_module(module: str) -> str:
+    return UI_TEST_EXECUTABLE_OVERRIDES.get(module, "ui_" + module)
+
 
 UI_TEST_TARGETS = [
     "ui_test_layout",
@@ -65,7 +76,7 @@ def build_ui_tests(build_dir: str):
 
     print(f"[build] Configuring CMake in {build_dir} ...")
     result = subprocess.run(
-        ["cmake", PROJECT_ROOT, "-DBUILD_UI_TESTS=ON", "-DBUILD_EXAMPLES=OFF"],
+        ["cmake", PROJECT_ROOT, "-DBUILD_UI_TESTS=ON", "-DBUILD_EXAMPLES=ON"],
         cwd=build_dir,
         capture_output=True,
         text=True,
@@ -76,8 +87,9 @@ def build_ui_tests(build_dir: str):
         sys.exit(1)
 
     print(f"[build] Building UI test targets ...")
+    build_targets = UI_TEST_TARGETS + ["svg_demo"]
     result = subprocess.run(
-        ["cmake", "--build", ".", "--target"] + UI_TEST_TARGETS + ["--parallel"],
+        ["cmake", "--build", ".", "--target"] + build_targets + ["--parallel"],
         cwd=build_dir,
         capture_output=True,
         text=True,
@@ -94,7 +106,7 @@ def check_executables(build_dir: str, modules: list[str]) -> bool:
     """Check that all required test executables exist."""
     missing = []
     for module in modules:
-        target = "ui_" + module
+        target = executable_for_module(module)
         exe_path = os.path.join(build_dir, target)
         if not os.path.isfile(exe_path):
             missing.append(target)

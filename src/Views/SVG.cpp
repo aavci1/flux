@@ -23,42 +23,38 @@ void SVG::render(RenderContext& ctx, const Rect& bounds) const {
     }
 
     if (data.paths.empty()) {
-        FLUX_LOG_ERROR("Failed to parse SVG: %s", svg.c_str());
+        FLUX_LOG_ERROR("Failed to parse SVG");
         return;
     }
 
-    FLUX_LOG_INFO("SVG: %s", svg.c_str());
-    FLUX_LOG_INFO("SVG data: %f", data.originalWidth);
-    FLUX_LOG_INFO("SVG data: %f", data.originalHeight);
-    FLUX_LOG_INFO("SVG data: %zu", data.paths.size());
-    // for (const auto& path : data.paths) {
-    //     FLUX_LOG_INFO("SVG path: %s", path.path.toString().c_str());
-    // }
-
-    // Calculate scaling to fit within bounds
     EdgeInsets paddingVal = padding;
-    Rect contentBounds = {
+    Rect contentArea = {
         bounds.x + paddingVal.left,
         bounds.y + paddingVal.top,
         bounds.width - paddingVal.horizontal(),
         bounds.height - paddingVal.vertical()
     };
+    if (contentArea.width <= 0.0f || contentArea.height <= 0.0f) {
+        return;
+    }
+    if (data.originalWidth <= 0.0f || data.originalHeight <= 0.0f) {
+        FLUX_LOG_ERROR("SVG has invalid dimensions");
+        return;
+    }
 
-    // Render using cached data
-    float scaleX = bounds.width / data.originalWidth;
-    float scaleY = bounds.height / data.originalHeight;
+    float scaleX = contentArea.width / data.originalWidth;
+    float scaleY = contentArea.height / data.originalHeight;
 
-    // Save current transform
     ctx.save();
 
     if (preserveAspectRatio) {
         float scale = std::min(scaleX, scaleY);
-        float offsetX = bounds.x + (bounds.width - data.originalWidth * scale) * 0.5f;
-        float offsetY = bounds.y + (bounds.height - data.originalHeight * scale) * 0.5f;
+        float offsetX = contentArea.x + (contentArea.width - data.originalWidth * scale) * 0.5f;
+        float offsetY = contentArea.y + (contentArea.height - data.originalHeight * scale) * 0.5f;
         ctx.translate(offsetX, offsetY);
         ctx.scale(scale, scale);
     } else {
-        ctx.translate(bounds.x, bounds.y);
+        ctx.translate(contentArea.x, contentArea.y);
         ctx.scale(scaleX, scaleY);
     }
 
@@ -92,7 +88,7 @@ Size SVG::preferredSize(TextMeasurement& /* textMeasurer */) const {
     }
 
     if (data.paths.empty()) {
-        FLUX_LOG_ERROR("Failed to parse SVG: %s", svg.c_str());
+        FLUX_LOG_ERROR("Failed to parse SVG");
         return Size(0.0f, 0.0f);
     }
 

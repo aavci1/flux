@@ -1,4 +1,5 @@
 #include <Flux/Graphics/CommandCompiler.hpp>
+#include <tesselator.h>
 #include <cstring>
 #include <cmath>
 #include <algorithm>
@@ -36,6 +37,7 @@ size_t CommandCompiler::PathTessCacheKeyHash::operator()(const PathTessCacheKey&
     mix(static_cast<uint64_t>(k.vpW | (static_cast<uint32_t>(k.vpH) << 16)));
     mix(static_cast<uint64_t>(k.hasFill | (k.hasStroke << 8) | (k.strokeCap << 16) | (k.strokeJoin << 24)));
     mix(static_cast<uint64_t>(static_cast<uint32_t>(k.qMiterLimit)));
+    mix(static_cast<uint64_t>(k.fillRule));
     return static_cast<size_t>(h);
 }
 
@@ -77,6 +79,7 @@ std::optional<CommandCompiler::PathTessCacheKey> CommandCompiler::makePathTessCa
 
     k.vpW = static_cast<uint16_t>(std::clamp(vpW, 0.f, 65535.f));
     k.vpH = static_cast<uint16_t>(std::clamp(vpH, 0.f, 65535.f));
+    k.fillRule = current_.fill.fillRule == FillStyle::FillRule::EvenOdd ? 1u : 0u;
     return k;
 }
 
@@ -711,9 +714,24 @@ void CommandCompiler::pushPath(CompiledBatches& out, const Path& path) {
     if (!current_.fill.isNone()) {
         Color fc = current_.fill.primaryColor();
         fc.a *= current_.opacity;
-        for (const auto& sub : subpaths) {
-            if (sub.size() < 3) continue;
-            appendPathVerts(PathFlattener::tessellateFill(sub, fc, out.viewportWidth, out.viewportHeight));
+        const int tessRule = current_.fill.fillRule == FillStyle::FillRule::EvenOdd ? TESS_WINDING_ODD
+                                                                                    : TESS_WINDING_NONZERO;
+
+        if (subpaths.size() > 1) {
+            std::vector<std::vector<Point>> nonempty;
+            nonempty.reserve(subpaths.size());
+            for (const auto& sub : subpaths) {
+                if (sub.size() >= 3) nonempty.push_back(sub);
+            }
+            if (!nonempty.empty()) {
+                appendPathVerts(PathFlattener::tessellateFillContours(
+                    nonempty, fc, out.viewportWidth, out.viewportHeight, tessRule));
+            }
+        } else {
+            for (const auto& sub : subpaths) {
+                if (sub.size() < 3) continue;
+                appendPathVerts(PathFlattener::tessellateFill(sub, fc, out.viewportWidth, out.viewportHeight));
+            }
         }
     }
 

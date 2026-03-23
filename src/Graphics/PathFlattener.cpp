@@ -490,6 +490,58 @@ TessellatedPath PathFlattener::tessellateFill(const std::vector<Point>& polyline
     return result;
 }
 
+TessellatedPath PathFlattener::tessellateFillContours(const std::vector<std::vector<Point>>& contours,
+                                                      const Color& color,
+                                                      float vpW, float vpH,
+                                                      int tessWindingRule) {
+    TessellatedPath result;
+    if (contours.empty()) return result;
+
+    TESStesselator* tess = tessNewTess(nullptr);
+    if (!tess) return result;
+
+    for (const auto& polyline : contours) {
+        if (polyline.size() < 3) continue;
+        std::vector<float> coords;
+        coords.reserve(polyline.size() * 2);
+        for (const auto& p : polyline) {
+            coords.push_back(p.x);
+            coords.push_back(p.y);
+        }
+        tessAddContour(tess, 2, coords.data(), sizeof(float) * 2, static_cast<int>(polyline.size()));
+    }
+
+    if (!tessTesselate(tess, tessWindingRule, TESS_POLYGONS, 3, 2, nullptr)) {
+        tessDeleteTess(tess);
+        return result;
+    }
+
+    const float* verts = tessGetVertices(tess);
+    const int* elems = tessGetElements(tess);
+    int nelems = tessGetElementCount(tess);
+
+    result.vertices.reserve(static_cast<size_t>(nelems) * 3);
+    for (int i = 0; i < nelems; i++) {
+        for (int j = 0; j < 3; j++) {
+            int idx = elems[i * 3 + j];
+            if (idx == TESS_UNDEF) continue;
+            PathVertex v{};
+            v.x = verts[idx * 2];
+            v.y = verts[idx * 2 + 1];
+            v.color[0] = color.r;
+            v.color[1] = color.g;
+            v.color[2] = color.b;
+            v.color[3] = color.a;
+            v.viewport[0] = vpW;
+            v.viewport[1] = vpH;
+            result.vertices.push_back(v);
+        }
+    }
+
+    tessDeleteTess(tess);
+    return result;
+}
+
 TessellatedPath PathFlattener::tessellateStroke(const std::vector<Point>& polyline, float strokeWidth,
                                                 const Color& color, float vpW, float vpH) {
     TessellatedPath result;

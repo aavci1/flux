@@ -103,6 +103,8 @@ SVGPath parseShape(NSVGshape* shape) {
 
     // Convert NanoSVG paint (color or gradient) to FillStyle
     FillStyle fillStyle = parsePaint(shape->fill);
+    fillStyle.fillRule = (shape->fillRule == NSVG_FILLRULE_EVENODD) ? FillStyle::FillRule::EvenOdd
+                                                                    : FillStyle::FillRule::NonZero;
 
     // Convert stroke color
     Color strokeColor = parseColor(shape->stroke.color);
@@ -161,8 +163,11 @@ SVGData parseSVG(const std::string& svg) {
         return result;
     }
 
+    // NanoSVG mutates the buffer while parsing; use a writable copy.
+    std::string mutableSvg = svg;
+
     // Parse SVG using NanoSVG
-    NSVGimage* image = nsvgParse(const_cast<char*>(svg.c_str()), "px", 96.0f);
+    NSVGimage* image = nsvgParse(mutableSvg.data(), "px", 96.0f);
     if (!image) {
         return result;
     }

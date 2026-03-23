@@ -34,6 +34,15 @@ public:
                                           const Color& color,
                                           float vpW, float vpH);
 
+    /**
+     * Tessellate multiple closed contours as one fill (holes, even-odd compound paths).
+     * @param tessWindingRule libtess2 rule, e.g. TESS_WINDING_ODD or TESS_WINDING_NONZERO.
+     */
+    static TessellatedPath tessellateFillContours(const std::vector<std::vector<Point>>& contours,
+                                                  const Color& color,
+                                                  float vpW, float vpH,
+                                                  int tessWindingRule);
+
     static TessellatedPath tessellateStroke(const std::vector<Point>& polyline,
                                             float strokeWidth,
                                             const Color& color,

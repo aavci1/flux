@@ -83,8 +83,12 @@ struct FillStyle {
 
     enum class Type { None, Solid, LinearGradient, RadialGradient, BoxGradient, ImagePattern };
 
+    /// SVG / Canvas fill rule for paths with multiple subpaths (holes, compound icons).
+    enum class FillRule { NonZero, EvenOdd };
+
     Data data = SolidFill{};
     PathWinding winding = PathWinding::CounterClockwise;
+    FillRule fillRule = FillRule::NonZero;
 
     FillStyle() = default;
 

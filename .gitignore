@@ -62,6 +62,7 @@ conan/
 coverage/
 __pycache__
 tests/ui/screenshots_terminal_verify/
+examples/svg-demo/verify-screenshot.png
 
 # Documentation build
 docs/_build/

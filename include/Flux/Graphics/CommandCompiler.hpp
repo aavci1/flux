@@ -113,6 +113,7 @@ private:
         uint8_t strokeCap = 0;
         uint8_t strokeJoin = 0;
         int32_t qMiterLimit = 0;
+        uint8_t fillRule = 0; // FillStyle::FillRule as uint8_t
         bool operator==(const PathTessCacheKey& o) const = default;
     };
 
