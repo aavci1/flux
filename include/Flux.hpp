@@ -34,7 +34,6 @@
 #include <Flux/Views/SelectInput.hpp>
 #include <Flux/Views/Slider.hpp>
 #include <Flux/Views/Spacer.hpp>
-#include <Flux/Views/SVG.hpp>
 #include <Flux/Views/Text.hpp>
 #include <Flux/Views/TextArea.hpp>
 #include <Flux/Views/TextInput.hpp>
