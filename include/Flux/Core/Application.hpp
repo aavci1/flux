@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Flux/Core/Theme.hpp>
 #include <Flux/Core/WindowEventObserver.hpp>
 #include <Flux/Core/ResourceManager.hpp>
 #include <atomic>
@@ -27,6 +28,10 @@ public:
 
     int exec();
     void quit() { running_ = false; }
+
+    /** Application-wide default theme (used as the root render environment unless overridden). */
+    void setTheme(const Theme& theme);
+    const Theme& theme() const { return theme_; }
 
     static Application& instance() {
         if (!current_) throw std::runtime_error("Application not initialized");
@@ -63,6 +68,7 @@ private:
     std::string programName_;
 
     ResourceManager resourceManager_;
+    Theme theme_{Theme::light()};
 
     static Application* current_;
     friend void requestApplicationRedraw();

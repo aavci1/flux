@@ -34,6 +34,8 @@ struct TextArea {
     Property<Color> placeholderColor = Colors::inherit;
     Property<float> areaCornerRadius = 4.0f;
     Property<float> areaPadding = 10.0f;
+    /** -1: use `borderWidth` if set, otherwise `theme.inputBorderWidth`. 0: no outline (no focus/hover stroke). */
+    Property<float> outlineWidth = -1.0f;
     Property<float> areaWidth = 400.0f;
 
     std::function<void(const std::string&)> onValueChange;
@@ -144,7 +146,12 @@ struct TextArea {
         Color text = resolveColor(textColor, th.inputForeground);
         Color ph = resolveColor(placeholderColor, th.placeholder);
 
-        ViewHelpers::drawInputFieldChrome(ctx, bounds, bg, border, focus, rad);
+        float outline = static_cast<float>(outlineWidth);
+        if (outline < 0.0f) {
+            float w = static_cast<float>(borderWidth);
+            outline = w > 0.0f ? w : th.inputBorderWidth;
+        }
+        ViewHelpers::drawInputFieldChrome(ctx, bounds, bg, border, focus, rad, outline, th.focusRingWidth);
 
         float fs = fontSize;
         std::string val = value;

@@ -34,9 +34,17 @@ void Renderer::renderFrame(const Rect& bounds) {
             window_->focus().clearFocusableViews();
         }
 
+        Environment layoutRootEnv = Environment::defaults();
+        if (Application::hasInstance()) {
+            layoutRootEnv.theme = Application::instance().theme();
+        }
+        renderContext_->pushEnvironment(layoutRootEnv);
+
         suppressRedrawRequests();
         cachedLayoutTree_ = rootView_->layout(*renderContext_, bounds);
         resumeRedrawRequests();
+
+        renderContext_->popEnvironment();
         cachedBounds_ = bounds;
         layoutCacheValid_ = true;
 

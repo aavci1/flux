@@ -134,20 +134,28 @@ inline void drawBackgroundImageScaledToContain(RenderContext& ctx, const std::st
     ctx.drawImage(imagePath, bounds, ImageFit::Contain);
 }
 
+/**
+ * Input chrome: fill + optional outline. If `borderWidth` is 0, only the fill is drawn and no
+ * hover/focus stroke is shown (no focus ring behavior on the border).
+ */
 inline void drawInputFieldChrome(RenderContext& ctx, const Rect& bounds,
                                  Color bgColor, Color borderCol, Color focusBorderColor,
-                                 float cornerRadius) {
-    bool isFocused = ctx.isCurrentViewFocused();
-    bool isHovered = ctx.isCurrentViewHovered();
-
+                                 float cornerRadius, float borderWidth, float focusRingWidth) {
     ctx.setFillStyle(FillStyle::solid(bgColor));
     ctx.setStrokeStyle(StrokeStyle::none());
     ctx.drawRect(bounds, CornerRadius(cornerRadius));
 
+    if (borderWidth <= 0.0f) {
+        return;
+    }
+
+    bool isFocused = ctx.isCurrentViewFocused();
+    bool isHovered = ctx.isCurrentViewHovered();
+
     Color bc = isFocused ? focusBorderColor
              : isHovered ? borderCol.lighten(0.3f)
              : borderCol;
-    float bw = isFocused ? 2.0f : 1.0f;
+    float bw = isFocused ? focusRingWidth : borderWidth;
     Path border;
     border.rect(bounds, CornerRadius(cornerRadius));
     ctx.setFillStyle(FillStyle::none());

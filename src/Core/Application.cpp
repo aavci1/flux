@@ -83,6 +83,12 @@ void Application::requestRedraw() {
     wakePlatformEventLoop();
 }
 
+void Application::setTheme(const Theme& theme) {
+    theme_ = theme;
+    bumpBodyGeneration();
+    requestRedraw();
+}
+
 Application::Application(int argc, char** argv) {
     if (current_) {
         throw std::runtime_error("Only one Application instance allowed");

@@ -133,6 +133,7 @@ private:
             bool en = item.enabled;
             itemViews.push_back(VStack{
                 .backgroundColor = bgColor,
+                .spacing = 4.0f,
                 .padding = EdgeInsets(6, 10, 6, 10),
                 .cursor = en ? std::optional(CursorType::Pointer) : std::nullopt,
                 .onClick = (en && cb) ? [cb, this]() {
@@ -145,11 +146,11 @@ private:
         }
 
         View dropdown = VStack{
-            .spacing = 1.0f,
-            .backgroundColor = dropdownBgColor,
+            .spacing = 4.0f,
+            .backgroundColor = bgColor,
             .cornerRadius = 8.0f,
             .borderColor = borderColor_,
-            .borderWidth = 1.0f,
+            .borderWidth = 2.0f,
             .minWidth = static_cast<float>(menuWidth),
             .children = std::move(itemViews)
         };
