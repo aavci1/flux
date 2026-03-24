@@ -8,7 +8,7 @@
 using namespace flux;
 
 #ifndef FLUX_SVG_DEMO_TIGER_PATH
-#define FLUX_SVG_DEMO_TIGER_PATH "/Users/abdurrahmanavci/Downloads/nemo/nemo.svg"
+#define FLUX_SVG_DEMO_TIGER_PATH "../examples/svg-demo/tiger.svg"
 #endif
 
 static std::string loadTextFile(const char* path) {
